@@ -1,0 +1,6 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+apscheduler>=3.10,<4
+shapely>=2.0
+pymupdf>=1.24
+truststore>=0.9

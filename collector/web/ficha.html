@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha provincial · Mesa de Acción</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Documento de un solo tema (claro): se imprime en papel. */
+:root{--ink:#15140F;--ink-2:#4A4840;--ink-3:#7C796E;--line:#DCDBD3;--line-2:#EAE9E3;--paper:#FFFFFF;--desk:#E9E8E2;--brand:#FFD100;
+  --n2:#E9BF1F;--n3:#EA7A1A;--n4:#D0302F;--land:#EFEEE8;--sismo:#3559D6;--fuego:#B0307E;--hidro:#0E8FA3;--geo:#7A5A2E;--bad:#B42323;--ok:#2F7D4F;
+  --f:"Archivo","Helvetica Neue",Arial,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;background:var(--desk);color:var(--ink);font:400 10.5pt/1.45 var(--f);font-variation-settings:"wdth" 100}
+a{color:inherit}
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;justify-content:center;padding:10px;background:var(--ink);color:#fff;font-size:13px}
+.bar a,.bar button{border:1px solid #666;background:transparent;color:#fff;border-radius:3px;padding:6px 12px;font:inherit;cursor:pointer;text-decoration:none}
+.bar a.primary{background:var(--brand);border-color:var(--brand);color:var(--ink);font-weight:650}
+.bar span{opacity:.7;margin-left:6px}
+.sheet{width:210mm;min-height:297mm;margin:16px auto;background:var(--paper);padding:13mm 13mm 16mm;box-shadow:0 2px 18px rgba(0,0,0,.12)}
+@media print{
+  @page{size:A4;margin:12mm 12mm 15mm;
+    @bottom-left{content:"Mesa de Acción · Ficha provincial · __PROVINCIA__";font:8pt Arial,sans-serif;color:#7C796E}
+    @bottom-right{content:"p. " counter(page) " de " counter(pages);font:8pt Arial,sans-serif;color:#7C796E}}
+  body{background:#fff}.bar{display:none}.sheet{width:auto;min-height:0;margin:0;padding:0 .4mm;box-shadow:none}
+}
+/* cabecera */
+.mast{background:var(--brand);margin:-13mm -13mm 0;padding:9mm 13mm 6mm;display:grid;grid-template-columns:1fr auto;gap:4mm;align-items:end}
+@media print{.mast{margin:0 0 0;padding:6mm 7mm 5mm}}
+.mast .k{font-size:8pt;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.mast h1{margin:1.5mm 0 0;font-size:30pt;line-height:.95;font-weight:800;font-variation-settings:"wdth" 66;text-transform:uppercase;letter-spacing:-.01em}
+.mast .sub{font-size:11pt;margin-top:1.5mm}
+.mast .meta{text-align:right;font-size:8.5pt;line-height:1.5}
+.mast .meta b{display:block;font-size:7.5pt;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.enfen{margin:0 -13mm;padding:2.2mm 13mm;background:var(--ink);color:#fff;font-size:8.5pt}
+@media print{.enfen{margin:0;padding:2mm 7mm}}
+.enfen b{color:var(--brand)}
+/* resumen */
+.tiles{display:grid;grid-template-columns:repeat(6,1fr);border:1px solid var(--line);margin:5mm 0 4mm}
+.tiles div{padding:2.6mm 3mm;border-right:1px solid var(--line);break-inside:avoid}
+.tiles div:last-child{border-right:0}
+.tiles .v{font-size:17pt;font-weight:750;font-variation-settings:"wdth" 70;line-height:1.05}
+.tiles .l{font-size:7.5pt;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-top:1mm}
+.lvl{display:inline-block;padding:.3mm 2mm;border-radius:1mm;font-weight:700;font-size:8.5pt;color:#15140F}
+.lvl.l2{background:var(--n2)}.lvl.l3{background:var(--n3)}.lvl.l4{background:var(--n4);color:#fff}.lvl.l0{background:var(--line-2);color:var(--ink-2)}
+/* secciones */
+section{margin-top:5.5mm}
+h2{font-size:12.5pt;margin:0 0 2mm;padding-top:1.6mm;border-top:1.6pt solid var(--ink);font-weight:750;font-variation-settings:"wdth" 80;display:flex;justify-content:space-between;align-items:baseline;gap:4mm;break-after:avoid}
+h2 small{font:400 7.5pt var(--mono);color:var(--ink-3)}
+h3{font-size:10.5pt;margin:0 0 1mm;font-weight:700}
+.grid2{display:grid;grid-template-columns:1.15fr 1fr;gap:5mm;align-items:start}
+.grid2 > div{min-width:0}
+a.lk{color:var(--ink-2);text-decoration-color:var(--line);overflow-wrap:anywhere}
+.note{font-size:8pt;color:var(--ink-3);margin:1.5mm 0 0}
+table{width:100%;border-collapse:collapse;font-size:8.8pt}
+th{text-align:left;font-size:7pt;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:650;border-bottom:1px solid var(--line);padding:1.2mm 1.6mm}
+td{border-bottom:1px solid var(--line-2);padding:1.2mm 1.6mm;vertical-align:top}
+tr{break-inside:avoid}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.muted{color:var(--ink-3)}
+.days{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5mm;margin-bottom:2mm}
+.days div{border:1px solid var(--line);padding:1.6mm 2mm;break-inside:avoid}
+.days .d{font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:650}
+.days .lvl{margin-top:1mm}
+.alist{margin:0;padding:0;list-style:none}
+.alist li{padding:1.3mm 0;border-bottom:1px solid var(--line-2);font-size:9pt;break-inside:avoid}
+.alist li .s{display:block;font-size:8pt;color:var(--ink-3)}
+#map{width:100%;height:auto;display:block;border:1px solid var(--line);background:#fff}
+.legend{display:flex;flex-wrap:wrap;gap:1mm 3.5mm;font-size:7.5pt;color:var(--ink-2);margin-top:1.4mm}
+.legend i{display:inline-block;width:3mm;height:2.4mm;margin-right:1mm;vertical-align:-.3mm;border-radius:.4mm}
+.rep{border-top:1px solid var(--line);padding:2.5mm 0;break-inside:avoid}
+.rep .k{font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:650}
+.rep .t{font-size:10.5pt;font-weight:700;margin:.5mm 0}
+.rep .h{font-size:9pt;color:var(--ink-2)}
+.rep .ph{display:flex;gap:2mm;margin-top:2mm}
+.rep figure{margin:0;width:40mm}
+.rep figure img{width:100%;height:26mm;object-fit:cover;display:block;border:1px solid var(--line)}
+.rep figcaption{font-size:7pt;color:var(--ink-3);margin-top:.6mm;line-height:1.3}
+.rep .u{font-size:8pt;color:var(--ink-3);margin-top:1mm}
+.empty-list{font-size:8.5pt;color:var(--ink-3);margin-top:4mm;padding:2mm 3mm;border:1px dashed var(--line)}
+.src td{font-size:8pt}
+.src .u{font:400 7pt var(--mono);color:var(--ink-3);word-break:break-all}
+.spark path.l{fill:none;stroke:var(--ink-2);stroke-width:1.2}.spark path.a{fill:#EFEEE8}.spark circle{fill:var(--ink)}
+.up{color:var(--bad)}.down{color:var(--ok)}
+.dcols{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
+.dcols > div{break-inside:avoid}
+h2 + .dcols{break-before:avoid}
+.dfig{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);margin-top:1mm}
+.dfig div{padding:1.6mm 2mm;border-right:1px solid var(--line-2);border-bottom:1px solid var(--line-2)}
+.dfig b{display:block;font-size:13pt;font-weight:750;font-variation-settings:"wdth" 72;font-variant-numeric:tabular-nums;line-height:1.1}
+.dfig span{font-size:7.2pt;color:var(--ink-2);line-height:1.2;display:block}
+.dfig .vida b{color:var(--bad)}
+.dline{font-size:8.5pt;margin-top:1mm}
+.dline b{font-variant-numeric:tabular-nums}
+.method{font-size:8pt;color:var(--ink-2);columns:2;column-gap:6mm;margin-top:2mm}
+.method p{margin:0 0 1.6mm;break-inside:avoid}
+</style>
+</head>
+<body>
+<div class="bar" id="bar">
+  <a class="primary" id="dl" href="#">Descargar PDF</a>
+  <button type="button" onclick="print()">Imprimir</button>
+  <a href="/">Volver al dashboard</a>
+  <span id="gen"></span>
+</div>
+<main class="sheet" id="sheet"></main>
+
+<script src="/vendor/d3.min.js"></script>
+<script>
+const F = /*__FICHA__*/null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const title = s => String(s||"").toLowerCase().replace(/(^|[\s(\-/])([a-záéíóúñ])/g,(m,a,b)=>a+b.toUpperCase());
+const nf = new Intl.NumberFormat("es-PE");
+const DOW = ["dom","lun","mar","mié","jue","vie","sáb"], MON = ["ene","feb","mar","abr","may","jun","jul","ago","set","oct","nov","dic"];
+const fmtDay = iso => { const d = new Date(iso + "T12:00:00"); return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`; };
+const stamp = ts => ts ? new Date(ts * 1000).toLocaleString("es-PE", {timeZone: "America/Lima", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23"}) : "—";
+const lvlNum = s => ({AMARILLO:2, NARANJA:3, ROJO:4})[s] || +String(s).replace(/\D/g,"") || 0;
+const chip = n => `<span class="lvl l${n}">${n ? ["","","Nivel 2 · amarillo","Nivel 3 · naranja","Nivel 4 · rojo"][n] : "Sin aviso"}</span>`;
+const MONTH = ym => { const [y, m] = ym.split("-"); return `${MON[+m - 1]} ${y}`; };
+const printMode = new URLSearchParams(location.search).has("print");
+if (printMode) $("#bar").hidden = true;
+$("#dl").href = `/ficha/${F.ubigeo}.pdf`;
+$("#gen").textContent = `Datos al ${F.generado_txt} (hora de Lima)`;
+const DEPT = F.tipo === "departamental";
+document.title = `Ficha ${DEPT ? "departamental" : "provincial"} ${title(F.nombre)} · Mesa de Acción`;
+const nivelesTxt = x => DEPT ? [4, 3, 2].filter(n => x.conteo[n]).map(n => `${x.conteo[n]} N${n}`).join(" · ") : "";
+
+function spark(vals, w = 120, h = 26) {
+  const x = d3.scaleLinear([0, vals.length - 1], [2, w - 3]), y = d3.scaleLinear([0, d3.max(vals) || 1], [h - 2, 3]);
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path class="a" d="${d3.area((d, i) => x(i), h - 2, d => y(d))(vals)}"/><path class="l" d="${d3.line((d, i) => x(i), d => y(d))(vals)}"/><circle cx="${x(vals.length - 1)}" cy="${y(vals.at(-1))}" r="2.2"/></svg>`;
+}
+const delta = (now, before) => { if (!before) return "—"; const p = Math.round((now - before) / before * 100); return `<span class="${p > 0 ? "up" : p < 0 ? "down" : ""}">${p > 0 ? "+" : ""}${p} %</span>`; };
+
+const DN = F.danos || {labels: {}, orden: []};
+const VIDA = new Set(["personas_fallecidas", "personas_desaparecidas", "personas_heridas"]);
+const fmtN = v => typeof v === "number" && !Number.isInteger(v) ? v.toLocaleString("es-PE", {maximumFractionDigits: 1}) : nf.format(v);
+const dfig = tot => { const ks = DN.orden.filter(k => tot && tot[k]); return ks.length ? `<div class="dfig">${ks.map(k => `<div class="${VIDA.has(k) ? "vida" : ""}"><b>${fmtN(tot[k])}</b><span>${esc(DN.labels[k])}</span></div>`).join("")}</div>` : `<p class="muted" style="margin:1mm 0 0">Sin cifras.</p>`; };
+const dline = tot => { const ks = DN.orden.filter(k => tot && tot[k]); return ks.length ? `<div class="dline">${ks.map(k => `<b>${fmtN(tot[k])}</b> ${esc(DN.labels[k].toLowerCase())}`).join(" · ")}</div>` : ""; };
+const hoy = F.niveles[0] || {m: 0, a: []};
+const S = F.sidpol, last = S ? S.months.length - 1 : 0;
+const sidTotal = S ? S.months.map((_, i) => S.mods.reduce((a, m) => a + (S.series[m]?.[i] || 0), 0)) : null;
+const activos = F.alertas.filter(a => a.estado !== "Extinguido");
+const empty = [];
+if (F.indeci.length > 25) F.indeci = F.indeci.slice(0, 25);   // la ficha departamental no se vuelve un libro
+
+let html = `
+<header class="mast">
+  <div><div class="k">Mesa de Acción · Ficha ${DEPT ? "departamental" : "provincial"}</div><h1>${esc(title(F.nombre))}</h1>
+    <div class="sub">${DEPT ? `Departamento de ${esc(title(F.nombre))} · ${F.n_provincias} provincia${F.n_provincias > 1 ? "s" : ""} · Código ${F.code}`
+      : `Provincia de ${esc(title(F.provincia))} · Departamento de ${esc(title(F.departamento))} · Ubigeo ${F.ubigeo}`}</div></div>
+  <div class="meta"><b>Datos al</b>${F.generado_txt} h (Lima)<br><b style="margin-top:1.4mm">Fuentes</b>SENAMHI · INDECI · IGP · SERFOR<br>INGEMMET · PNP/MININTER · gob.pe</div>
+</header>
+${F.enfen?.estado ? `<div class="enfen">ENFEN · estado nacional: <b>${esc(F.enfen.estado)}</b> · Comunicado N° ${F.enfen.numero}-${F.enfen.anio} (${esc(F.enfen.fecha || "")})</div>` : ""}
+<div class="tiles">
+  ${DEPT ? `<div><div class="v num">${hoy.conteo ? hoy.conteo[4] + hoy.conteo[3] + hoy.conteo[2] : 0}<span style="font-size:10pt;font-weight:500"> / ${F.n_provincias}</span></div><div class="l">Provincias bajo aviso hoy · máx. ${hoy.m ? "N" + hoy.m : "—"}</div></div>
+    <div><div class="v num">${F.uv_max ? F.uv_max.v[0] : "—"}</div><div class="l">UV más alto · ${F.uv_max ? esc(title(F.uv_max.z)) : ""}</div></div>`
+  : `<div><div class="v">${hoy.m ? chip(hoy.m).replace(/ · .*?</, "<") : "—"}</div><div class="l">Aviso SENAMHI hoy</div></div>
+    <div><div class="v num">${F.uv ? F.uv.v[0] : "—"}</div><div class="l">Índice UV ${F.uv ? fmtDay(F.uv.dias[0]) : ""}</div></div>`}
+  <div><div class="v num">${F.indeci.length}</div><div class="l">Reportes INDECI · ${F.indeci_dias} días</div></div>
+  <div><div class="v num">${activos.length}</div><div class="l">Incendios activos · ${nf.format(F.focos)} focos 24 h</div></div>
+  <div><div class="v num">${F.zonas.length}</div><div class="l">Zonas críticas en alerta</div></div>
+  <div><div class="v num">${S ? nf.format(sidTotal[last]) : "—"}</div><div class="l">Denuncias ${S ? MONTH(S.periodo) : ""}</div></div>
+</div>
+
+<section class="grid2">
+  <div><h2>Mapa <small>límites INEI · capas del día</small></h2><svg id="map" viewBox="0 0 620 520" role="img" aria-label="Mapa ${DEPT ? "del departamento" : "de la provincia"}"></svg>
+    <div class="legend"><span><i style="background:var(--n4)"></i>Nivel 4</span><span><i style="background:var(--n3)"></i>Nivel 3</span><span><i style="background:var(--n2)"></i>Nivel 2</span>
+      <span><i style="border:1.5px solid var(--sismo);background:none;border-radius:50%"></i>Sismo 30 días</span><span><i style="background:var(--fuego);border-radius:50%"></i>Incendio</span>
+      <span><i style="background:var(--geo)"></i>Zona crítica</span><span><i style="background:var(--hidro);border-radius:50%"></i>Estación hidrológica</span></div>
+    <p class="note">${DEPT ? "Cada provincia se pinta con su nivel SENAMHI de hoy." : `La provincia se pinta con el nivel SENAMHI de hoy; las vecinas de ${esc(title(F.departamento))}, en gris.`}</p></div>
+  <div><h2>Avisos SENAMHI <small>nivel por día</small></h2>
+    <div class="days">${F.niveles.map(x => `<div><div class="d">${fmtDay(x.dia)}</div>${chip(x.m).replace(/ · .*?</, "<")}${DEPT ? `<div class="note" style="margin:1mm 0 0">${nivelesTxt(x)}</div>` : ""}</div>`).join("")}</div>
+    ${F.avisos.length ? `<ul class="alist">${F.avisos.map(a => `<li>${chip(lvlNum(a.nivel)).replace(/Nivel \d · /, "")} <b>N° ${a.nro}</b> ${esc(title(a.titulo))}<span class="s">${fmtDay(a.inicio)} → ${fmtDay(a.fin)} · ${esc(a.estado)}${a.link ? ` · <a class="lk" href="${esc(a.link)}">senamhi.gob.pe · aviso N° ${a.nro}</a>` : ""}</span></li>`).join("")}</ul>`
+      : `<p class="muted">Sin avisos que cubran la provincia en los próximos días.</p>`}
+    ${F.pronostico.length && DEPT ? (() => { const days = [...new Set(F.pronostico.map(p => p.dia))].slice(0, 3);
+      return `<h3 style="margin-top:3mm">Pronóstico SENAMHI · máx./mín.</h3><table><thead><tr><th>Ciudad</th>${days.map(d => `<th class="num">${esc(d.split(",")[0].slice(0, 3) + " " + ((d.match(/\d+/) || [""])[0]))}</th>`).join("")}</tr></thead><tbody>
+      ${d3.groups(F.pronostico, p => p.ciudad).map(([c, ps]) => { const by = Object.fromEntries(ps.map(p => [p.dia, p])); return `<tr><td>${esc(title(c))}</td>${days.map(d => by[d] ? `<td class="num">${by[d].tmax}°<span class="muted">/${by[d].tmin}°</span></td>` : "<td>—</td>").join("")}</tr>`; }).join("")}</tbody></table>`; })() : ""}
+    ${F.pronostico.length && !DEPT ? `<h3 style="margin-top:3mm">Pronóstico SENAMHI</h3>
+      <table><thead><tr><th>Día</th><th class="num">Máx.</th><th class="num">Mín.</th><th>Condición</th></tr></thead><tbody>
+      ${d3.groups(F.pronostico, p => p.ciudad).map(([c, ps]) => `<tr><td colspan="4" style="font-weight:700;padding-top:2mm">${esc(title(c))}</td></tr>`
+        + ps.map(p => `<tr><td class="num">${esc(p.dia.replace(/, (\d+) de (\w+)/, " $1"))}</td><td class="num">${p.tmax}°</td><td class="num">${p.tmin}°</td><td>${esc(p.descripcion)}</td></tr>`).join("")).join("")}</tbody></table>` : ""}
+    ${F.uv ? `<p class="note">Índice UV (SENAMHI, zona ${esc(title(F.uv.z))}): ${F.uv.v.map((v, i) => `${v} el ${fmtDay(F.uv.dias[i])} (pico ${F.uv.h[i]})`).join(" · ")}.</p>` : ""}
+  </div>
+</section>`;
+
+// Daños INDECI
+if (DN.n_eventos) html += `<section><h2>Daños reportados · INDECI <small>últimos ${DN.dias} días · ${DN.n_eventos} eventos · sin duplicar actualizaciones</small></h2>
+  <div class="dcols">
+    <div><h3>${DN.n_nuevos} ${DN.n_nuevos === 1 ? "evento nuevo" : "eventos nuevos"} <span class="muted" style="font-weight:400">· ocurridos desde ${fmtDay(DN.desde)}</span></h3>${dfig(DN.nuevos)}</div>
+    <div><h3>${DN.n_eventos - DN.n_nuevos} ${DN.n_eventos - DN.n_nuevos === 1 ? "evento anterior" : "eventos anteriores"} <span class="muted" style="font-weight:400">· aún con reportes, cifras acumuladas</span></h3>${dfig(DN.seguimiento)}</div>
+  </div>
+  <table style="margin-top:3mm"><thead><tr><th>Evento</th><th>Ocurrió</th><th>Cifras (último reporte)</th></tr></thead><tbody>
+  ${DN.eventos.map(e => `<tr><td><b>${esc(title(e.evento))}</b> — ${esc(title(e.distrito))}${e.multi_region ? ` <span class="muted">(parte de ${esc(title(F.nombre))})</span>` : ""}<br><span class="muted">${esc(title(e.tipo))} N° ${esc(e.num)}${e.seq ? ` · reporte ${esc(e.seq)}` : ""}</span></td>
+    <td class="num">${e.ocurrencia ? fmtDay(e.ocurrencia) : "—"}<br><span class="muted">${e.nuevo ? "nuevo" : "en seguimiento"}</span></td><td>${dline(e.totales)}</td></tr>`).join("")}</tbody></table>
+  <p class="note">Cifras de la tabla “Reporte de daños” de cada PDF de INDECI (fuente: COER, municipalidades, SINPAD). Un evento con varios reportes cuenta una sola vez, con su reporte más reciente; si abarca varias regiones o provincias, se usa el subtotal de cada una.</p></section>`;
+else empty.push(`cifras de daños INDECI (${DN.dias || 7} días)`);
+
+// Provincias (ficha departamental)
+if (DEPT && F.tabla.length) html += `<section><h2>Provincias de ${esc(title(F.nombre))} <small>hoy · ${F.indeci_dias} días INDECI · SIDPOL ${S ? MONTH(S.periodo) : ""}</small></h2>
+  <table><thead><tr><th>Provincia</th><th>Aviso hoy</th><th class="num">UV</th><th class="num">INDECI</th><th class="num">Damnif. / afect. (7 d)</th><th class="num">Incendios activos</th><th class="num">Zonas críticas</th><th class="num">Denuncias</th><th class="num">vs. año ant.</th></tr></thead><tbody>
+  ${F.tabla.map(r => `<tr><td><b>${esc(title(r.provincia))}</b> <span class="muted">${r.ubigeo}</span></td><td>${r.nivel ? chip(r.nivel).replace(/ · .*?</, "<") : '<span class="muted">—</span>'}</td>
+    <td class="num">${r.uv ?? "—"}</td><td class="num">${r.indeci || "—"}</td><td class="num">${r.damnificados || r.afectados ? `${nf.format(r.damnificados || 0)} / ${nf.format(r.afectados || 0)}` : "—"}</td><td class="num">${r.incendios || "—"}</td><td class="num">${r.zonas || "—"}</td>
+    <td class="num">${r.denuncias != null ? nf.format(r.denuncias) : "—"}</td><td class="num">${r.denuncias != null ? delta(r.denuncias, r.denuncias_prev) : "—"}</td></tr>`).join("")}</tbody></table>
+  <p class="note">Descargue la ficha de cada provincia desde el dashboard (barra superior · Ficha PDF).</p></section>`;
+
+// INDECI
+if (F.indeci.length) html += `<section><h2>Emergencias INDECI <small>últimos ${F.indeci_dias} días · ${F.indeci.length} reportes</small></h2>
+  ${F.indeci.map(r => `<div class="rep"><div class="k">${esc(title(r.tipo))} N° ${esc(r.num)}${r.seq ? ` · reporte ${esc(r.seq)}` : ""} · ${stamp(r.ts)}${r.sinpad ? ` · SINPAD ${esc(r.sinpad)}` : ""}</div>
+    <div class="t">${esc(title(r.evento))} — ${esc(title(r.distrito))}${DEPT && r.provincia ? `, ${esc(title(r.provincia))}` : ""}</div>
+    <div class="h">${esc(r.hechos || r.descripcion || "")}</div>
+    ${r.danos ? dline(r.danos) + (r.danos_actualizado ? `<div class="note" style="margin:0">Cifras al ${esc(r.danos_actualizado)}</div>` : "") : ""}
+    ${r.fotos.length ? `<div class="ph">${r.fotos.map(f => `<figure><img src="${esc(f.url)}" alt=""><figcaption>${esc(f.caption || "")}${f.fecha ? ` · ${esc(f.fecha)}` : ""} · Foto: INDECI / COER</figcaption></figure>`).join("")}</div>` : ""}
+    <div class="u"><a class="lk" href="${esc(r.link)}">portal.indeci.gob.pe · publicación del reporte</a>${r.pdf_url ? ` · <a class="lk" href="${esc(r.pdf_url)}">PDF del reporte</a>` : ""}</div></div>`).join("")}</section>`;
+else empty.push(`reportes INDECI (${F.indeci_dias} días)`);
+
+// SERFOR
+if (F.alertas.length) html += `<section><h2>Incendios forestales · SERFOR <small>${F.alertas.length} alertas · ${nf.format(F.focos)} focos de calor 24 h</small></h2>
+  <table><thead><tr><th>Estado</th><th>Distrito</th><th>Fecha</th><th>Cobertura</th><th>Código</th></tr></thead><tbody>
+  ${F.alertas.map(a => `<tr><td><b>${esc(a.estado)}</b></td><td>${esc(title(a.dist))}</td><td class="num">${esc(a.fecha || "")} ${esc(a.hora || "")}</td><td>${esc(a.cob || "")}</td><td class="num">${esc(a.cod || "")}</td></tr>`).join("")}</tbody></table></section>`;
+else empty.push(`alertas de incendio forestal${F.focos ? ` (${F.focos} focos de calor en 24 h)` : ""}`);
+
+// INGEMMET
+if (F.zonas.length) html += `<section><h2>Zonas críticas en alerta · INGEMMET <small>${F.zonas.length} zonas</small></h2>
+  <table><thead><tr><th>Nivel</th><th>Distrito</th><th>Paraje</th><th>Peligro</th><th>Elementos expuestos</th></tr></thead><tbody>
+  ${F.zonas.map(z => `<tr><td>${esc(z.nivel)}</td><td>${esc(z.distrito)}</td><td>${esc(z.paraje)}</td><td>${esc(z.peligros_g)}</td><td>${esc(z.elemento)}</td></tr>`).join("")}</tbody></table></section>`;
+else empty.push("zonas críticas en alerta");
+
+// Hidrología
+if (F.hidro.length) html += `<section><h2>Avisos hidrológicos · SENAMHI <small>${F.hidro.length} estaciones</small></h2>
+  <table><thead><tr><th>Nivel</th><th>Estación</th><th>Aviso</th><th>Distrito</th><th>Fecha</th></tr></thead><tbody>
+  ${F.hidro.map(h => `<tr><td>${esc(h.color_text)}</td><td>${esc(title(h.nom_estacion))}</td><td>${esc(title(h.titulo))}</td><td>${esc(title(h.nom_distrito))}</td><td class="num">${esc((h.fecha_hora || "").slice(0, 10))}</td></tr>`).join("")}</tbody></table></section>`;
+else empty.push("avisos hidrológicos");
+
+// IGP
+if (F.sismos.length) html += `<section><h2>Sismos · IGP <small>últimos 30 días · dentro o a menos de ${F.near_km} km</small></h2>
+  <table><thead><tr><th>Fecha</th><th class="num">M</th><th class="num">Prof.</th><th>Referencia</th><th>Ubicación</th></tr></thead><tbody>
+  ${F.sismos.map(s => `<tr><td class="num">${fmtDay(s.fecha)} ${s.hora}</td><td class="num"><b>${s.mag}</b></td><td class="num">${s.prof} km</td><td>${esc(s.ref)}</td><td class="num">${s.dentro ? "dentro" : `a ${s.dist_km} km`}</td></tr>`).join("")}</tbody></table></section>`;
+else empty.push(`sismos en 30 días (a menos de ${F.near_km} km)`);
+
+// SIDPOL
+if (S) {
+  const rows = S.mods.map(m => [m, S.series[m]]).filter(([, v]) => v[last] || v[0]).sort((a, b) => b[1][last] - a[1][last]);
+  html += `<section><h2>Denuncias policiales · SIDPOL <small>${MONTH(S.periodo)} vs. ${MONTH(S.months[0])}</small></h2>
+    <table><thead><tr><th>Modalidad</th><th class="num">${MONTH(S.periodo)}</th><th class="num">${MONTH(S.months[0])}</th><th class="num">Variación</th><th>13 meses</th></tr></thead><tbody>
+    <tr><td><b>Total</b></td><td class="num"><b>${nf.format(sidTotal[last])}</b></td><td class="num">${nf.format(sidTotal[0])}</td><td class="num">${delta(sidTotal[last], sidTotal[0])}</td><td>${spark(sidTotal)}</td></tr>
+    ${rows.map(([m, v]) => `<tr><td>${esc(m)}</td><td class="num">${nf.format(v[last])}</td><td class="num">${nf.format(v[0])}</td><td class="num">${delta(v[last], v[0])}</td><td>${spark(v, 90, 18)}</td></tr>`).join("")}</tbody></table>
+    <p class="note">Denuncias registradas en el SIDPOL (PNP), no delitos ocurridos. Fuente: <a href="${esc(S.dataset)}">${esc(S.dataset)}</a></p></section>`;
+}
+
+// Comunicados
+if (F.comunicados.length) html += `<section><h2>Comunicados que mencionan ${DEPT ? "el departamento" : "la provincia"} <small>gob.pe · 14 días</small></h2>
+  <ul class="alist">${F.comunicados.map(c => `<li><b>${esc(c.inst_nombre)}</b> · ${esc(c.titulo)}<span class="s">${c.fecha ? fmtDay(c.fecha) : ""} · <a class="lk" href="${esc(c.url)}">gob.pe · leer la nota</a></span></li>`).join("")}</ul></section>`;
+
+if (empty.length) html += `<p class="empty-list">Sin registros en esta provincia para: ${empty.join(" · ")}.</p>`;
+
+// Fuentes y método
+html += `<section><h2>Fuentes y actualización <small>último éxito de cada fuente (hora de Lima)</small></h2>
+  <table class="src"><thead><tr><th>Institución</th><th>Fuente</th><th>Último éxito</th><th>Estado</th></tr></thead><tbody>
+  ${F.fuentes.filter(f => f.id !== "indeci_fotos").map(f => `<tr><td>${esc(f.org)}</td><td>${esc(f.name)}</td><td class="num">${stamp(f.last_ok)}</td><td>${esc(({ok: "Al día", actualizando: "Actualizando", atrasada: "Atrasada", fallando: "Fallando", sin_acceso: "Sin acceso", pendiente: "Pendiente"})[f.status] || f.status || "")}</td></tr>`).join("")}</tbody></table>
+  <div class="method">
+    <p><b>Nivel por provincia.</b> Cruce de los polígonos de cada aviso SENAMHI con los límites INEI; una provincia cuenta si el aviso cubre al menos el 3 % de su área. Se muestra el nivel más alto del día.</p>
+    <p><b>Fotos.</b> Anexo fotográfico de los reportes INDECI (COER, municipalidades). Los mapas de ubicación de INDECI usan base Google Earth/Airbus y no se incluyen.</p>
+    <p><b>Sismos.</b> Catálogo IGP; se listan los epicentros dentro ${DEPT ? "del departamento" : "de la provincia"} o a menos de ${F.near_km} km de su límite.</p>
+    <p><b>Denuncias.</b> SIDPOL mensual (datos abiertos MININTER); refleja denuncias registradas, no la incidencia real del delito.</p>
+    <p>Generado por el colector Mesa de Acción el ${F.generado_txt} h. Datos oficiales tomados de sus servidores; verificar antes de emitir.</p>
+  </div></section>`;
+
+$("#sheet").innerHTML = html;
+
+// ── mapa ──
+(function map() {
+  const svg = d3.select("#map"), W = 620, H = 520;
+  const all = {type: "FeatureCollection", features: F.geo.scope};
+  const proj = d3.geoIdentity().reflectY(true).fitExtent([[24, 24], [W - 24, H - 34]], all);
+  const path = d3.geoPath(proj);
+  const lvl = {2: "#E9BF1F", 3: "#EA7A1A", 4: "#D0302F"};
+  const lvOf = id => (F.niveles[0]?.por_prov || {})[id] || 0;
+  svg.append("g").selectAll("path").data(F.geo.dep_provs).join("path").attr("d", path).attr("fill", "#EFEEE8").attr("stroke", "#fff").attr("stroke-width", 1);
+  svg.append("g").selectAll("path").data(F.geo.scope).join("path").attr("d", path).attr("fill", f => lvl[lvOf(f.properties.id)] || "#E6E5DE")
+    .attr("fill-opacity", .8).attr("stroke", DEPT ? "#fff" : "#15140F").attr("stroke-width", DEPT ? 1.2 : 2);
+  if (F.geo.dep) svg.append("path").datum(F.geo.dep).attr("d", path).attr("fill", "none").attr("stroke", DEPT ? "#15140F" : "#8E8B80").attr("stroke-width", DEPT ? 2 : 1);
+  if (DEPT) svg.append("g").selectAll("text").data(F.geo.scope).join("text").attr("x", f => path.centroid(f)[0]).attr("y", f => path.centroid(f)[1])
+    .attr("text-anchor", "middle").attr("font-size", 10).attr("font-weight", 650).attr("font-family", "Archivo, Arial").attr("fill", "#15140F")
+    .attr("paint-order", "stroke").attr("stroke", "rgba(255,255,255,.85)").attr("stroke-width", 3).text(f => title(f.properties.n));
+  const pt = (lon, lat) => proj([lon, lat]);
+  const inView = ([x, y]) => x > 0 && x < W && y > 0 && y < H;
+  const g = svg.append("g");
+  F.focos_pts.forEach(([lon, lat]) => { const p = pt(lon, lat); if (inView(p)) g.append("circle").attr("cx", p[0]).attr("cy", p[1]).attr("r", 2).attr("fill", "#B0307E").attr("opacity", .5); });
+  F.zonas.forEach(z => { const p = pt(z.lon, z.lat); if (inView(p)) g.append("path").attr("d", d3.symbol(d3.symbolTriangle, 60)()).attr("transform", `translate(${p})`).attr("fill", "#7A5A2E").attr("stroke", "#fff"); });
+  F.alertas.forEach(a => { const p = pt(a.lon, a.lat); if (inView(p)) g.append("circle").attr("cx", p[0]).attr("cy", p[1]).attr("r", 4.5).attr("fill", a.estado === "Extinguido" ? "#fff" : "#B0307E").attr("stroke", "#B0307E").attr("stroke-width", 1.5); });
+  F.hidro.forEach(h => { const p = pt(h.lon, h.lat); if (inView(p)) g.append("circle").attr("cx", p[0]).attr("cy", p[1]).attr("r", 6).attr("fill", lvl[lvlNum(h.color_text)] || "#fff").attr("stroke", "#0E8FA3").attr("stroke-width", 2.5); });
+  F.sismos.forEach(s => { const p = pt(s.lon, s.lat); if (inView(p)) g.append("circle").attr("cx", p[0]).attr("cy", p[1]).attr("r", Math.max(3, (s.mag - 2.5) * 4)).attr("fill", "none").attr("stroke", "#3559D6").attr("stroke-width", 1.8); });
+  // escala aproximada (km) a la latitud de la provincia
+  const ys = F.geo.scope.flatMap(f => f.geometry.coordinates.flat(3).filter((v, i) => i % 2 === 1)), lat = (d3.min(ys) + d3.max(ys)) / 2;
+  const pxPerDeg = Math.abs(proj([1, lat])[0] - proj([0, lat])[0]);
+  const kmPerPx = 111.32 * Math.cos(lat * Math.PI / 180) / pxPerDeg;
+  const nice = [1, 2, 5, 10, 20, 25, 50, 100, 200].find(k => k / kmPerPx > 70) || 200, len = nice / kmPerPx;
+  const sb = svg.append("g").attr("transform", `translate(24,${H - 16})`);
+  sb.append("rect").attr("width", len).attr("height", 4).attr("fill", "#15140F");
+  sb.append("text").attr("x", len + 6).attr("y", 5).attr("font-size", 11).attr("fill", "#4A4840").attr("font-family", "Archivo, Arial").text(`${nice} km`);
+})();
+</script>
+</body>
+</html>

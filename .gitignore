@@ -1,0 +1,13 @@
+# entornos
+.venv/
+collector/.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# datos generados localmente (base, crudos, fotos, imágenes satelitales)
+collector/data/
+
+# muestras descargadas por los probes y dashboard estático generado
+samples/
+dashboard/index.html

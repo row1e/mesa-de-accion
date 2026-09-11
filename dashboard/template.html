@@ -1,0 +1,580 @@
+<meta charset="utf-8">
+<title>Mesa de Acción · Fuentes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F3F3EF; --surface:#FFFFFF; --surface-2:#F8F8F5; --ink:#15140F; --ink-2:#4A4840; --ink-3:#7C796E;
+  --line:#DCDBD3; --line-2:#EAE9E3; --brand:#FFD100; --brand-ink:#15140F;
+  --land:#E6E5DE; --land-line:#FFFFFF; --dep-line:#8E8B80;
+  --n1:#7DB46C; --n2:#E9BF1F; --n3:#EA7A1A; --n4:#D0302F;
+  --sismo:#3559D6; --fuego:#B0307E; --hidro:#0E8FA3; --geo:#7A5A2E; --indeci:#15140F;
+  --ok:#2F7D4F; --ok-bg:#E3F1E7; --warn:#9A6A00; --warn-bg:#FBF0D2; --bad:#B42323; --bad-bg:#F8E0DE;
+  --uv0:#EEEAF6; --uv1:#CFC3E8; --uv2:#A38BD2; --uv3:#7755B8; --uv4:#4B2A8C;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121210; --surface:#1B1A17; --surface-2:#22211D; --ink:#F1F0EA; --ink-2:#C4C2B8; --ink-3:#8F8C81;
+    --line:#35342E; --line-2:#2A2925; --land:#3A3833; --land-line:#1B1A17; --dep-line:#8C897E;
+    --n1:#6E9F5F; --n2:#E3B81A; --n3:#E8791F; --n4:#E0443F;
+    --sismo:#7B98FF; --fuego:#E062AE; --hidro:#34B9CC; --geo:#C49A5C; --indeci:#F1F0EA;
+    --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14; --bad:#F08A84; --bad-bg:#3A1C1A;
+    --uv0:#2A2533; --uv1:#43365E; --uv2:#6A52A0; --uv3:#9579D6; --uv4:#C9B6FF;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121210; --surface:#1B1A17; --surface-2:#22211D; --ink:#F1F0EA; --ink-2:#C4C2B8; --ink-3:#8F8C81;
+  --line:#35342E; --line-2:#2A2925; --land:#3A3833; --land-line:#1B1A17; --dep-line:#8C897E;
+  --n1:#6E9F5F; --n2:#E3B81A; --n3:#E8791F; --n4:#E0443F;
+  --sismo:#7B98FF; --fuego:#E062AE; --hidro:#34B9CC; --geo:#C49A5C; --indeci:#F1F0EA;
+  --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14; --bad:#F08A84; --bad-bg:#3A1C1A;
+  --uv0:#2A2533; --uv1:#43365E; --uv2:#6A52A0; --uv3:#9579D6; --uv4:#C9B6FF;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:400 15px/1.5 var(--f-display);font-variation-settings:"wdth" 100;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-underline-offset:2px}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-size:.84em;letter-spacing:0}
+.num{font-variant-numeric:tabular-nums}
+
+/* masthead */
+.mast{background:var(--brand);color:var(--brand-ink)}
+.mast-in{max-width:1320px;margin:0 auto;padding:18px 28px 16px;display:flex;flex-wrap:wrap;gap:8px 32px;align-items:flex-end;justify-content:space-between}
+.mast h1{margin:0;font-weight:800;font-size:clamp(28px,4vw,44px);line-height:.95;font-variation-settings:"wdth" 68;letter-spacing:-.01em;text-transform:uppercase}
+.mast h1 span{font-weight:400}
+.mast .meta{display:flex;gap:22px;flex-wrap:wrap;font-size:13px}
+.mast .meta b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.7}
+
+.wrap{max-width:1320px;margin:0 auto;padding:0 28px 80px}
+section{padding-top:44px}
+.eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:650;color:var(--ink-3);margin:0 0 6px}
+h2{margin:0 0 6px;font-size:28px;line-height:1.05;font-weight:750;font-variation-settings:"wdth" 72;text-wrap:balance}
+h3{margin:0 0 10px;font-size:17px;font-weight:700;font-variation-settings:"wdth" 85}
+.lede{margin:0 0 20px;color:var(--ink-2);max-width:68ch}
+.sec-head{display:flex;flex-wrap:wrap;gap:6px 24px;align-items:baseline;justify-content:space-between;border-top:2px solid var(--ink);padding-top:12px;margin-bottom:18px}
+.sec-head .src{font-family:var(--f-mono);font-size:12px;color:var(--ink-3);word-break:break-all}
+
+/* thesis strip */
+.thesis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:28px}
+.thesis div{background:var(--surface);padding:16px 18px}
+.thesis .big{font-size:34px;font-weight:750;font-variation-settings:"wdth" 70;line-height:1}
+.thesis p{margin:6px 0 0;color:var(--ink-2);font-size:13.5px}
+
+/* source board */
+.board{overflow-x:auto;background:var(--surface);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-2);vertical-align:top;font-size:13.5px}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:650;background:var(--surface-2);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+.board td.org{font-weight:700;font-variation-settings:"wdth" 80;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:3px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st-directo{background:var(--ok-bg);color:var(--ok)}
+.st-parcial{background:var(--warn-bg);color:var(--warn)}
+.st-bloqueado{background:var(--bad-bg);color:var(--bad)}
+.lvl{display:inline-block;min-width:22px;padding:1px 7px;border-radius:3px;font-weight:700;font-size:11.5px;letter-spacing:.04em;color:#15140F;text-align:center}
+.lvl.l1{background:var(--n1)}.lvl.l2{background:var(--n2)}.lvl.l3{background:var(--n3)}.lvl.l4{background:var(--n4);color:#fff}
+.muted{color:var(--ink-3)}
+
+/* map */
+.maprow{--mapH:clamp(560px,calc(100vh - 48px),920px);display:grid;grid-template-columns:minmax(0,1.3fr) minmax(320px,1fr);gap:0;background:var(--surface);border:1px solid var(--line)}
+@media (max-width:900px){.maprow{grid-template-columns:1fr;--mapH:72vh}}
+.mapcol{position:relative;border-right:1px solid var(--line);min-width:0;height:var(--mapH)}
+@media (max-width:900px){.mapcol{border-right:0;border-bottom:1px solid var(--line)}}
+.zoom{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--surface)}
+.zoom button{border:0;border-bottom:1px solid var(--line);background:var(--surface);min-width:34px;height:32px;padding:0 8px;font-size:15px;font-weight:600;cursor:pointer}
+.zoom button:last-child{border-bottom:0;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+.zoom button:hover{background:var(--surface-2)}
+.zoom-hint{position:absolute;bottom:10px;left:12px;font-size:11.5px;color:var(--ink-3);pointer-events:none}
+.side{height:var(--mapH);overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+@media (max-width:900px){.side{height:auto}}
+.controls{display:flex;flex-direction:column;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line-2)}
+.controls > div{display:flex;flex-direction:column;gap:6px}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.pills button{border:1px solid var(--line);background:transparent;border-radius:3px;padding:4px 9px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.pills button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground);font-weight:600}
+.pills button:hover:not([aria-pressed="true"]){background:var(--surface-2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 11px;font-size:13px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
+.seg button:hover:not([aria-pressed="true"]){background:var(--surface-2)}
+.ctl-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:650}
+.layers{display:grid;grid-template-columns:1fr;gap:5px}
+.layers label{display:grid;grid-template-columns:auto 14px 1fr auto;gap:8px;align-items:center;font-size:13px;cursor:pointer;user-select:none}
+.layers label .muted{font-size:12px}
+.layers input{accent-color:var(--ink)}
+.sw{width:10px;height:10px;display:inline-block;border-radius:50%}
+.sw.sq{border-radius:1px}
+.sw.tri{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid var(--geo);border-radius:0;background:none}
+#map{display:block;width:100%;height:100%;cursor:grab}
+#map:active{cursor:grabbing}
+#map .prov{stroke:var(--land-line);stroke-width:.5;cursor:pointer;vector-effect:non-scaling-stroke}
+#map .prov:hover,#map .prov.sel{stroke:var(--ink);stroke-width:1.6}
+#map .dep{fill:none;stroke:var(--dep-line);stroke-width:.9;pointer-events:none;vector-effect:non-scaling-stroke}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.legend i{width:14px;height:10px;display:inline-block;border-radius:2px}
+.rail{padding:16px 18px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.rail h3{margin:0 0 8px}
+.counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.counts div{border:1px solid var(--line);padding:8px 10px;border-radius:3px}
+.counts b{display:block;font-size:26px;line-height:1;font-weight:750;font-variation-settings:"wdth" 70}
+.counts small{font-size:12px;color:var(--ink-2)}
+.alist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.alist li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;font-size:13.5px}
+.alist .t{font-weight:600;line-height:1.3}
+.alist .s{grid-column:2;font-size:12px;color:var(--ink-3)}
+.pdetail{border-top:1px solid var(--line-2);padding-top:14px}
+.pdetail .zbtn{margin-top:10px;border:1px solid var(--line);background:transparent;border-radius:3px;padding:4px 10px;font-size:12.5px;cursor:pointer}
+.pdetail .zbtn:hover{background:var(--surface-2)}
+.pdetail dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:13.5px}
+.pdetail dt{color:var(--ink-3)}
+.pdetail dd{margin:0}
+.tip{position:fixed;pointer-events:none;z-index:10;background:var(--ink);color:var(--ground);padding:7px 10px;border-radius:3px;font-size:12.5px;line-height:1.35;max-width:300px;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+.tip b{font-weight:650}
+
+/* generic grid */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:22px}
+@media (max-width:520px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);padding:16px 18px;min-width:0}
+.panel .scroll{max-height:420px;overflow:auto;margin:0 -18px -16px;border-top:1px solid var(--line-2)}
+.panel .scroll table td,.panel .scroll table th{padding:7px 12px}
+.note{font-size:12.5px;color:var(--ink-3);margin:10px 0 0}
+svg text{fill:var(--ink-2);font-family:var(--f-display);font-size:11px}
+svg .axis line,svg .axis path{stroke:var(--line)}
+svg .grid line{stroke:var(--line-2)}
+
+/* ENFEN strip */
+.enfen{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:0;background:var(--surface);border:1px solid var(--line)}
+@media (max-width:760px){.enfen{grid-template-columns:1fr}}
+.enfen .state{background:var(--ink);color:var(--ground);padding:20px 22px;display:flex;flex-direction:column;gap:8px;justify-content:space-between}
+.enfen .state strong{font-size:30px;line-height:1;font-weight:800;font-variation-settings:"wdth" 64;text-transform:uppercase}
+.enfen .state span{font-size:12.5px;opacity:.75}
+.enfen .body{padding:18px 22px;color:var(--ink-2);font-size:14px;max-width:80ch}
+.enfen .body p{margin:0 0 10px}
+
+/* INDECI */
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:grid;grid-template-columns:58px 1fr;gap:2px 14px;padding:10px 0;border-bottom:1px solid var(--line-2)}
+.feed li:last-child{border-bottom:0}
+.feed .hr{font-family:var(--f-mono);font-size:12.5px;color:var(--ink-3);padding-top:2px}
+.feed .ev{font-weight:700;font-variation-settings:"wdth" 85}
+.feed .loc{font-size:13px;color:var(--ink-2)}
+.feed .kind{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:650}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.filters button{border:1px solid var(--line);background:var(--surface);border-radius:3px;padding:3px 9px;font-size:12.5px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+input[type=search]{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:3px;background:var(--surface-2);margin-bottom:10px}
+footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:6px 24px;justify-content:space-between}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="mast">
+  <div class="mast-in">
+    <h1>Mesa de Acción <span>· Fuentes oficiales</span></h1>
+    <div class="meta">
+      <div><b>Muestra</b><span id="m-snap" class="num"></span></div>
+      <div><b>Fuentes leídas directo</b><span id="m-src" class="num"></span></div>
+      <div><b>Generado</b><span id="m-built" class="num"></span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="thesis" id="thesis"></div>
+
+  <section id="fuentes">
+    <div class="sec-head"><div><p class="eyebrow">Fase 1 · Inventario</p><h2>Qué se puede leer, y cómo</h2></div></div>
+    <p class="lede">Cada fila es una fuente oficial sondeada contra su servidor real. La columna “En la hoja” muestra cómo llega hoy esa misma información a través de la hoja “Scrapping”.</p>
+    <div class="board"><table>
+      <thead><tr><th>Institución</th><th>Fuente</th><th>Acceso</th><th>Nivel geográfico</th><th>Estado</th><th>Muestra</th><th>En la hoja</th></tr></thead>
+      <tbody id="board"></tbody>
+    </table></div>
+  </section>
+
+  <section id="mapa">
+    <div class="sec-head"><div><p class="eyebrow">Cruce espacial</p><h2>Nivel de peligro por provincia</h2></div></div>
+    <p class="lede">Los polígonos de cada aviso SENAMHI, cruzados con los límites provinciales del INEI. Una provincia cuenta cuando el aviso cubre al menos el 3&nbsp;% de su área; se pinta con el nivel más alto entre los avisos del día. Sobre eso, las capas puntuales de las demás fuentes.</p>
+    <div class="maprow">
+      <div class="mapcol">
+        <svg id="map" role="img" aria-label="Mapa del Perú por provincias"></svg>
+        <div class="zoom" role="group" aria-label="Zoom del mapa">
+          <button type="button" data-z="in" aria-label="Acercar">+</button>
+          <button type="button" data-z="out" aria-label="Alejar">−</button>
+          <button type="button" data-z="reset" aria-label="Ver todo el Perú">Perú</button>
+        </div>
+        <span class="zoom-hint">Arrastre para mover · Ctrl + rueda o pellizco para acercar</span>
+      </div>
+      <aside class="side">
+        <div class="controls">
+          <div><span class="ctl-label">Capa base</span><div class="seg" id="mode"></div></div>
+          <div><span class="ctl-label">Día</span><div class="pills" id="days"></div></div>
+          <div><span class="ctl-label">Capas</span><div class="layers" id="layers"></div></div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="rail" id="rail"></div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="enfen-sec">
+    <div class="sec-head"><div><p class="eyebrow">ENFEN · Comisión Multisectorial</p><h2>Estado nacional ante El Niño</h2></div><span class="src">enfen.imarpe.gob.pe · comunicados oficiales (PDF)</span></div>
+    <div class="enfen" id="enfen"></div>
+  </section>
+
+  <section id="senamhi">
+    <div class="sec-head"><div><p class="eyebrow">SENAMHI</p><h2>Avisos meteorológicos</h2></div><span class="src">senamhi.gob.pe/?p=aviso-meteorologico · idesep.senamhi.gob.pe/geoserver (WFS g_aviso:view_aviso)</span></div>
+    <div class="grid2">
+      <div class="panel"><h3>Vigentes y emitidos</h3><div class="scroll"><table><thead><tr><th>N°</th><th>Nivel</th><th>Aviso</th><th>Vigencia</th></tr></thead><tbody id="avisos"></tbody></table></div></div>
+      <div class="panel"><h3>Avisos emitidos por año y nivel</h3><div id="hist"></div><p class="note" id="hist-note"></p></div>
+    </div>
+  </section>
+
+  <section id="indeci-sec">
+    <div class="sec-head"><div><p class="eyebrow">INDECI · COEN</p><h2>Reportes de emergencia</h2></div><span class="src">portal.indeci.gob.pe/emergencias/feed/</span></div>
+    <div class="grid2">
+      <div class="panel"><div class="filters" id="ind-filters"></div><div class="scroll" style="padding:0 18px"><ul class="feed" id="feed"></ul></div></div>
+      <div class="panel"><h3>Eventos reportados en la muestra</h3><div id="ind-chart"></div><p class="note" id="ind-note"></p></div>
+    </div>
+  </section>
+
+  <section id="igp-sec">
+    <div class="sec-head"><div><p class="eyebrow">IGP · Centro Sismológico Nacional</p><h2>Sismos reportados en el año</h2></div><span class="src">ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/{año}</span></div>
+    <div class="grid2">
+      <div class="panel"><h3>Magnitud por fecha</h3><div id="sismo-chart"></div></div>
+      <div class="panel"><h3>Magnitud 5,0 o mayor</h3><div class="scroll"><table><thead><tr><th>Fecha</th><th>M</th><th>Prof.</th><th>Referencia</th></tr></thead><tbody id="sismos"></tbody></table></div></div>
+    </div>
+  </section>
+
+  <section id="serfor-sec">
+    <div class="sec-head"><div><p class="eyebrow">SERFOR · Unidad de Monitoreo Satelital</p><h2>Incendios forestales</h2></div><span class="src">geo.serfor.gob.pe/geoservicios/rest/services/UFMS/Incendios_SAMI/MapServer</span></div>
+    <div class="grid2">
+      <div class="panel"><h3>Alertas de incendio por departamento y estado</h3><div id="alert-chart"></div></div>
+      <div class="panel"><h3>Focos de calor, últimas 24 horas</h3><div id="focos-chart"></div><p class="note">Detecciones satelitales (VIIRS, MODIS, GOES). Un foco no es un incendio confirmado.</p></div>
+    </div>
+  </section>
+
+  <section id="ing-sec">
+    <div class="sec-head"><div><p class="eyebrow">INGEMMET · Perú Alerta</p><h2>Zonas críticas bajo aviso</h2></div><span class="src">geocatmin.ingemmet.gob.pe/arcgis/rest/services/SERV_PERU_ALERTA/MapServer/0</span></div>
+    <div class="panel"><input type="search" id="zq" placeholder="Filtrar por región, provincia, distrito o peligro"><div class="scroll"><table><thead><tr><th>Nivel</th><th>Región</th><th>Provincia · Distrito</th><th>Paraje</th><th>Peligro</th><th>Elementos expuestos</th></tr></thead><tbody id="zonas"></tbody></table></div><p class="note" id="zonas-note"></p></div>
+  </section>
+
+  <section id="pron-sec">
+    <div class="sec-head"><div><p class="eyebrow">SENAMHI</p><h2>Pronóstico e índice UV</h2></div><span class="src">senamhi.gob.pe/?p=pronostico-meteorologico · /usr/dms/modelo/iuv/prono_ruv.json · mapa-aviso-hidro (GeoJSON)</span></div>
+    <div class="grid2">
+      <div class="panel"><h3>Pronóstico por ciudad</h3><input type="search" id="pq" placeholder="Buscar ciudad o departamento"><div class="scroll"><table><thead><tr><th>Ciudad</th><th>Dpto.</th><th class="num" id="pd0"></th><th class="num" id="pd1"></th><th class="num" id="pd2"></th></tr></thead><tbody id="pron"></tbody></table></div></div>
+      <div class="panel"><h3>Avisos hidrológicos por estación</h3><div class="scroll"><table><thead><tr><th>Nivel</th><th>Estación · río</th><th>Ubicación</th></tr></thead><tbody id="hidro"></tbody></table></div><p class="note" id="uv-note"></p></div>
+    </div>
+  </section>
+
+  <footer><span>Generado con <span class="mono">dashboard/build.py</span> desde <span class="mono">samples/</span>. Sin conexión a las fuentes en vivo: es una muestra fechada.</span><span id="f-built"></span></footer>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+const D = /*__DATA__*/null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const DOW = ["dom","lun","mar","mié","jue","vie","sáb"], MON = ["ene","feb","mar","abr","may","jun","jul","ago","set","oct","nov","dic"];
+const fmtDay = iso => { const d = new Date(iso + "T12:00:00"); return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`; };
+const lvlNum = s => ({AMARILLO:2, NARANJA:3, ROJO:4})[s] || +String(s).replace(/\D/g,"") || 1;
+const lvlChip = n => `<span class="lvl l${n}">${["","N1","N2","N3","N4"][n]}</span>`;
+const nf = new Intl.NumberFormat("es-PE");
+const title = s => String(s||"").toLowerCase().replace(/(^|[\s(\-/])([a-záéíóúñ])/g,(m,a,b)=>a+b.toUpperCase());
+
+/* ── masthead + thesis ─────────────────────────────────────────── */
+const direct = D.sources.filter(s => s.status === "directo").length;
+$("#m-snap").textContent = fmtDay(D.snapshot) + " " + D.snapshot.slice(0,4);
+$("#m-src").textContent = `${direct} de ${D.sources.length}`;
+$("#m-built").textContent = D.built;
+$("#f-built").textContent = "Build " + D.built;
+const today = D.levelsByDay[D.snapshot] || {};
+const provToday = Object.values(today);
+const redProv = provToday.filter(c => c.m === 4).length;
+const vigentes = D.avisos.filter(a => a.estado === "vigente");
+$("#thesis").innerHTML = [
+  [`${provToday.length}`, `provincias bajo aviso SENAMHI (nivel 2 o más) hoy, ${redProv} en nivel 4 rojo. La hoja no registra avisos desde el 7 de julio.`],
+  [`${D.indeci.filter(i=>i.clase==="reporte").length}`, `reportes de emergencia INDECI en la muestra, cada uno con distrito y provincia. La hoja no tenía INDECI.`],
+  [nf.format(D.focos.length), `focos de calor en 24 h y ${D.alertas.length} alertas de incendio forestal con estado y ubigeo distrital (SERFOR).`],
+  [D.enfen?.ultimo_comunicado?.estado ? "Alerta" : "—", `ENFEN: ${esc(D.enfen?.ultimo_comunicado?.estado || "sin dato")}. El indicador ENFEN del dashboard hoy es nulo.`],
+].map(([b,p]) => `<div><div class="big num">${b}</div><p>${p}</p></div>`).join("");
+
+/* ── source board ──────────────────────────────────────────────── */
+$("#board").innerHTML = D.sources.map(s => `<tr>
+  <td class="org">${esc(s.org)}</td><td>${esc(s.name)}</td><td class="mono">${esc(s.via)}</td><td>${esc(s.geo)}</td>
+  <td><span class="chip st-${s.status}">${({directo:"Directo",parcial:"Parcial",bloqueado:"Sin acceso"})[s.status]}</span></td>
+  <td class="num">${esc(s.n)}</td><td class="muted">${esc(s.sheet)}</td></tr>`).join("");
+
+/* ── map ───────────────────────────────────────────────────────── */
+const svg = d3.select("#map"), W = 640, H = 860;
+svg.attr("viewBox", `0 0 ${W} ${H}`);
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[16,16],[W-16,H-16]], D.geo.deps);
+const path = d3.geoPath(proj);
+const gGeo = svg.append("g"), gProv = gGeo.append("g"), gDep = gGeo.append("g"), gPts = svg.append("g");
+// Zoom: la geometría escala con el transform; los marcadores se reubican y conservan su tamaño.
+let zt = d3.zoomIdentity;
+const P = ll => zt.apply(proj(ll));
+const placePoints = () => gPts.selectAll(".pt").attr("transform", function () { const [x, y] = P(this.__ll); return `translate(${x},${y})`; });
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const zoom = d3.zoom().scaleExtent([1, 14]).translateExtent([[-W * .15, -H * .15], [W * 1.15, H * 1.15]])
+  .filter(e => e.type === "wheel" ? (e.ctrlKey || e.metaKey) : e.type === "touchstart" ? e.touches.length > 1 : !e.button)
+  .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); placePoints(); hideTip(); });
+svg.call(zoom).on("dblclick.zoom", null);
+const zoomTo = t => svg.transition().duration(reduceMotion ? 0 : 450).call(zoom.transform, t);
+function zoomToFeature(f) {
+  const [[x0, y0], [x1, y1]] = path.bounds(f);
+  const k = Math.min(14, .86 / Math.max((x1 - x0) / W, (y1 - y0) / H));
+  zoomTo(d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-(x0 + x1) / 2, -(y0 + y1) / 2));
+}
+document.querySelector(".zoom").addEventListener("click", e => {
+  const z = e.target.closest("button")?.dataset.z; if (!z) return;
+  if (z === "reset") return zoomTo(d3.zoomIdentity);
+  svg.transition().duration(reduceMotion ? 0 : 250).call(zoom.scaleBy, z === "in" ? 1.7 : 1 / 1.7);
+});
+const tip = $("#tip");
+const showTip = (e, html) => { tip.innerHTML = html; tip.hidden = false; moveTip(e); };
+const moveTip = e => { const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; };
+const hideTip = () => tip.hidden = true;
+
+const state = { mode: "avisos", day: D.snapshot, uvDay: 0, sel: null,
+  layers: { indeci: true, alertas: true, sismos: true, hidro: true, zonas: false, focos: false } };
+const avisoDays = Object.keys(D.levelsByDay).sort();
+if (!avisoDays.includes(state.day)) state.day = avisoDays[0];
+const uvDays = (Object.values(D.uv)[0] || {}).dias || [];
+const uvBins = [3, 6, 8, 11];
+const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
+
+gProv.selectAll("path").data(D.geo.provs.features).join("path").attr("class","prov").attr("d", path)
+  .on("mousemove", (e, f) => showTip(e, provTip(f.properties))).on("mouseleave", hideTip)
+  .on("click", (e, f) => { state.sel = f.properties.id; renderMap(); renderRail(); });
+gDep.selectAll("path").data(D.geo.deps.features).join("path").attr("class","dep").attr("d", path);
+
+function provTip(p) {
+  if (state.mode === "uv") { const u = D.uv[p.id]; return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${u ? `UV ${u.v[state.uvDay]} (pico ${u.h[state.uvDay]})` : "Sin zona UV"}`; }
+  const c = (D.levelsByDay[state.day] || {})[p.id];
+  return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${c ? `Nivel ${c.m} · avisos ${c.a.map(x => "#" + x[0]).join(", ")}` : "Sin aviso nivel 2+"}`;
+}
+
+const layerDefs = [
+  { id: "indeci", label: "Emergencias INDECI", sw: `<i class="sw sq" style="background:var(--indeci)"></i>`, n: () => D.indeci.filter(i => i.prov).length },
+  { id: "alertas", label: "Alertas de incendio", sw: `<i class="sw" style="background:var(--fuego)"></i>`, n: () => D.alertas.length },
+  { id: "sismos", label: "Sismos · 30 días", sw: `<i class="sw" style="border:2px solid var(--sismo)"></i>`, n: () => recentSismos().length },
+  { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => D.hidro.length },
+  { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => D.zonas.length },
+  { id: "focos", label: "Focos de calor 24 h", sw: `<i class="sw" style="background:var(--fuego);opacity:.45"></i>`, n: () => D.focos.length },
+];
+function recentSismos() { const lim = d3.timeDay.offset(new Date(D.snapshot + "T12:00:00"), -30).toISOString().slice(0,10); return D.sismos.filter(s => s[0] >= lim); }
+$("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}</span></label>`).join("");
+$("#layers").addEventListener("change", e => { state.layers[e.target.dataset.l] = e.target.checked; renderPoints(); });
+
+function seg(el, items, cur, onpick) {
+  el.innerHTML = items.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${String(v) === String(cur)}">${l}</button>`).join("");
+  el.onclick = e => { const b = e.target.closest("button"); if (b) onpick(b.dataset.v); };
+}
+function renderControls() {
+  seg($("#mode"), [["avisos","Avisos SENAMHI"],["uv","Índice UV"]], state.mode, v => { state.mode = v; renderAll(); });
+  if (state.mode === "avisos") seg($("#days"), avisoDays.map(d => [d, fmtDay(d)]), state.day, v => { state.day = v; renderAll(); });
+  else seg($("#days"), uvDays.map((d, i) => [i, fmtDay(d)]), state.uvDay, v => { state.uvDay = +v; renderAll(); });
+}
+function renderMap() {
+  const lv = D.levelsByDay[state.day] || {};
+  gProv.selectAll("path").attr("fill", f => {
+    if (state.mode === "uv") { const u = D.uv[f.properties.id]; return uvColor(u ? u.v[state.uvDay] : null); }
+    const c = lv[f.properties.id]; return c ? css("--n" + c.m) : css("--land");
+  }).classed("sel", f => f.properties.id === state.sel);
+  $("#legend").innerHTML = state.mode === "uv"
+    ? ["0–2 bajo","3–5 moderado","6–7 alto","8–10 muy alto","11+ extremo"].map((l, i) => `<span><i style="background:var(--uv${i})"></i>${l}</span>`).join("") + `<span class="muted">Zonas UV sin provincia: ${D.uvUnmatched.length}</span>`
+    : [2,3,4].map(n => `<span><i style="background:var(--n${n})"></i>Nivel ${n} · ${["","","amarillo","naranja","rojo"][n]}</span>`).join("") + `<span><i style="background:var(--land)"></i>Sin aviso o nivel 1</span>`;
+}
+function renderPoints() {
+  gPts.selectAll("*").remove();
+  const L = state.layers;
+  const on = (sel, html) => sel.on("mousemove", (e, d) => showTip(e, html(d))).on("mouseleave", hideTip);
+  const layer = (data, tag, ll) => gPts.append("g").selectAll(tag).data(data).join(tag).attr("class", "pt").each(function (d) { this.__ll = ll(d); });
+  if (L.focos) layer(D.focos, "circle", d => [d[0], d[1]]).attr("r", 1.6).attr("fill", css("--fuego")).attr("opacity", .45)
+    .call(on, d => `<b>Foco de calor</b><br>${title(d[3])} · ${title(d[2])}`);
+  if (L.zonas) layer(D.zonas, "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolTriangle, 34))
+    .attr("fill", css("--geo")).attr("stroke", css("--surface")).attr("stroke-width", .6)
+    .call(on, d => `<b>Zona crítica · ${esc(d.nivel)}</b><br>${esc(d.paraje)} — ${esc(d.distrito)}, ${esc(d.provincia)}<br>${esc(d.peligros_g)}<br><span style="opacity:.7">Expuesto: ${esc(d.elemento)}</span>`);
+  if (L.sismos) layer(recentSismos(), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+    .attr("fill", "none").attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
+    .call(on, d => `<b>Sismo M${d[2]}</b> · ${fmtDay(d[0])} ${d[1]}<br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}`);
+  if (L.alertas) layer(D.alertas, "circle", d => [d.lon, d.lat]).attr("r", 3.6)
+    .attr("fill", d => d.estado === "Extinguido" ? css("--surface") : css("--fuego")).attr("stroke", css("--fuego")).attr("stroke-width", 1.2)
+    .call(on, d => `<b>Incendio forestal · ${esc(d.estado)}</b><br>${title(d.dist)}, ${title(d.prov)} · ${title(d.dep)}<br>${esc(d.fecha)} ${esc(d.hora || "")} · ${esc(d.cod || "")}`);
+  if (L.hidro) layer(D.hidro, "circle", d => [d.lon, d.lat]).attr("r", 6)
+    .attr("fill", d => css("--n" + Math.min(4, lvlNum(d.color_text)))).attr("stroke", css("--hidro")).attr("stroke-width", 2.4)
+    .call(on, d => `<b>${esc(d.titulo)}</b><br>${esc(d.color_text)} · ${esc(d.fecha_hora?.slice(0,10))}<br>${title(d.nom_distrito)}, ${title(d.nom_provincia)} · ${title(d.nom_departamento)}`);
+  if (L.indeci) layer([...d3.group(D.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => D.provCentroids[p])
+    .attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10).attr("fill", css("--indeci")).attr("stroke", css("--surface")).attr("stroke-width", 1.2)
+    .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b><br>` + items.slice(0, 5).map(i => `${esc(title(i.evento))} — ${esc(title(i.distrito))}`).join("<br>") + `<br><span style="opacity:.7">Ubicado en la provincia (centroide)</span>`);
+  placePoints();
+}
+function renderRail() {
+  const rail = $("#rail");
+  let html = "";
+  if (state.mode === "avisos") {
+    const lv = D.levelsByDay[state.day] || {}, vals = Object.values(lv);
+    const act = D.avisos.filter(a => a.dias.includes(state.day));
+    html += `<div><p class="eyebrow">${fmtDay(state.day)}</p><h3>Provincias por nivel</h3><div class="counts">${[4,3,2].map(n => `<div><b class="num">${vals.filter(c => c.m === n).length}</b><small>${lvlChip(n)} ${["","","amarillo","naranja","rojo"][n]}</small></div>`).join("")}</div></div>`;
+    html += `<div><h3>Avisos que cubren el día</h3><ul class="alist">${act.map(a => `<li>${lvlChip(lvlNum(a.nivel))}<span class="t">#${a.nro} ${esc(title(a.titulo))}</span><span class="s">${fmtDay(a.inicio)} → ${fmtDay(a.fin)} · ${a.estado}</span></li>`).join("") || "<li class='muted'>Ninguno</li>"}</ul></div>`;
+  } else {
+    const top = Object.entries(D.uv).sort((a, b) => b[1].v[state.uvDay] - a[1].v[state.uvDay]).slice(0, 8);
+    const pn = Object.fromEntries(D.geo.provs.features.map(f => [f.properties.id, f.properties]));
+    html += `<div><p class="eyebrow">${fmtDay(uvDays[state.uvDay])} · pronóstico</p><h3>Índice UV más alto</h3><ul class="alist">${top.map(([c, u]) => `<li><span class="lvl" style="background:${uvColor(u.v[state.uvDay])};color:${u.v[state.uvDay] >= 8 ? "#fff" : "#15140F"}">${u.v[state.uvDay]}</span><span class="t">${title(pn[c]?.n)} <span class="muted mono">${c}</span></span><span class="s">${title(pn[c]?.d)} · pico ${u.h[state.uvDay]}</span></li>`).join("")}</ul></div>`;
+  }
+  const sel = state.sel && D.geo.provs.features.find(f => f.properties.id === state.sel);
+  if (sel) {
+    const p = sel.properties, c = (D.levelsByDay[state.day] || {})[p.id], u = D.uv[p.id];
+    const ind = D.indeci.filter(i => i.prov === p.id), al = D.alertas.filter(a => a.ubigeo?.startsWith(p.id));
+    const zn = D.zonas.filter(z => title(z.provincia) === title(p.n));
+    html += `<div class="pdetail"><p class="eyebrow">Provincia seleccionada · <span class="mono">${p.id}</span></p><h3>${title(p.n)}, ${title(p.d)}</h3><dl>
+      <dt>Aviso ${fmtDay(state.day)}</dt><dd>${c ? `${lvlChip(c.m)} ${c.a.map(x => `#${x[0]} (N${x[1]})`).join(", ")}` : "Sin aviso nivel 2+"}</dd>
+      <dt>UV</dt><dd class="num">${u ? u.v.map((v, i) => `${v} (${fmtDay(u.dias[i])})`).join(" · ") : "—"}</dd>
+      <dt>INDECI</dt><dd>${ind.length ? ind.map(i => `${esc(title(i.evento))} — ${esc(title(i.distrito))}`).join("<br>") : "—"}</dd>
+      <dt>Incendios</dt><dd>${al.length ? d3.rollups(al, v => v.length, a => a.estado).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") : "—"}</dd>
+      <dt>Zonas críticas</dt><dd>${zn.length || "—"}</dd></dl>
+      <button type="button" class="zbtn" data-dep="${p.id.slice(0, 2)}">Acercar a ${title(p.d)}</button></div>`;
+  } else html += `<p class="note">Seleccione una provincia en el mapa para ver lo que dice cada fuente sobre ella.</p>`;
+  rail.innerHTML = html;
+  rail.querySelector(".zbtn")?.addEventListener("click", e => {
+    const dep = D.geo.deps.features.find(f => f.properties.id === e.currentTarget.dataset.dep);
+    if (dep) zoomToFeature(dep);
+  });
+}
+function renderAll() { renderControls(); renderMap(); renderPoints(); renderRail(); }
+renderAll();
+
+/* ── ENFEN ─────────────────────────────────────────────────────── */
+const uc = D.enfen?.ultimo_comunicado || {};
+$("#enfen").innerHTML = `<div class="state"><span>Estado del sistema de alerta</span><strong>${esc(uc.estado || "Sin dato")}</strong><span>Comunicado oficial N° ${uc.numero}-${uc.anio} · ${esc(uc.fecha || "")}</span></div>
+  <div class="body">${(uc.resumen || "").split(/\n\s*\n/).slice(0, 3).map(p => `<p>${esc(p.replace(/\s*\n\s*/g, " "))}</p>`).join("")}
+  <p class="note">El feed de noticias del sitio se detiene en el comunicado N° 13; la sección de descargas ya publica los N° 14 y 15. La lectura toma el PDF más reciente.</p></div>`;
+
+/* ── SENAMHI avisos ───────────────────────────────────────────── */
+$("#avisos").innerHTML = D.avisos.map(a => `<tr><td class="num">${a.nro}</td><td>${lvlChip(lvlNum(a.nivel))}</td><td>${esc(title(a.titulo))}<div class="muted" style="font-size:12px">${a.dptos_texto.length} departamentos · ${a.estado}</div></td><td class="num" style="white-space:nowrap">${fmtDay(a.inicio)} → ${fmtDay(a.fin)}</td></tr>`).join("");
+(function hist() {
+  const years = Object.keys(D.avisosHist), keys = ["AMARILLO","NARANJA","ROJO"];
+  const w = 520, h = 34 * years.length + 34, m = {l: 44, r: 50, t: 6, b: 24};
+  const max = d3.max(years, y => d3.sum(keys, k => D.avisosHist[y][k]));
+  const x = d3.scaleLinear([0, max], [m.l, w - m.r]).nice(), y = d3.scaleBand(years, [m.t, h - m.b]).padding(.28);
+  const s = d3.select("#hist").append("svg").attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%");
+  s.append("g").attr("class", "grid").selectAll("line").data(x.ticks(5)).join("line").attr("x1", d => x(d)).attr("x2", d => x(d)).attr("y1", m.t).attr("y2", h - m.b);
+  s.append("g").attr("class", "axis").attr("transform", `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(5).tickSize(0).tickPadding(8)).select(".domain").remove();
+  s.append("g").selectAll("text").data(years).join("text").attr("x", m.l - 8).attr("y", d => y(d) + y.bandwidth() / 2).attr("dy", ".35em").attr("text-anchor", "end").text(d => d);
+  const stack = d3.stack().keys(keys)(years.map(yy => ({year: yy, ...D.avisosHist[yy]})));
+  const col = {AMARILLO: css("--n2"), NARANJA: css("--n3"), ROJO: css("--n4")};
+  s.append("g").selectAll("g").data(stack).join("g").attr("fill", d => col[d.key]).selectAll("rect").data(d => d).join("rect")
+    .attr("x", d => x(d[0])).attr("width", d => x(d[1]) - x(d[0])).attr("y", d => y(d.data.year)).attr("height", y.bandwidth());
+  s.append("g").selectAll("text").data(years).join("text").attr("class", "num").attr("x", d => x(d3.sum(keys, k => D.avisosHist[d][k])) + 6).attr("y", d => y(d) + y.bandwidth() / 2).attr("dy", ".35em").text(d => d3.sum(keys, k => D.avisosHist[d][k]));
+  const tot = years.reduce((a, yy) => a + D.avisosHist[yy].ROJO, 0);
+  $("#hist-note").textContent = `Toda la serie viene en una sola página del SENAMHI. ${tot} avisos rojos desde 2021; ${D.snapshot.slice(0,4)} va hasta el ${fmtDay(D.snapshot)}.`;
+})();
+
+/* ── INDECI ───────────────────────────────────────────────────── */
+const kinds = {reporte: "Reportes", boletin_aviso_meteorologico: "Boletín aviso met.", boletin_sismico: "Boletín sísmico", boletin_aviso_corto_plazo: "Aviso corto plazo", boletin_monitoreo_peligros: "Monitoreo", otro: "Otros"};
+let indKind = "reporte";
+function renderFeed() {
+  const present = Object.keys(kinds).filter(k => D.indeci.some(i => i.clase === k));
+  seg($("#ind-filters"), [["all", `Todo ${D.indeci.length}`], ...present.map(k => [k, `${kinds[k]} ${D.indeci.filter(i => i.clase === k).length}`])], indKind, v => { indKind = v; renderFeed(); });
+  $("#ind-filters").querySelectorAll("button").forEach(b => b.className = "");
+  const rows = D.indeci.filter(i => indKind === "all" || i.clase === indKind);
+  $("#feed").innerHTML = rows.map(i => {
+    const hr = new Date(i.pub).toLocaleTimeString("es-PE", {hour: "2-digit", minute: "2-digit", timeZone: "America/Lima"});
+    if (i.clase === "reporte") return `<li><span class="hr">${hr}</span><div><div class="kind">${esc(title(i.tipo))} N° ${esc(i.num)}${i.seq ? ` · reporte ${esc(i.seq)}` : ""}</div><div class="ev">${esc(title(i.evento))}</div><div class="loc">${esc(title(i.distrito))}${i.provincia ? ", " + esc(title(i.provincia)) : ""} · ${esc(title(i.dpto))}${i.prov ? ` <span class="mono muted">${i.prov}</span>` : ""}</div></div></li>`;
+    return `<li><span class="hr">${hr}</span><div><div class="kind">${esc(kinds[i.clase] || i.clase)}</div><div class="loc"><a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.titulo)}</a></div></div></li>`;
+  }).join("");
+}
+renderFeed();
+$("#ind-filters").classList.add("filters");
+(function indChart() {
+  const rep = D.indeci.filter(i => i.clase === "reporte");
+  const ev = d3.rollups(rep, v => v.length, i => title(i.evento).replace(/ De Magnitud.*/, "")).sort((a, b) => b[1] - a[1]);
+  const w = 520, bh = 24, h = ev.length * bh + 10, m = {l: 230, r: 34};
+  const x = d3.scaleLinear([0, d3.max(ev, d => d[1])], [m.l, w - m.r]);
+  const s = d3.select("#ind-chart").append("svg").attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%");
+  const g = s.selectAll("g").data(ev).join("g").attr("transform", (d, i) => `translate(0,${i * bh + 4})`);
+  g.append("text").attr("x", m.l - 8).attr("y", bh / 2).attr("dy", ".35em").attr("text-anchor", "end").text(d => d[0]);
+  g.append("rect").attr("x", m.l).attr("y", 4).attr("height", bh - 10).attr("width", d => x(d[1]) - m.l).attr("fill", css("--ink"));
+  g.append("text").attr("class", "num").attr("x", d => x(d[1]) + 6).attr("y", bh / 2).attr("dy", ".35em").text(d => d[1]);
+  const first = d3.min(D.indeci, i => new Date(i.pub)), last = d3.max(D.indeci, i => new Date(i.pub));
+  $("#ind-note").textContent = `${rep.length} reportes entre ${first.toLocaleString("es-PE", {timeZone: "America/Lima", dateStyle: "short", timeStyle: "short"})} y ${last.toLocaleString("es-PE", {timeZone: "America/Lima", timeStyle: "short"})} (hora de Lima). ${D.indeciUnlocated} sin provincia reconocida. Las cifras de daños están en el PDF de cada reporte.`;
+})();
+
+/* ── IGP ──────────────────────────────────────────────────────── */
+(function sismos() {
+  const w = 560, h = 300, m = {l: 38, r: 14, t: 12, b: 28};
+  const yr = D.snapshot.slice(0, 4);
+  const x = d3.scaleTime([new Date(`${yr}-01-01T00:00`), new Date(D.snapshot + "T23:59")], [m.l, w - m.r]);
+  const y = d3.scaleLinear([2.5, 7.5], [h - m.b, m.t]);
+  const s = d3.select("#sismo-chart").append("svg").attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%");
+  s.append("g").attr("class", "grid").selectAll("line").data(y.ticks(5)).join("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", d => y(d)).attr("y2", d => y(d));
+  s.append("g").attr("class", "axis").attr("transform", `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(d3.timeMonth.every(1)).tickFormat(d => MON[d.getMonth()]).tickSize(0).tickPadding(8)).select(".domain").remove();
+  s.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(0).tickPadding(6).tickFormat(d => "M" + d)).select(".domain").remove();
+  s.append("g").selectAll("circle").data(D.sismos).join("circle").attr("cx", d => x(new Date(d[0] + "T" + d[1]))).attr("cy", d => y(d[2]))
+    .attr("r", d => Math.max(1.6, (d[2] - 2.5) * 1.8)).attr("fill", css("--sismo")).attr("fill-opacity", .28).attr("stroke", css("--sismo")).attr("stroke-width", .8)
+    .on("mousemove", (e, d) => showTip(e, `<b>M${d[2]}</b> · ${fmtDay(d[0])} ${d[1]}<br>${esc(d[6])}`)).on("mouseleave", hideTip);
+  const big = D.sismos.filter(d => d[2] >= 6);
+  s.append("g").selectAll("text").data(big).join("text").attr("x", d => x(new Date(d[0] + "T" + d[1]))).attr("y", d => y(d[2]) - 12).attr("text-anchor", "middle").style("font-weight", 600).text(d => "M" + d[2]);
+  $("#sismos").innerHTML = D.sismos.filter(d => d[2] >= 5).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1])).map(d => `<tr><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num"><b>${d[2]}</b></td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("");
+})();
+
+/* ── SERFOR ───────────────────────────────────────────────────── */
+(function serfor() {
+  const st = ["Alertado","Confirmado","Controlado","Extinguido"];
+  const col = {Alertado: css("--n2"), Confirmado: css("--fuego"), Controlado: css("--hidro"), Extinguido: css("--ink-3")};
+  const byDep = d3.rollups(D.alertas, v => Object.fromEntries(st.map(k => [k, v.filter(a => a.estado === k).length])), a => title(a.dep)).sort((a, b) => d3.sum(st, k => b[1][k]) - d3.sum(st, k => a[1][k])).slice(0, 10);
+  const w = 520, bh = 24, h = byDep.length * bh + 40, m = {l: 110, r: 36};
+  const x = d3.scaleLinear([0, d3.max(byDep, d => d3.sum(st, k => d[1][k]))], [m.l, w - m.r]);
+  const s = d3.select("#alert-chart").append("svg").attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%");
+  byDep.forEach(([dep, c], i) => {
+    const g = s.append("g").attr("transform", `translate(0,${i * bh})`);
+    g.append("text").attr("x", m.l - 8).attr("y", bh / 2).attr("dy", ".35em").attr("text-anchor", "end").text(dep);
+    let acc = 0; st.forEach(k => { if (!c[k]) return; g.append("rect").attr("x", x(acc)).attr("y", 5).attr("height", bh - 10).attr("width", x(acc + c[k]) - x(acc)).attr("fill", col[k]); acc += c[k]; });
+    g.append("text").attr("class", "num").attr("x", x(acc) + 6).attr("y", bh / 2).attr("dy", ".35em").text(acc);
+  });
+  const lg = s.append("g").attr("transform", `translate(${m.l},${byDep.length * bh + 18})`);
+  st.filter(k => D.alertas.some(a => a.estado === k)).forEach((k, i) => { lg.append("rect").attr("x", i * 100).attr("y", -8).attr("width", 10).attr("height", 10).attr("fill", col[k]); lg.append("text").attr("x", i * 100 + 15).attr("y", 1).text(`${k} ${D.alertas.filter(a => a.estado === k).length}`); });
+
+  const fd = d3.rollups(D.focos, v => v.length, f => title(f[2])).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const h2 = fd.length * bh + 6, x2 = d3.scaleLinear([0, fd[0][1]], [m.l, w - m.r - 10]);
+  const s2 = d3.select("#focos-chart").append("svg").attr("viewBox", `0 0 ${w} ${h2}`).attr("width", "100%");
+  const g2 = s2.selectAll("g").data(fd).join("g").attr("transform", (d, i) => `translate(0,${i * bh})`);
+  g2.append("text").attr("x", m.l - 8).attr("y", bh / 2).attr("dy", ".35em").attr("text-anchor", "end").text(d => d[0]);
+  g2.append("rect").attr("x", m.l).attr("y", 5).attr("height", bh - 10).attr("width", d => x2(d[1]) - m.l).attr("fill", css("--fuego")).attr("fill-opacity", .55);
+  g2.append("text").attr("class", "num").attr("x", d => x2(d[1]) + 6).attr("y", bh / 2).attr("dy", ".35em").text(d => nf.format(d[1]));
+})();
+
+/* ── INGEMMET ─────────────────────────────────────────────────── */
+function renderZonas() {
+  const q = ($("#zq").value || "").toLowerCase();
+  const rows = D.zonas.filter(z => !q || [z.region, z.provincia, z.distrito, z.peligros_g, z.paraje].join(" ").toLowerCase().includes(q));
+  $("#zonas").innerHTML = rows.map(z => `<tr><td>${lvlChip(lvlNum(z.nivel))}</td><td>${esc(z.region)}</td><td>${esc(z.provincia)} · ${esc(z.distrito)}</td><td>${esc(z.paraje)}</td><td>${esc(z.peligros_g)}</td><td class="muted">${esc(z.elemento)}</td></tr>`).join("");
+  const avs = [...new Set(D.zonas.map(z => z.nro_aviso))];
+  $("#zonas-note").textContent = `${rows.length} de ${D.zonas.length} zonas. Todas vienen del cruce de INGEMMET con el aviso SENAMHI #${avs.join(", #")}: el servicio publica un aviso a la vez.`;
+}
+$("#zq").addEventListener("input", renderZonas); renderZonas();
+
+/* ── Pronóstico + hidro ───────────────────────────────────────── */
+const pd = d3.groups(D.pronostico, p => p.ciudad + "|" + p.departamento);
+const pdays = [...new Set(D.pronostico.map(p => p.dia))].slice(0, 3);
+pdays.forEach((d, i) => $("#pd" + i).textContent = d.replace(/^(\w+),\s*(\d+) de (\w+)/, (m, a, b) => `${a.slice(0,3)} ${b}`));
+function renderPron() {
+  const q = ($("#pq").value || "").toLowerCase();
+  $("#pron").innerHTML = pd.filter(([k]) => !q || k.toLowerCase().includes(q)).map(([k, v]) => {
+    const [c, dp] = k.split("|"), by = Object.fromEntries(v.map(p => [p.dia, p]));
+    return `<tr><td>${esc(title(c))}</td><td class="muted">${esc(title(dp))}</td>${pdays.map(d => by[d] ? `<td class="num" title="${esc(by[d].descripcion)}">${by[d].tmax}° <span class="muted">${by[d].tmin}°</span></td>` : "<td>—</td>").join("")}</tr>`;
+  }).join("");
+}
+$("#pq").addEventListener("input", renderPron); renderPron();
+$("#hidro").innerHTML = D.hidro.map(h => `<tr><td>${lvlChip(Math.min(4, lvlNum(h.color_text)))}</td><td><b>${esc(title(h.nom_estacion))}</b><div class="muted" style="font-size:12px">${esc(title(h.titulo))}</div></td><td>${esc(title(h.nom_distrito))}, ${esc(title(h.nom_provincia))}<div class="muted" style="font-size:12px">${esc(title(h.nom_departamento))} · cuenca ${esc(title(h.nom_cuenca))}</div></td></tr>`).join("");
+$("#uv-note").textContent = `Índice UV: ${Object.keys(D.uv).length} provincias con valor (capa “Índice UV” del mapa). ${D.uvUnmatched.length} zonas UV usan códigos que no son provincias INEI.`;
+
+addEventListener("scroll", hideTip, {passive: true});
+</script>
