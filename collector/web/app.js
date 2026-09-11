@@ -535,7 +535,7 @@ function setLatSource(src, scroll = false) {
 }
 function renderLatest() {
   const hs = Object.fromEntries(H.map(h => [h.id, h]));
-  const ids = H.map(h => h.id).filter(id => id !== "indeci_fotos");
+  const ids = H.filter(h => !h.internal).map(h => h.id).filter(id => id !== "indeci_fotos");
   $("#lat-src").innerHTML = [["", "Todas", Object.values(LAT.counts).reduce((a, b) => a + b, 0)], ...ids.map(id => [id, SHORT[id] || id, LAT.counts[id]])]
     .map(([id, label, n]) => `<button type="button" role="tab" data-src="${id}" aria-pressed="${(state.latSource || "") === id}" title="${id ? esc(hs[id]?.name || "") + " · " + (STATUS[hs[id]?.status] || "") : "Todas las fuentes"}">
       ${id ? `<i class="dot ${hs[id]?.status || ""}"></i>` : ""}${esc(label)}${n != null ? `<span class="n ${n ? "hot" : ""}" title="nuevos en 24 h">${nf.format(n)}</span>` : ""}</button>`).join("");

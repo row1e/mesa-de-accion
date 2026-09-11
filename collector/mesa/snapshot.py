@@ -45,7 +45,7 @@ def health():
             status = "atrasada"
         else:
             status = "ok"
-        out.append({"id": sid, **{k: meta[k] for k in ("org", "name", "via", "geo", "sheet")}, "status": status,
+        out.append({"id": sid, **{k: meta[k] for k in ("org", "name", "via", "geo", "sheet")}, "internal": meta.get("internal", False), "status": status,
                     "interval_s": interval, "last_run": h.get("last_run"), "last_ok": last_ok,
                     "last_error": h.get("last_error"), "message": h.get("last_message"), "failures": fails,
                     "items": stored.get(sid), "last_run_items": h.get("items"), "next_run": nxt.get(sid)})

@@ -155,7 +155,7 @@ def feed(source=None, region=None, limit=60, before=None, days=7):
             if source and s != source:
                 continue
             q = "SELECT started_at, path FROM fetches WHERE source=? AND changed=1 AND path LIKE ? AND started_at>=?"
-            args = [s, f"%{name}", since]
+            args = [s, f"%{name}%", since]
             if before:
                 q += " AND started_at<?"
                 args.append(before)
@@ -187,5 +187,5 @@ def counts(region=None, hours=24):
     if not region:
         for s, (name, _) in UPDATES.items():
             out[s] = out.get(s, 0) + db.conn().execute("SELECT COUNT(*) FROM fetches WHERE source=? AND changed=1 AND path LIKE ? AND started_at>=?",
-                                                       (s, f"%{name}", since)).fetchone()[0]
+                                                       (s, f"%{name}%", since)).fetchone()[0]
     return out

@@ -1,4 +1,5 @@
 """HTTP con reintentos, registro en `fetches` y guardado del crudo solo cuando cambia (por hash)."""
+import gzip
 import hashlib
 import json
 import time
@@ -13,6 +14,9 @@ from . import config, db
 # Usa el almacén de certificados del sistema (como curl en macOS): el Python de uv trae su propio
 # OpenSSL sin la cadena que exigen INGEMMET y ENFEN.
 truststore.inject_into_ssl()
+
+
+TEXTY = {"html", "json", "geojson", "xml", "csv", "txt"}
 
 
 class FetchError(RuntimeError):
@@ -52,7 +56,11 @@ def fetch(source, url, *, name=None, method="GET", timeout=60, retries=2, keep_r
             d = config.RAW / source / day
             d.mkdir(parents=True, exist_ok=True)
             fname = f"{time.strftime('%H%M%S', time.localtime(started))}_{name or 'body'}"
-            (d / fname).write_bytes(body)
+            if fname.rsplit(".", 1)[-1].lower() in TEXTY:      # HTML/JSON/CSV se comprimen ~10×; PDF e imágenes ya vienen comprimidos
+                fname += ".gz"
+                (d / fname).write_bytes(gzip.compress(body, compresslevel=6))
+            else:
+                (d / fname).write_bytes(body)
             path = str((d / fname).relative_to(config.DATA))
     db.conn().execute(
         "INSERT INTO fetches(source,url,started_at,duration_ms,http_status,bytes,sha256,changed,path,error) "

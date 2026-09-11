@@ -173,7 +173,7 @@ def build(code):
 
     health = {h["id"]: h for h in snapshot.health()}
     fuentes = [{"id": sid_, "org": m["org"], "name": m["name"], "last_ok": health.get(sid_, {}).get("last_ok"),
-                "status": health.get(sid_, {}).get("status")} for sid_, m in SOURCES.items()]
+                "status": health.get(sid_, {}).get("status")} for sid_, m in SOURCES.items() if not m.get("internal")]
 
     return {"tipo": sc["tipo"], "code": code, "ubigeo": code, "provincia": sc["nombre"], "nombre": sc["nombre"], "departamento": sc["departamento"],
             "n_provincias": len(P), "generado": time.time(), "generado_txt": now.strftime("%d/%m/%Y %H:%M"), "hoy": now.date().isoformat(),

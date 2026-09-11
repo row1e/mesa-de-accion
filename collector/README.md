@@ -26,6 +26,32 @@ Ejecutar fuentes una vez, sin servidor (para depurar un lector):
 cd collector && .venv/bin/python run.py run senamhi_avisos indeci
 ```
 
+## Arranque automático (macOS)
+
+Un LaunchAgent inicia el colector al iniciar sesión y lo reinicia si se cae (máx. una vez cada 30 s). Archivo: `~/Library/LaunchAgents/pe.mesadeaccion.collector.plist` (no está en git; contiene rutas locales y `MESA_BACKUP`). Registro: `~/Library/Logs/mesa-de-accion/collector.log`.
+
+```bash
+launchctl print gui/$(id -u)/pe.mesadeaccion.collector | grep -E "state|pid"
+```
+
+```bash
+launchctl kickstart -k gui/$(id -u)/pe.mesadeaccion.collector
+```
+
+```bash
+launchctl bootout gui/$(id -u)/pe.mesadeaccion.collector
+```
+
+```bash
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/pe.mesadeaccion.collector.plist
+```
+
+(estado · reiniciar tras cambiar código · detener · volver a cargar). Tras `bootout`, esperar unos segundos antes de `bootstrap` o launchd responde "error 5".
+
+## Respaldo
+
+El job `respaldo` (cada 24 h, visible en el tablero de fuentes) copia `data/` a la carpeta de `MESA_BACKUP`; sin esa variable el job queda en "Fallando" para que se note. Guarda: la base con la API de respaldo de SQLite (consistente aunque el colector esté escribiendo), comprimida, 14 diarias + 1 por mes; `media/` incremental; un `.tar.gz` de `raw/` por día cerrado (30 días). Instrucciones de restauración en `RESTAURAR.txt` dentro del destino. Los crudos de texto (HTML/JSON/CSV) se guardan comprimidos (`.gz`) desde el origen.
+
 ## Qué hace cada pieza
 
 | Archivo | Rol |
@@ -38,6 +64,7 @@ cd collector && .venv/bin/python run.py run senamhi_avisos indeci
 | `mesa/snapshot.py` | Arma lo que consume el dashboard; calcula el estado de cada fuente |
 | `mesa/api.py` | API HTTP y dashboard |
 | `web/index.html`, `web/app.js` | Dashboard en vivo |
+| `mesa/backup.py` | Respaldo diario de `data/` a `MESA_BACKUP` |
 | `data/mesa.sqlite3` | Base (tablas `items`, `runs`, `fetches`, `source_health`) |
 
 ## Intervalos
@@ -96,4 +123,4 @@ La barra negra bajo el encabezado filtra todo el dashboard por una de las 25 reg
 - Sin autenticación: escucha solo en `127.0.0.1`. Antes de exponerlo en otra máquina, agregar acceso.
 - Sin alertas por correo cuando una fuente falla (previsto; `source_health.consecutive_failures` ya lo registra).
 - PROVIAS/MTC: el servidor no acepta conexión desde esta red.
-- Corre mientras la terminal esté abierta. Para que arranque con la sesión de macOS, falta un LaunchAgent (no instalado).
+- El respaldo local no protege contra la pérdida del equipo: para eso, apuntar `MESA_BACKUP` a un disco externo o a una carpeta sincronizada de trabajo.

@@ -68,7 +68,7 @@ def start():
         interval = config.INTERVALS[source]
         db.health_set(source, interval_s=interval, running=0)
         row = db.conn().execute("SELECT last_ok, last_run FROM source_health WHERE source=?", (source,)).fetchone()
-        last = row["last_run"] or 0
+        last = row["last_ok"] or 0          # desde el último ÉXITO: una fuente que falló reintenta al arrancar
         # Al arrancar: si el último intento es más viejo que el intervalo, corre pronto (escalonado 4 s por fuente).
         first = now + 4 * i if now - last >= interval else last + interval
         scheduler.add_job(run_source, IntervalTrigger(seconds=interval), args=(source,), id=source,
