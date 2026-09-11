@@ -1,6 +1,7 @@
 """HTTP con reintentos, registro en `fetches` y guardado del crudo solo cuando cambia (por hash)."""
 import gzip
 import hashlib
+import ssl
 import json
 import time
 import urllib.error
@@ -14,6 +15,27 @@ from . import config, db
 # Usa el almacén de certificados del sistema (como curl en macOS): el Python de uv trae su propio
 # OpenSSL sin la cadena que exigen INGEMMET y ENFEN.
 truststore.inject_into_ssl()
+
+# Intermedios públicos que algunos servidores oficiales NO envían (INGEMMET solo manda su certificado).
+# macOS completa la cadena solo; Linux (p. ej. Replit) no, y falla con "unable to get local issuer certificate".
+EXTRA_CA = sorted((config.ROOT / "certs").glob("*.pem"))
+
+
+def _ssl_context():
+    ctx = ssl.create_default_context()          # almacén del sistema (truststore)
+    try:
+        for p in EXTRA_CA:
+            ctx.load_verify_locations(str(p))
+        return ctx
+    except Exception:  # noqa: BLE001 — si el almacén del sistema no acepta extras, certifi + intermedios
+        import certifi
+        ctx = ssl.create_default_context(cafile=certifi.where())
+        for p in EXTRA_CA:
+            ctx.load_verify_locations(str(p))
+        return ctx
+
+
+SSL_CONTEXT = _ssl_context()
 
 
 TEXTY = {"html", "json", "geojson", "xml", "csv", "txt"}
@@ -34,7 +56,7 @@ def fetch(source, url, *, name=None, method="GET", timeout=60, retries=2, keep_r
     for attempt in range(retries + 1):
         try:
             req = urllib.request.Request(url, method=method, headers={"User-Agent": config.USER_AGENT})
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as r:
                 status, body = r.status, r.read()
             break
         except urllib.error.HTTPError as e:

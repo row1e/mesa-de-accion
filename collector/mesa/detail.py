@@ -59,7 +59,8 @@ def _url_ok(url, timeout=12):
     import urllib.request
     try:
         req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": config.USER_AGENT})
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        from .http import SSL_CONTEXT
+        with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as r:
             return r.status == 200
     except Exception:  # noqa: BLE001
         return False
