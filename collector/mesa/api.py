@@ -38,7 +38,8 @@ def ficha_pdf(ubigeo: str, request: Request):
     if not ficha.scope_of(ubigeo):
         raise HTTPException(404, "código desconocido: use 2 dígitos (departamento) o 4 (provincia)")
     try:
-        data, fname = ficha.pdf(ubigeo, str(request.base_url).rstrip("/"))
+        # Siempre por la dirección local: detrás de un túnel/Access, la URL pública llevaría a Chrome a la pantalla de login.
+        data, fname = ficha.pdf(ubigeo, f"http://127.0.0.1:{config.PORT}")
     except Exception as e:  # noqa: BLE001
         raise HTTPException(500, f"No se pudo generar el PDF: {e}") from None
     return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"'})
