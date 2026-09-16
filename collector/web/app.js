@@ -800,21 +800,44 @@ function danosFigs(tot) {
   return order.length ? `<div class="dfig">${order.map(k => `<div class="${VIDA.has(k) ? "vida" : ""}"><b>${fmtN(tot[k])}</b><span>${esc(D.danos.labels[k])}</span></div>`).join("")}</div>`
     : `<p class="muted" style="margin:0">Sin cifras de daños.</p>`;
 }
+/* La lista se ordena por lo más reciente (como llega de INDECI) o por magnitud humana.
+   El ámbito separa lo ocurrido en la ventana de lo que viene de antes y sigue reportando. */
+let danosOrden = "recientes";     // recientes | afectados
+let danosAmbito = "todos";        // todos | nuevos | seguimiento
+let danosTope = 10;
+const danosPersonas = e => (e.totales.personas_damnificadas || 0) + (e.totales.personas_afectadas || 0);
+
 function renderDanos() {
   const X = V.danos, box = $("#danos");
   if (!X) { box.hidden = true; return; }
   box.hidden = false;
-  const top = [...X.eventos].sort((a, b) => ((b.totales.personas_damnificadas || 0) + (b.totales.personas_afectadas || 0)) - ((a.totales.personas_damnificadas || 0) + (a.totales.personas_afectadas || 0))).slice(0, 8);
+  const nSeg = X.n_eventos - X.n_nuevos;
+  const enAmbito = X.eventos.filter(e => danosAmbito === "todos" || (danosAmbito === "nuevos" ? e.nuevo : !e.nuevo));
+  const lista = [...enAmbito].sort(danosOrden === "afectados"
+    ? (a, b) => danosPersonas(b) - danosPersonas(a)
+    : (a, b) => (b.ts || 0) - (a.ts || 0));
+  const vistos = lista.slice(0, danosTope);
   box.innerHTML = `<div class="danos-head"><h3 style="margin:0">Daños reportados · últimos ${X.dias} días${state.region ? ` · ${esc(regName(state.region))}` : ""}</h3>
       <span class="note" style="margin:0">${X.n_eventos} eventos con cifras · se cuenta el reporte más reciente de cada evento (sin duplicar actualizaciones)</span></div>
     <div class="danos-cols">
-      <div class="danos-col"><h4><b>${X.n_nuevos}</b> ${X.n_nuevos === 1 ? "evento nuevo" : "eventos nuevos"} · ocurridos desde ${fmtDay(X.desde)}</h4>${danosFigs(X.nuevos)}</div>
-      <div class="danos-col"><h4><b>${X.n_eventos - X.n_nuevos}</b> ${X.n_eventos - X.n_nuevos === 1 ? "evento anterior" : "eventos anteriores"} aún con reportes · cifras acumuladas</h4>${danosFigs(X.seguimiento)}</div>
+      <div class="danos-col"><h4><b>${X.n_nuevos}</b> ${X.n_nuevos === 1 ? "evento ocurrido" : "eventos ocurridos"} en estos ${X.dias} días · desde ${fmtDay(X.desde)}</h4>${danosFigs(X.nuevos)}</div>
+      <div class="danos-col"><h4><b>${nSeg}</b> ${nSeg === 1 ? "evento anterior que siguió reportando" : "eventos anteriores que siguieron reportando"} en estos ${X.dias} días · cifras acumuladas del evento</h4>${danosFigs(X.seguimiento)}</div>
     </div>
-    ${top.length ? `<ul class="devents">${top.map(e => `<li><button type="button" data-key="${esc(e.item_key)}">
+    <p class="note" style="margin:8px 0 0">Las dos columnas cuentan solo reportes recibidos en los últimos ${X.dias} días. La diferencia es cuándo ocurrió el evento: los de la derecha son de antes y siguen actualizándose, por eso sus cifras son acumuladas desde que empezaron.</p>
+    <div class="danos-tools">
+      <span class="tl">Ordenar</span><div class="filters" id="danos-orden"></div>
+      <span class="tl">Mostrar</span><div class="filters" id="danos-ambito"></div>
+    </div>
+    ${vistos.length ? `<ul class="devents">${vistos.map(e => `<li><button type="button" data-key="${esc(e.item_key)}">
       <span class="t">${esc(title(e.evento))} — ${esc(title(e.distrito))}${e.multi_region ? ` <span class="muted">(${Object.keys(e.por_reg).length} regiones)</span>` : ""}</span>
       <span class="n">${danosChips(e.totales, 3)}</span>
-      <span class="s">${e.nuevo ? "Nuevo" : "En seguimiento"} · ocurrió ${e.ocurrencia ? fmtDay(e.ocurrencia) : "—"} · ${esc(title(e.tipo))} N° ${esc(e.num)}${e.seq ? ` (reporte ${esc(e.seq)})` : ""}${e.actualizado ? ` · cifras al ${esc(e.actualizado)}` : ""}</span></button></li>`).join("")}</ul>` : ""}`;
+      <span class="s">${e.nuevo ? "Ocurrió en estos días" : "Viene de antes"} · último reporte ${ago(e.ts)} · ocurrió ${e.ocurrencia ? fmtDay(e.ocurrencia) : "—"} · ${esc(title(e.tipo))} N° ${esc(e.num)}${e.seq ? ` (reporte ${esc(e.seq)})` : ""}${e.actualizado ? ` · cifras al ${esc(e.actualizado)}` : ""}</span></button></li>`).join("")}</ul>` : `<p class="muted" style="margin:12px 0 0">Sin eventos con cifras en este filtro.</p>`}
+    ${lista.length > vistos.length ? `<button type="button" class="dmore">Ver ${Math.min(10, lista.length - vistos.length)} más · ${lista.length} en total</button>` : ""}`;
+  seg($("#danos-orden"), [["recientes", "Más recientes"], ["afectados", "Más afectados"]], danosOrden,
+    v => { danosOrden = v; danosTope = 10; renderDanos(); });
+  seg($("#danos-ambito"), [["todos", `Todos ${X.n_eventos}`], ["nuevos", `Ocurridos en ${X.dias} días ${X.n_nuevos}`], ["seguimiento", `Vienen de antes ${nSeg}`]], danosAmbito,
+    v => { danosAmbito = v; danosTope = 10; renderDanos(); });
+  box.querySelector(".dmore")?.addEventListener("click", () => { danosTope += 10; renderDanos(); });
   // Ya no se lleva al usuario al mapa: la ficha se abre en el cajón fijo, donde esté leyendo.
   box.querySelectorAll(".devents button").forEach(b => b.onclick = () => openDetail({source: "indeci", kind: "item", key: b.dataset.key}));
 }
