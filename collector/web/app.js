@@ -300,9 +300,96 @@ function midisBlock(id) {
       <a href="/api/midis/provincia/${id}" target="_blank" rel="noopener">JSON</a></p></div>`;
 }
 
+/* ── navegación entre secciones, en la barra fija ─────────────────── */
+function initJumpbar() {
+  const bar = $("#jumpbar");
+  if (!bar) return;
+  const links = [...bar.querySelectorAll("a")];
+  const byId = new Map(links.map(a => [a.getAttribute("href").slice(1), a]));
+  const secs = links.map(a => document.getElementById(a.getAttribute("href").slice(1))).filter(Boolean);
+  if (!secs.length) return;
+
+  const mark = id => {
+    links.forEach(a => a.removeAttribute("aria-current"));
+    byId.get(id)?.setAttribute("aria-current", "true");
+  };
+
+  // Un reanclaje en curso tiene que dejar de mandar en cuanto empieza otro salto o el usuario
+  // se mueve por su cuenta; si no, sigue tirando de la página hacia el destino anterior.
+  let jumpSeq = 0, quietUntil = 0;
+  const cederControl = () => { jumpSeq++; quietUntil = 0; };
+  ["wheel", "touchstart", "keydown"].forEach(ev => addEventListener(ev, cederControl, {passive: true}));
+
+  // La barra fija crece al envolverse en pantallas angostas, así que su alto se mide, no se fija.
+  const barH = () => (document.querySelector(".regbar")?.getBoundingClientRect().height || 104) + 8;
+  const syncBarH = () => document.documentElement.style.setProperty("--barH", barH() + "px");
+  syncBarH();
+  addEventListener("resize", syncBarH);
+  // La barra crece cuando la navegación se envuelve en varias filas, y eso pasa después de la
+  // primera medición: sin observarla, --barH se queda corto y las secciones aterrizan debajo.
+  const rb = document.querySelector(".regbar");
+  if (rb && window.ResizeObserver) new ResizeObserver(syncBarH).observe(rb);
+
+  // El salto nativo por ancla aterriza mal: la página mide ~40.000 px y las tablas y gráficos
+  // siguen llenándose después de cargar, así que el destino se corre mientras el navegador va
+  // hacia él (y a veces se pasa hasta el final). Se salta a mano y se corrige hasta que el
+  // título quede justo debajo de la barra.
+  // scroll-margin-top (var --barH) hace que el navegador deje el título debajo de la barra.
+  // Aun así hay que volver a anclar: la página sigue creciendo mientras se baja, así que el
+  // destino se mueve. Se reancla hasta que el título se quede quieto tres veces seguidas.
+  const goTo = id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    syncBarH();                 // el alto de la barra puede haber cambiado desde el último salto
+    const seq = ++jumpSeq;      // este salto manda hasta que empiece otro o el usuario se mueva
+    quietUntil = performance.now() + 4300;
+    el.scrollIntoView({block: "start", behavior: reduceMotion ? "auto" : "smooth"});
+    const t0 = performance.now();
+    let stable = 0;
+    const settle = () => {
+      if (seq !== jumpSeq) return;
+      if (Math.abs(el.getBoundingClientRect().top - barH()) <= 6) {
+        // El observador solo avisa al cruzar un umbral: su último aviso durante el
+        // desplazamiento se queda pegado y marca la sección vecina. Al llegar se remarca.
+        if (++stable >= 3) return mark(id);
+      } else {
+        stable = 0;
+        el.scrollIntoView({block: "start", behavior: "auto"});
+      }
+      if (performance.now() - t0 < 4000) setTimeout(settle, 160);
+      else mark(id);
+    };
+    setTimeout(settle, reduceMotion ? 50 : 600);
+  };
+
+  bar.addEventListener("click", e => {
+    const a = e.target.closest("a[href^='#']");
+    if (!a) return;
+    e.preventDefault();
+    const id = a.getAttribute("href").slice(1);
+    history.replaceState(null, "", "#" + id);
+    mark(id);
+    goTo(id);
+  });
+
+  // Marca la sección más alta que esté entrando en pantalla, por debajo de la barra fija.
+  const io = new IntersectionObserver(entries => {
+    if (performance.now() < quietUntil) return;   // durante un salto manda la sección elegida
+    const vis = entries.filter(e => e.isIntersecting)
+      .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+    if (vis) mark(vis.target.id);
+  }, {rootMargin: `-${Math.round(barH())}px 0px -55% 0px`});
+  secs.forEach(s => io.observe(s));
+}
+if (document.readyState === "loading") addEventListener("DOMContentLoaded", initJumpbar);
+else initJumpbar();
+
 function showProvince() {   // lleva el bloque de la provincia al tope del panel lateral (sin mover la página)
   const side = $("#side"), el = $("#pdetail");
-  if (side && el) side.scrollTo({top: el.offsetTop - side.offsetTop - 8, behavior: reduceMotion ? "auto" : "smooth"});
+  if (side && el) {
+    side.scrollTo({top: el.offsetTop - side.offsetTop - 8, behavior: reduceMotion ? "auto" : "smooth"});
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");   // señal de que el contenido cambió
+  }
   if ($("#ficha-prov") && state.sel) { $("#ficha-prov").value = state.sel; updateFichaLinks(); }
 }
 
@@ -313,14 +400,25 @@ const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Mon
   com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
 const refId = r => r && `${r.source}|${r.kind}|${r.key}`;
 let detailReq = 0;
-function closeDetail() { state.pick = null; $("#detail").hidden = true; $("#detail").innerHTML = ""; markPicked(); }
+function closeDetail() {
+  state.pick = null;
+  $("#detail").hidden = true;
+  $("#detail").innerHTML = "";
+  markPicked();
+  if (lastTrigger && document.contains(lastTrigger)) lastTrigger.focus({preventScroll: true});
+  lastTrigger = null;
+}
 function markPicked() { gPts?.selectAll(".pt").classed("picked", function () { return this.__ref && refId(this.__ref) === refId(state.pick); }); }
+let lastTrigger = null;        // elemento que abrió la ficha, para devolverle el foco al cerrar
+
 function openDetail(ref, fresh = false) {
+  lastTrigger = document.activeElement;
   state.pick = ref; markPicked();
   const box = $("#detail"), n = ++detailReq;
   box.hidden = false;
   box.innerHTML = `<div class="dh"><div><div class="src-org">${esc(ORG[ref.source] || ref.source)}</div><h3>Consultando la fuente…</h3></div><button type="button" class="x" aria-label="Cerrar ficha">×</button></div>`;
-  $("#side").scrollTop = 0;
+  box.scrollTop = 0;
+  box.focus({preventScroll: true});   // el cajón ya está a la vista: no hay que mover la página
   fetch(`/api/detail?source=${encodeURIComponent(ref.source)}&kind=${encodeURIComponent(ref.kind)}&key=${encodeURIComponent(ref.key)}${fresh ? "&fresh=true" : ""}`)
     .then(r => r.ok ? r.json() : Promise.reject(new Error(r.status === 404 ? "El registro ya no está en la base (la fuente lo retiró)." : `HTTP ${r.status}`)))
     .then(d => { if (n === detailReq) renderDetail(d); })
@@ -354,7 +452,7 @@ function renderDetail(d) {
 function openIndeciGroup(prov) {
   const items = V.indeci.filter(i => i.prov === prov), p = V.geo.provs.features.find(f => f.properties.id === prov)?.properties;
   state.pick = null; markPicked();
-  const box = $("#detail"); box.hidden = false; $("#side").scrollTop = 0;
+  const box = $("#detail"); box.hidden = false; box.scrollTop = 0; box.focus({preventScroll: true});
   box.innerHTML = `<div class="dh"><div><div class="src-org">${ORG.indeci} · últimas ${V.indeciWindowH} h</div><h3>${items.length} reporte${items.length > 1 ? "s" : ""} en ${esc(title(p?.n))}</h3><div class="sub">${esc(title(p?.d))} · elija uno para ver la ficha completa</div></div><button type="button" class="x" aria-label="Cerrar ficha">×</button></div>
     <ul class="plist">${items.map(i => `<li><button type="button" data-key="${esc(i._key)}"><span class="t">${esc(title(i.evento || i.titulo))} — ${esc(title(i.distrito))}</span><span class="s">${esc(title(i.tipo))} N° ${esc(i.num)} · ${new Date(i.pub).toLocaleString("es-PE", {timeZone: "America/Lima", dateStyle: "short", timeStyle: "short"})}</span></button></li>`).join("")}</ul>`;
   box.querySelectorAll(".plist button").forEach(b => b.onclick = () => openDetail({source: "indeci", kind: "item", key: b.dataset.key}));
@@ -616,8 +714,7 @@ $("#latest").addEventListener("click", e => {
   const r = LAT.rows[+b.dataset.i];
   if (r.group) return setLatSource(r.source);
   if (!r.detail) return;
-  $("#mapa").scrollIntoView({behavior: reduceMotion ? "auto" : "smooth"});
-  openDetail({source: r.source, kind: r.kind, key: r.key});
+  openDetail({source: r.source, kind: r.kind, key: r.key});   // la ficha se abre donde está el usuario
 });
 
 /* ── fotos: visor, tira del día, galería en la ficha ─────────────── */
@@ -637,7 +734,7 @@ $("#lb").addEventListener("click", e => {
   const nav = e.target.closest(".lb-nav");
   if (nav) { LB.i = (LB.i + (nav.classList.contains("next") ? 1 : -1) + LB.list.length) % LB.list.length; return lbShow(); }
   const open = e.target.closest("[data-open]");
-  if (open) { closeLightbox(); $("#mapa").scrollIntoView({behavior: reduceMotion ? "auto" : "smooth"}); openDetail({source: "indeci", kind: "item", key: open.dataset.open}); }
+  if (open) { closeLightbox(); openDetail({source: "indeci", kind: "item", key: open.dataset.open}); }
 });
 addEventListener("keydown", e => {
   if ($("#lb").hidden) return;
@@ -718,7 +815,8 @@ function renderDanos() {
       <span class="t">${esc(title(e.evento))} — ${esc(title(e.distrito))}${e.multi_region ? ` <span class="muted">(${Object.keys(e.por_reg).length} regiones)</span>` : ""}</span>
       <span class="n">${danosChips(e.totales, 3)}</span>
       <span class="s">${e.nuevo ? "Nuevo" : "En seguimiento"} · ocurrió ${e.ocurrencia ? fmtDay(e.ocurrencia) : "—"} · ${esc(title(e.tipo))} N° ${esc(e.num)}${e.seq ? ` (reporte ${esc(e.seq)})` : ""}${e.actualizado ? ` · cifras al ${esc(e.actualizado)}` : ""}</span></button></li>`).join("")}</ul>` : ""}`;
-  box.querySelectorAll(".devents button").forEach(b => b.onclick = () => { $("#mapa").scrollIntoView({behavior: reduceMotion ? "auto" : "smooth"}); openDetail({source: "indeci", kind: "item", key: b.dataset.key}); });
+  // Ya no se lleva al usuario al mapa: la ficha se abre en el cajón fijo, donde esté leyendo.
+  box.querySelectorAll(".devents button").forEach(b => b.onclick = () => openDetail({source: "indeci", kind: "item", key: b.dataset.key}));
 }
 
 /* ── comunicados gob.pe ─────────────────────────────────────────── */
