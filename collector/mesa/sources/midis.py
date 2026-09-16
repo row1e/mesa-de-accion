@@ -42,6 +42,9 @@ JSON_HEADERS = {"Content-Type": "application/json; charset=utf-8",
                 "Referer": REPORTE_DISTRITO}
 PAUSA = 0.15            # segundos entre peticiones al recorrer el catálogo
 TTL_DATOS = 30 * 86400  # los indicadores casi no cambian; se recachean al mes
+# Versión de la forma de lo cacheado. Si cambia la estructura de la respuesta hay que subirla:
+# el caché dura 30 días y sin esto seguiría sirviendo la forma vieja (pasó al añadir "tipo").
+CACHE_V = 2
 
 
 def _post(endpoint, ubigeo, *, keep_raw=True):
@@ -122,7 +125,7 @@ def distrito(ubigeo, fresh=False):
     if len(ubigeo) != 6:
         raise ValueError("MIDIS solo responde por distrito: se necesita un ubigeo de 6 dígitos")
     cache, fetched_at = db.detail_get("midis", "distrito", ubigeo, 0 if fresh else TTL_DATOS)
-    if cache:
+    if cache and cache.get("v") == CACHE_V:
         return {**cache, "fetched_at": fetched_at, "cacheado": True}
     filas, malas = _filas(_post("DownloadDatabase", ubigeo)["csv"])
     grupos, fuentes = {}, {}
@@ -138,6 +141,7 @@ def distrito(ubigeo, fresh=False):
             fuentes[f["vfuente"]] = fuentes.get(f["vfuente"], 0) + 1
     cab = filas[0] if filas else {}
     out = {
+        "v": CACHE_V,
         "ubigeo": ubigeo, "distrito": cab.get("vDistrito"), "provincia": cab.get("vProvincia"),
         "departamento": cab.get("vDepartamento"),
         "n_indicadores": len(filas), "filas_descartadas": malas,
@@ -212,7 +216,7 @@ def provincia(ubigeo, fresh=False):
     if len(ubigeo) != 4:
         raise ValueError("se necesita un ubigeo provincial de 4 dígitos")
     cache, fetched_at = db.detail_get("midis", "provincia", ubigeo, 0 if fresh else TTL_DATOS)
-    if cache:
+    if cache and cache.get("v") == CACHE_V:
         return {**cache, "fetched_at": fetched_at, "cacheado": True}
 
     distritos = [r for r in db.get_items("midis", "distrito", order="key") if r.get("prov") == ubigeo]
@@ -269,7 +273,7 @@ def provincia(ubigeo, fresh=False):
                         for n, s in (sumas.get(PROGRAMAS) or {}).items() if s["total"]),
                        key=lambda x: -x["valor"])
     out = {
-        "tipo": "provincia", "ubigeo": ubigeo,
+        "v": CACHE_V, "tipo": "provincia", "ubigeo": ubigeo,
         "provincia": distritos[0].get("provincia"), "departamento": distritos[0].get("departamento"),
         "n_distritos": len(distritos), "n_con_datos": con_datos, "sin_datos": sin_datos,
         "distritos": sorted(filas, key=lambda f: -(f.get("poblacion_total") or 0)),
@@ -298,7 +302,7 @@ def region(code, fresh=False):
     """Indicadores regionales del reporte «Mi Región» (ubigeo de 2 dígitos)."""
     code = re.sub(r"\D", "", str(code or "")).zfill(2)[:2]
     cache, fetched_at = db.detail_get("midis", "region", code, 0 if fresh else TTL_DATOS)
-    if cache:
+    if cache and cache.get("v") == CACHE_V:
         return {**cache, "fetched_at": fetched_at, "cacheado": True}
     filas, malas = _filas(_post("DownloadDatabaseMiregion", code)["csv"])
     grupos = {}
@@ -311,7 +315,7 @@ def region(code, fresh=False):
             "fuente": f.get("vfuente"),
         })
     out = {
-        "tipo": "region", "region": code, "nombre": (filas[0].get("VRegion") if filas else None),
+        "v": CACHE_V, "tipo": "region", "region": code, "nombre": (filas[0].get("VRegion") if filas else None),
         "n_indicadores": len(filas), "filas_descartadas": malas, "grupos": grupos,
         "atribucion": "MIDIS · REDInforma, reporte «Mi Región»", "enlace": REPORTE_REGION,
         # Junín (12) y San Martín (22) devuelven cero filas y el nombre llega truncado
