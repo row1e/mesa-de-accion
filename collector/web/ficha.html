@@ -258,6 +258,42 @@ if (F.comunicados.length) html += `<section><h2>Comunicados que mencionan ${DEPT
 
 if (empty.length) html += `<p class="empty-list">Sin registros en esta provincia para: ${empty.join(" · ")}.</p>`;
 
+// MIDIS · contexto social
+const MI = F.midis;
+const pc = v => v === null || v === undefined ? "—" : nf.format(Math.round(v));
+const share = (a, b) => (a && b) ? `${Math.round(a / b * 100)} %` : "—";
+if (MI && !MI.error && MI.tipo === "provincia") {
+  const R = MI.resumen;
+  html += `<section><h2>Contexto social · MIDIS <small>suma de los ${MI.n_con_datos} distritos con datos de ${MI.n_distritos}</small></h2>
+    <table><tbody>
+    <tr><td>Población total</td><td class="num"><b>${pc(R.poblacion_total)}</b></td>
+        <td>Niñas y niños de 0 a 5 años</td><td class="num">${pc(R.pob_0_5)}</td></tr>
+    <tr><td>Población de 65 a más años</td><td class="num">${pc(R.pob_65_mas)}</td>
+        <td>Viviendas</td><td class="num">${pc(R.viviendas_total)}</td></tr>
+    <tr><td>Viviendas con agua por red o pilón</td><td class="num">${pc(R.viv_agua)} · ${share(R.viv_agua, R.viviendas_total)}</td>
+        <td>Viviendas con electricidad</td><td class="num">${pc(R.viv_electricidad)} · ${share(R.viv_electricidad, R.viviendas_total)}</td></tr>
+    <tr><td>Viviendas con saneamiento</td><td class="num">${pc(R.viv_saneamiento)} · ${share(R.viv_saneamiento, R.viviendas_total)}</td>
+        <td>Establecimientos de salud · II.EE.</td><td class="num">${pc(R.ee_salud)} · ${pc(R.iiee)}</td></tr>
+    </tbody></table>
+    ${MI.pobreza ? `<p class="note">Pobreza: entre ${MI.pobreza.min} % (${esc(title(MI.pobreza.menor.distrito))}) y ${MI.pobreza.max} % (${esc(title(MI.pobreza.mayor.distrito))}) según el distrito, en ${MI.pobreza.distritos} distritos.</p>` : ""}
+    ${MI.programas.length ? `<table><thead><tr><th>Programa social</th><th class="num">Usuarios / hogares</th><th class="num">Distritos</th></tr></thead><tbody>
+      ${MI.programas.slice(0, 8).map(p => `<tr><td>${esc(p.programa)}</td><td class="num">${pc(p.valor)}</td><td class="num">${p.distritos}</td></tr>`).join("")}</tbody></table>` : ""}
+    ${MI.distritos && MI.distritos.length ? `<table><thead><tr><th>Distrito</th><th class="num">Población</th><th class="num">0-5 años</th><th class="num">65+</th><th class="num">Viviendas</th><th class="num">Agua</th><th class="num">Luz</th><th class="num">Pobreza</th></tr></thead><tbody>
+      ${MI.distritos.map(x => `<tr><td>${esc(title(x.distrito))} <span class="mono">${esc(x.ubigeo)}</span></td>
+        <td class="num">${pc(x.poblacion_total)}</td><td class="num">${pc(x.pob_0_5)}</td><td class="num">${pc(x.pob_65_mas)}</td>
+        <td class="num">${pc(x.viviendas_total)}</td><td class="num">${share(x.viv_agua, x.viviendas_total)}</td>
+        <td class="num">${share(x.viv_electricidad, x.viviendas_total)}</td>
+        <td class="num">${x.pobreza_pct === null || x.pobreza_pct === undefined ? "—" : x.pobreza_pct + " %"}</td></tr>`).join("")}</tbody></table>` : ""}
+    ${MI.sin_datos.length ? `<p class="note">Sin datos en REDInforma: ${MI.sin_datos.map(x => esc(title(x.distrito || x.ubigeo))).join(" · ")}.</p>` : ""}
+    <p class="note">${esc(MI.nota_agregacion)} Fuente: <a href="${esc(MI.enlace)}">${esc(MI.atribucion)}</a>.</p></section>`;
+} else if (MI && !MI.error && MI.grupos) {
+  const filas = Object.entries(MI.grupos).flatMap(([g, items]) => items.map(i => ({g, ...i}))).filter(i => i.valor !== null).slice(0, 18);
+  if (filas.length) html += `<section><h2>Contexto social · MIDIS <small>reporte «Mi Región» · ${esc(MI.nombre || "")}</small></h2>
+    <table><thead><tr><th>Grupo</th><th>Indicador</th><th class="num">Valor</th><th class="num">Período</th></tr></thead><tbody>
+    ${filas.map(i => `<tr><td>${esc(i.g)}</td><td>${esc(i.indicador)}</td><td class="num">${esc(i.valor_crudo)}</td><td class="num">${esc(i.periodo || "")}</td></tr>`).join("")}</tbody></table>
+    <p class="note">Fuente: <a href="${esc(MI.enlace)}">${esc(MI.atribucion)}</a>.</p></section>`;
+}
+
 // Fuentes y método
 html += `<section><h2>Fuentes y actualización <small>último éxito de cada fuente (hora de Lima)</small></h2>
   <table class="src"><thead><tr><th>Institución</th><th>Fuente</th><th>Último éxito</th><th>Estado</th></tr></thead><tbody>

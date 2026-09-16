@@ -171,6 +171,14 @@ def build(code):
                           "damnificados": ((DN.get("por_prov") or {}).get(c, {}).get("totales") or {}).get("personas_damnificadas"),
                           "afectados": ((DN.get("por_prov") or {}).get(c, {}).get("totales") or {}).get("personas_afectadas")})
 
+    # ── MIDIS · contexto social (bajo demanda, cacheado 30 días) ──
+    # Import local: `sources` ya importa este módulo indirectamente y así se evita el ciclo.
+    from .sources import midis as _midis
+    try:
+        mid = _midis.region(dep) if dept_level else _midis.provincia(code)
+    except Exception as e:  # noqa: BLE001 — la ficha se emite igual sin este bloque
+        mid = {"error": f"{type(e).__name__}: {e}"}
+
     health = {h["id"]: h for h in snapshot.health()}
     fuentes = [{"id": sid_, "org": m["org"], "name": m["name"], "last_ok": health.get(sid_, {}).get("last_ok"),
                 "status": health.get(sid_, {}).get("status")} for sid_, m in SOURCES.items() if not m.get("internal")]
@@ -180,7 +188,8 @@ def build(code):
             "geo": geo_out, "niveles": niveles, "avisos": avisos, "uv": uv, "uv_max": max(uv_by.values(), key=lambda u: u["v"][0], default=None) if dept_level else None,
             "pronostico": pron, "indeci": indeci, "indeci_dias": INDECI_DAYS, "alertas": alertas, "focos": len(focos),
             "focos_pts": [[f[0], f[1]] for f in focos][:600], "zonas": zonas, "hidro": hidro, "sismos": sismos, "near_km": NEAR_KM,
-            "sidpol": sid, "comunicados": comunicados, "tabla": tabla, "danos": danos, "enfen": D["enfen"].get("ultimo_comunicado", {}), "fuentes": fuentes}
+            "sidpol": sid, "comunicados": comunicados, "tabla": tabla, "danos": danos, "enfen": D["enfen"].get("ultimo_comunicado", {}),
+            "midis": mid, "fuentes": fuentes}
 
 
 def html(ubigeo):

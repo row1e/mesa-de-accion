@@ -160,6 +160,15 @@ def midis_distrito(ubigeo: str, fresh: bool = False):
         raise HTTPException(400, str(e)) from None
 
 
+@app.get("/api/midis/provincia/{ubigeo}")
+def midis_provincia(ubigeo: str, fresh: bool = False):
+    """Contexto social de la provincia: suma de sus distritos (MIDIS solo responde por distrito)."""
+    try:
+        return midis.provincia(ubigeo, fresh=fresh)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+
+
 @app.get("/api/midis/region/{code}")
 def midis_region(code: str, fresh: bool = False):
     """Indicadores regionales del reporte «Mi Región» (MIDIS · REDInforma)."""

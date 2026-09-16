@@ -149,6 +149,151 @@ def distrito(ubigeo, fresh=False):
     return {**out, "fetched_at": time.time(), "cacheado": False}
 
 
+# Grupos cuyos valores NO son conteos y por lo tanto no se pueden sumar entre distritos:
+#   - "Logros de aprendizaje": los tres niveles suman 100 (son porcentajes de alumnos).
+#   - "Indicadores Priorizados de Anemia": vienen como fracción 0-1.
+#   - "Indicadores de Pobreza": llega como texto ("9.03%"), no como número.
+# De estos se informa el rango entre distritos, nunca un total provincial.
+NO_SUMABLES = {"Logros de aprendizaje - lectura", "Logros de aprendizaje - matematica",
+               "Indicadores Priorizados de Anemia", "Indicadores de Pobreza"}
+
+# Indicadores que se muestran destacados en el panel y en la ficha PDF.
+RESUMEN = {
+    "poblacion_total": ("Población del Distrito según Edades", "Población Total"),
+    "pob_0_5": ("Población del Distrito según Edades", "Población de 0 a 5 años"),
+    "pob_65_mas": ("Población del Distrito según Edades", "Población de 65 a más años"),
+    "viviendas_total": ("Condiciones de Vivienda", "Total de viviendas"),
+    "viv_agua": ("Condiciones de Vivienda", "Agua vía Red Pública y Pilón"),
+    "viv_electricidad": ("Condiciones de Vivienda", "Electricidad"),
+    "viv_saneamiento": ("Condiciones de Vivienda", "Saneamiento vía Red Pública y Pozo Séptico"),
+    "ee_salud": ("Datos Generales del Distrito", "Establecimientos de Salud"),
+    "iiee": ("Datos Generales del Distrito", "Instituciones Educativas"),
+}
+PROGRAMAS = "Intervención de programas sociales"
+MAX_DISTRITOS = 80        # ninguna provincia del país llega a esto (la mayor, Lima, tiene 43)
+
+
+def _pct_texto(s):
+    """'9.03%' → 9.03"""
+    m = re.search(r"-?\d+(?:[.,]\d+)?", s or "")
+    return float(m.group(0).replace(",", ".")) if m else None
+
+
+def _fila_distrito(cat, det):
+    """Fila por distrito: las cifras del resumen más el % de pobreza, para mostrar el desagregado."""
+    g = det.get("grupos") or {}
+
+    def val(grupo, nombre):
+        for it in g.get(grupo) or []:
+            if it["indicador"] == nombre:
+                return it["valor"]
+        return None
+
+    pob = None
+    for it in g.get("Indicadores de Pobreza") or []:
+        pob = _pct_texto(it.get("valor_texto"))
+    return {"ubigeo": det.get("ubigeo") or cat.get("ubigeo"),
+            "distrito": det.get("distrito") or cat.get("distrito"),
+            **{k: val(*RESUMEN[k]) for k in RESUMEN}, "pobreza_pct": pob}
+
+
+def provincia(ubigeo, fresh=False):
+    """Agrega los distritos de una provincia (ubigeo de 4 dígitos).
+
+    MIDIS solo responde por distrito, así que el total provincial se construye sumando sus
+    distritos. Solo se suman conteos: los grupos de NO_SUMABLES son porcentajes o tasas y de
+    ellos se reporta el rango entre distritos, porque sumarlos daría una cifra falsa.
+
+    Cada distrito se pide una vez y queda cacheado 30 días, así que abrir la misma provincia
+    de nuevo no genera tráfico. Es la misma consulta que haría una persona en el sitio,
+    repetida para los distritos de esa provincia.
+    """
+    ubigeo = re.sub(r"\D", "", str(ubigeo or ""))
+    if len(ubigeo) != 4:
+        raise ValueError("se necesita un ubigeo provincial de 4 dígitos")
+    cache, fetched_at = db.detail_get("midis", "provincia", ubigeo, 0 if fresh else TTL_DATOS)
+    if cache:
+        return {**cache, "fetched_at": fetched_at, "cacheado": True}
+
+    distritos = [r for r in db.get_items("midis", "distrito", order="key") if r.get("prov") == ubigeo]
+    if not distritos:
+        raise ValueError(f"no hay distritos en el catálogo para la provincia {ubigeo}; "
+                         "ejecute la fuente «midis» para poblarlo")
+    if len(distritos) > MAX_DISTRITOS:
+        raise ValueError(f"{len(distritos)} distritos supera el límite de {MAX_DISTRITOS}")
+
+    sumas, rangos, pobreza, filas = {}, {}, [], []
+    con_datos, sin_datos, fuentes = 0, [], {}
+    for i, d in enumerate(distritos):
+        try:
+            det = distrito(d["ubigeo"], fresh=fresh)
+        except Exception as e:  # noqa: BLE001 — un distrito caído no invalida la provincia
+            sin_datos.append({"ubigeo": d["ubigeo"], "distrito": d.get("distrito"), "error": str(e)[:120]})
+            continue
+        if not det.get("n_indicadores"):
+            sin_datos.append({"ubigeo": d["ubigeo"], "distrito": d.get("distrito"), "error": "sin indicadores"})
+            continue
+        con_datos += 1
+        filas.append(_fila_distrito(d, det))
+        if not det.get("cacheado") and i < len(distritos) - 1:
+            time.sleep(PAUSA)
+        for f in det.get("fuentes") or []:
+            fuentes[f] = fuentes.get(f, 0) + 1
+        for grupo, items in det["grupos"].items():
+            for it in items:
+                nombre, v = it["indicador"], it["valor"]
+                if grupo in NO_SUMABLES:
+                    if grupo == "Indicadores de Pobreza":
+                        p = _pct_texto(it.get("valor_texto"))
+                        if p is not None:
+                            pobreza.append({"ubigeo": d["ubigeo"], "distrito": d.get("distrito"), "pct": p})
+                        continue
+                    if v is None:
+                        continue
+                    r = rangos.setdefault(grupo, {}).setdefault(nombre, {"min": v, "max": v, "n": 0, "suma": 0.0})
+                    r["min"] = min(r["min"], v)
+                    r["max"] = max(r["max"], v)
+                    r["n"] += 1
+                    r["suma"] += v
+                elif v is not None:
+                    s = sumas.setdefault(grupo, {}).setdefault(nombre, {"total": 0.0, "n": 0})
+                    s["total"] += v
+                    s["n"] += 1
+
+    def total(clave):
+        g, n = RESUMEN[clave]
+        return (sumas.get(g, {}).get(n) or {}).get("total")
+
+    resumen = {k: total(k) for k in RESUMEN}
+    programas = sorted(({"programa": n, "valor": s["total"], "distritos": s["n"]}
+                        for n, s in (sumas.get(PROGRAMAS) or {}).items() if s["total"]),
+                       key=lambda x: -x["valor"])
+    out = {
+        "tipo": "provincia", "ubigeo": ubigeo,
+        "provincia": distritos[0].get("provincia"), "departamento": distritos[0].get("departamento"),
+        "n_distritos": len(distritos), "n_con_datos": con_datos, "sin_datos": sin_datos,
+        "distritos": sorted(filas, key=lambda f: -(f.get("poblacion_total") or 0)),
+        "resumen": resumen, "programas": programas,
+        "totales": {g: sorted(({"indicador": n, "valor": s["total"], "distritos": s["n"]}
+                               for n, s in items.items()), key=lambda x: -x["valor"])
+                    for g, items in sumas.items()},
+        "rangos": {g: [{"indicador": n, "min": r["min"], "max": r["max"],
+                        "promedio": round(r["suma"] / r["n"], 4), "distritos": r["n"]}
+                       for n, r in items.items()]
+                   for g, items in rangos.items()},
+        "pobreza": ({"min": min(x["pct"] for x in pobreza), "max": max(x["pct"] for x in pobreza),
+                     "distritos": len(pobreza),
+                     "mayor": max(pobreza, key=lambda x: x["pct"]),
+                     "menor": min(pobreza, key=lambda x: x["pct"])} if pobreza else None),
+        "fuentes": sorted(fuentes, key=fuentes.get, reverse=True),
+        "nota_agregacion": ("Los totales son la suma de los distritos de la provincia. Los porcentajes y "
+                            "tasas (anemia, logros de aprendizaje, pobreza) no se suman: se informa su rango."),
+        "atribucion": "MIDIS · REDInforma, reporte «MIDIStrito»", "enlace": REPORTE_DISTRITO,
+    }
+    db.detail_set("midis", "provincia", ubigeo, out)
+    return {**out, "fetched_at": time.time(), "cacheado": False}
+
+
 def region(code, fresh=False):
     """Indicadores regionales del reporte «Mi Región» (ubigeo de 2 dígitos)."""
     code = re.sub(r"\D", "", str(code or "")).zfill(2)[:2]
@@ -166,7 +311,7 @@ def region(code, fresh=False):
             "fuente": f.get("vfuente"),
         })
     out = {
-        "region": code, "nombre": (filas[0].get("VRegion") if filas else None),
+        "tipo": "region", "region": code, "nombre": (filas[0].get("VRegion") if filas else None),
         "n_indicadores": len(filas), "filas_descartadas": malas, "grupos": grupos,
         "atribucion": "MIDIS · REDInforma, reporte «Mi Región»", "enlace": REPORTE_REGION,
         # Junín (12) y San Martín (22) devuelven cero filas y el nombre llega truncado

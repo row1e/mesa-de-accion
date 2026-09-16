@@ -249,6 +249,57 @@ function renderMap() {
     ? ["0–2 bajo","3–5 moderado","6–7 alto","8–10 muy alto","11+ extremo"].map((l, i) => `<span><i style="background:var(--uv${i})"></i>${l}</span>`).join("") + `<span class="muted">Zonas UV sin provincia: ${V.uvUnmatched.length}</span>`
     : [2,3,4].map(n => `<span><i style="background:var(--n${n})"></i>Nivel ${n} · ${["","","amarillo","naranja","rojo"][n]}</span>`).join("") + `<span><i style="background:var(--land)"></i>Sin aviso o nivel 1</span>`;
 }
+// ── MIDIS · contexto social ────────────────────────────────────────────────────
+// MIDIS solo responde por distrito, así que la provincia es la suma de los suyos. Se pide al
+// abrir la provincia (no en el snapshot) y queda cacheado aquí y en el servidor 30 días.
+const midisProv = {};
+
+async function loadMidis(id) {
+  if (midisProv[id]) return;                       // ya cargado, cargando o fallido
+  midisProv[id] = {cargando: true};
+  try {
+    const r = await fetch(`/api/midis/provincia/${id}`, {cache: "no-store"});
+    midisProv[id] = r.ok ? await r.json() : {error: `HTTP ${r.status}`};
+  } catch (e) {
+    midisProv[id] = {error: e.message};
+  }
+  const node = document.querySelector(`[data-midis="${id}"]`);
+  if (node) node.outerHTML = midisBlock(id);       // solo si esa provincia sigue seleccionada
+}
+
+function midisBlock(id) {
+  const m = midisProv[id];
+  const head = `<p class="eyebrow">Contexto social · MIDIS · REDInforma</p>`;
+  if (!m || m.cargando) {
+    return `<div class="pdetail midis" data-midis="${id}">${head}
+      <p class="muted">Consultando distrito por distrito en REDInforma…</p></div>`;
+  }
+  if (m.error) {
+    return `<div class="pdetail midis">${head}<p class="muted">No disponible: ${esc(m.error)}</p></div>`;
+  }
+  const f = v => (v === null || v === undefined) ? "—" : Math.round(v).toLocaleString("es-PE");
+  const sh = (a, b) => (a && b) ? `${Math.round(a / b * 100)} %` : "—";
+  const R = m.resumen, D = m.distritos || [];
+  const prog = (m.programas || []).slice(0, 5);
+  return `<div class="pdetail midis">${head}
+    <h3>${esc(title(m.provincia || ""))} <span class="muted" style="font-weight:400">· ${m.n_con_datos} de ${m.n_distritos} distritos</span></h3>
+    <dl>
+      <dt>Población</dt><dd class="num"><b>${f(R.poblacion_total)}</b> · 0-5 años ${f(R.pob_0_5)} · 65+ ${f(R.pob_65_mas)}</dd>
+      <dt>Viviendas</dt><dd class="num">${f(R.viviendas_total)} · agua ${sh(R.viv_agua, R.viviendas_total)} · luz ${sh(R.viv_electricidad, R.viviendas_total)} · saneamiento ${sh(R.viv_saneamiento, R.viviendas_total)}</dd>
+      <dt>Servicios</dt><dd class="num">${f(R.ee_salud)} establecimientos de salud · ${f(R.iiee)} II.EE.</dd>
+      ${m.pobreza ? `<dt>Pobreza</dt><dd class="num">${m.pobreza.min} %–${m.pobreza.max} % según el distrito <span class="muted">(mayor: ${esc(title(m.pobreza.mayor.distrito))})</span></dd>` : ""}
+    </dl>
+    ${prog.length ? `<table class="mini"><thead><tr><th>Programa social</th><th class="num">Usuarios</th></tr></thead><tbody>
+      ${prog.map(p => `<tr><td>${esc(p.programa)}</td><td class="num">${f(p.valor)}</td></tr>`).join("")}</tbody></table>` : ""}
+    ${D.length ? `<details><summary>Ver los ${D.length} distritos</summary>
+      <table class="mini"><thead><tr><th>Distrito</th><th class="num">Población</th><th class="num">0-5</th><th class="num">Agua</th><th class="num">Pobreza</th></tr></thead><tbody>
+      ${D.map(x => `<tr><td>${esc(title(x.distrito || ""))}</td><td class="num">${f(x.poblacion_total)}</td><td class="num">${f(x.pob_0_5)}</td><td class="num">${sh(x.viv_agua, x.viviendas_total)}</td><td class="num">${x.pobreza_pct == null ? "—" : x.pobreza_pct + " %"}</td></tr>`).join("")}
+      </tbody></table></details>` : ""}
+    <p class="note">Totales sumando distritos; los porcentajes y tasas no se suman. Datos de 2017-2021.
+      <a href="${esc(m.enlace)}" target="_blank" rel="noopener">Ver en REDInforma</a> ·
+      <a href="/api/midis/provincia/${id}" target="_blank" rel="noopener">JSON</a></p></div>`;
+}
+
 function showProvince() {   // lleva el bloque de la provincia al tope del panel lateral (sin mover la página)
   const side = $("#side"), el = $("#pdetail");
   if (side && el) side.scrollTo({top: el.offsetTop - side.offsetTop - 8, behavior: reduceMotion ? "auto" : "smooth"});
@@ -351,6 +402,7 @@ function renderRail() {
     html += `<div><p class="eyebrow">${uvDays[state.uvDay] ? fmtDay(uvDays[state.uvDay]) : ""} · pronóstico</p><h3>Índice UV más alto</h3><ul class="alist">${top.map(([c, u]) => `<li><span class="lvl" style="background:${uvColor(u.v[state.uvDay])};color:${u.v[state.uvDay] >= 8 ? "#fff" : "#15140F"}">${u.v[state.uvDay]}</span><span class="t">${title(pn[c]?.n)} <span class="muted mono">${c}</span></span><span class="s">${title(pn[c]?.d)} · pico ${u.h[state.uvDay]}</span></li>`).join("")}</ul></div>`;
   }
   const sel = state.sel && V.geo.provs.features.find(f => f.properties.id === state.sel);
+
   if (sel) {
     const p = sel.properties, c = (V.levelsByDay[state.day] || {})[p.id], u = V.uv[p.id];
     const ind = V.indeci.filter(i => i.prov === p.id), al = V.alertas.filter(a => String(a.ubigeo || "").startsWith(p.id));
@@ -366,10 +418,12 @@ function renderRail() {
       <dt>Incendios</dt><dd>${al.length ? d3.rollups(al, v => v.length, a => a.estado).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") : "—"}</dd>
       <dt>Zonas críticas</dt><dd>${zn.length || "—"}</dd>
       <dt>Daños ${D.danos?.dias || 7} días</dt><dd>${D.danos?.por_prov?.[p.id] ? `${danosChips(D.danos.por_prov[p.id].totales, 4)} <span class="muted">(${D.danos.por_prov[p.id].n_eventos} eventos)</span>` : "—"}</dd></dl>
+      ${midisBlock(p.id)}
       ${sidpolBlock(p.id)}
       <button type="button" class="zbtn" data-dep="${p.id.slice(0, 2)}">Acercar a ${title(p.d)}</button></div>`;
   } else provHtml = `<p class="note">Seleccione una provincia en el mapa para ver lo que dice cada fuente sobre ella y exportar su ficha en PDF.</p>`;
   $("#rail").innerHTML = provHtml + html;
+  $("#rail").querySelectorAll("[data-midis]").forEach(n => loadMidis(n.dataset.midis));
   $("#rail").querySelectorAll("[data-aviso]").forEach(el => {
     const go = e => { e.preventDefault(); openDetail({source: "senamhi_avisos", kind: "aviso", key: el.dataset.aviso}); };
     el.addEventListener("click", go);
