@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import config, db, detail, ficha, geo, latest, runner, sat, snapshot
-from .sources import SOURCES
+from .sources import SOURCES, midis
 
 app = FastAPI(title="Mesa de Acción · Colector", version="0.1")
 (config.DATA / "media").mkdir(parents=True, exist_ok=True)
@@ -149,3 +149,25 @@ def provincia(ubigeo: str):
         "denuncias_sidpol": ({"meses": d["sidpol"]["months"], "por_modalidad": d["sidpol"]["provs"].get(ubigeo)}
                              if d.get("sidpol") else None),
     }
+
+
+@app.get("/api/midis/distrito/{ubigeo}")
+def midis_distrito(ubigeo: str, fresh: bool = False):
+    """Contexto social del distrito (MIDIS · REDInforma). Se pide a MIDIS bajo demanda y se cachea 30 días."""
+    try:
+        return midis.distrito(ubigeo, fresh=fresh)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+
+
+@app.get("/api/midis/region/{code}")
+def midis_region(code: str, fresh: bool = False):
+    """Indicadores regionales del reporte «Mi Región» (MIDIS · REDInforma)."""
+    return midis.region(code, fresh=fresh)
+
+
+@app.get("/api/midis/distritos")
+def midis_distritos(prov: str | None = None, limit: int = Query(2000, le=5000)):
+    """Catálogo de distritos recogido de REDInforma; `prov` filtra por ubigeo provincial de 4 dígitos."""
+    rows = db.get_items("midis", "distrito", limit=limit, order="key")
+    return [r for r in rows if not prov or r.get("prov") == prov]

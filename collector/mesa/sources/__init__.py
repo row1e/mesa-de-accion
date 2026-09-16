@@ -1,5 +1,5 @@
 """Registro de fuentes: id → (función, etiqueta, institución, acceso, nivel geográfico, qué había en la hoja)."""
-from . import gobpe, others, senamhi
+from . import gobpe, midis, others, senamhi
 
 SOURCES = {
     "senamhi_avisos": dict(fn=senamhi.avisos, org="SENAMHI", name="Avisos meteorológicos", via="HTML + WFS GeoServer",
@@ -34,6 +34,9 @@ SOURCES = {
                          geo="Sin ubicación (texto)", sheet="No existía"),
     "sidpol": dict(fn=gobpe.sidpol, org="PNP · MININTER", name="Denuncias policiales (SIDPOL)", via="CSV datos abiertos",
                    geo="Distrito → provincia", sheet="No existía"),
+    "midis": dict(fn=midis.catalogo, org="MIDIS · REDInforma", name="Catálogo de distritos (contexto social)",
+                  via="JSON no documentado (el mismo que usa el sitio)", geo="Distrito (ubigeo de 6 dígitos)",
+                  sheet="No existía"),
     "respaldo": dict(fn=lambda: __import__("mesa.backup", fromlist=["run"]).run(), org="Colector", name="Respaldo de datos",
                      via="Carpeta de MESA_BACKUP", geo="—", sheet="—", internal=True),
     "provias": dict(fn=others.provias, org="PROVIAS Nacional", name="Servidor de emergencias viales", via="—", geo="Provincia/distrito (hoja)",

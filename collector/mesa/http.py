@@ -49,13 +49,22 @@ def _quote(url):
     return urllib.parse.quote(url, safe=":/?&=%#+,;@~")  # INDECI usa "N.º" y tildes en rutas de PDF
 
 
-def fetch(source, url, *, name=None, method="GET", timeout=60, retries=2, keep_raw=True):
-    """Devuelve bytes. Registra la petición; guarda el cuerpo en data/raw/<source>/<fecha>/ si su hash es nuevo."""
+def fetch(source, url, *, name=None, method="GET", timeout=60, retries=2, keep_raw=True,
+          data=None, headers=None, key=None):
+    """Devuelve bytes. Registra la petición; guarda el cuerpo en data/raw/<source>/<fecha>/ si su hash es nuevo.
+
+    `data` y `headers` permiten POST con cuerpo (lo exige el JSON de REDInforma de MIDIS).
+    `key` identifica la petición en `fetches`: en un POST la misma URL devuelve algo distinto
+    según el cuerpo, así que se le pasa algo que los distinga para que el archivado por hash
+    no confunda dos respuestas diferentes. En GET queda igual que antes (la propia URL).
+    """
     url = _quote(url)
+    ident = key or url
     started, last_err, status, body = time.time(), None, None, None
+    hdrs = {"User-Agent": config.USER_AGENT, **(headers or {})}
     for attempt in range(retries + 1):
         try:
-            req = urllib.request.Request(url, method=method, headers={"User-Agent": config.USER_AGENT})
+            req = urllib.request.Request(url, data=data, method=method, headers=hdrs)
             with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as r:
                 status, body = r.status, r.read()
             break
@@ -71,7 +80,7 @@ def fetch(source, url, *, name=None, method="GET", timeout=60, retries=2, keep_r
     changed, path = None, None
     if body is not None and keep_raw:
         prev = db.conn().execute("SELECT sha256 FROM fetches WHERE source=? AND url=? AND sha256 IS NOT NULL "
-                                 "ORDER BY started_at DESC LIMIT 1", (source, url)).fetchone()
+                                 "ORDER BY started_at DESC LIMIT 1", (source, ident)).fetchone()
         changed = int(not prev or prev["sha256"] != sha)
         if changed:
             day = time.strftime("%Y-%m-%d", time.localtime(started))
@@ -87,7 +96,7 @@ def fetch(source, url, *, name=None, method="GET", timeout=60, retries=2, keep_r
     db.conn().execute(
         "INSERT INTO fetches(source,url,started_at,duration_ms,http_status,bytes,sha256,changed,path,error) "
         "VALUES(?,?,?,?,?,?,?,?,?,?)",
-        (source, url, started, dur, status, len(body) if body is not None else None, sha, changed, path,
+        (source, ident, started, dur, status, len(body) if body is not None else None, sha, changed, path,
          None if body is not None else last_err))
     if body is None:
         raise FetchError(f"{url}: {last_err}")
