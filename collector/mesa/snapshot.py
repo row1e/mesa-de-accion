@@ -297,7 +297,12 @@ def build():
                 seen_sha.add(f.get("sha"))
                 fotos_dia.append({"url": f["url"], "w": f["w"], "h": f["h"], "caption": f.get("caption"), "fecha": f.get("fecha"),
                                   "key": i["_key"], "reg": i.get("reg"), "evento": i.get("evento"), "distrito": i.get("distrito"),
-                                  "dpto": i.get("dpto"), "num": i.get("num"), "tipo": i.get("tipo")})
+                                  "dpto": i.get("dpto"), "num": i.get("num"), "tipo": i.get("tipo"),
+                                  "provincia": i.get("provincia"), "ts": i.get("ts")})
+        # El pie de foto trae la fecha en que se tomó la imagen, que puede ser de semanas atrás
+        # (un reporte complementario de hoy sobre un evento de agosto). Lo que ordena la tira es
+        # cuándo llegó el reporte, no esa fecha; se ordena aquí y no se confía en el recorrido.
+        fotos_dia.sort(key=lambda f: f.get("ts") or 0, reverse=True)
 
         data = {
             "live": True, "snapshot": today, "built": datetime.datetime.now(LIMA).strftime("%Y-%m-%d %H:%M"),

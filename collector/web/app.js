@@ -741,16 +741,22 @@ addEventListener("keydown", e => {
   if (e.key === "Escape") { e.stopImmediatePropagation(); closeLightbox(); }
   if (e.key === "ArrowRight" || e.key === "ArrowLeft") { LB.i = (LB.i + (e.key === "ArrowRight" ? 1 : -1) + LB.list.length) % LB.list.length; lbShow(); }
 }, true);
-const phHtml = (f, i, {reg = false} = {}) => `<button type="button" class="ph" data-i="${i}" aria-label="Ampliar: ${esc(fotoTitle(f))}">
-  ${reg && f.reg ? `<span class="reg">${esc(regName(f.reg))}</span>` : ""}<img src="${esc(f.url)}" alt="" loading="lazy">
-  <span class="cap"><b>${esc(fotoTitle(f))}</b>${esc([f.fecha, f.tipo && f.num ? `${title(f.tipo)} N° ${f.num}` : ""].filter(Boolean).join(" · "))}</span></button>`;
+/* `when` marca cuándo llegó el reporte: es lo que ordena la tira. La fecha del pie de foto es
+   otra cosa (cuándo se tomó la imagen) y por eso se rotula aparte, para que una foto de agosto
+   en un reporte de hoy no parezca contenido viejo. */
+const phHtml = (f, i, {reg = false, when = false} = {}) => `<button type="button" class="ph" data-i="${i}" aria-label="Ampliar: ${esc(fotoTitle(f))}">
+  ${reg && f.reg ? `<span class="reg">${esc(regName(f.reg))}</span>` : ""}${when && f.ts ? `<span class="when">${esc(ago(f.ts))}</span>` : ""}<img src="${esc(f.url)}" alt="" loading="lazy">
+  <span class="cap"><b>${esc(fotoTitle(f))}</b>
+    ${[f.dpto && title(f.dpto), f.tipo && f.num ? `${title(f.tipo)} N° ${f.num}` : ""].filter(Boolean).length ? `<span class="meta">${esc([f.dpto && title(f.dpto), f.tipo && f.num ? `${title(f.tipo)} N° ${f.num}` : ""].filter(Boolean).join(" · "))}</span>` : ""}
+    ${f.fecha ? `<span class="shot">Foto tomada el ${esc(f.fecha)}</span>` : ""}</span></button>`;
 function renderStrip() {
   const F = V.fotosDia || [];
-  $("#ind-strip").innerHTML = F.map((f, i) => phHtml(f, i, {reg: !state.region})).join("")
+  $("#ind-strip").innerHTML = F.map((f, i) => phHtml(f, i, {reg: !state.region, when: true})).join("")
     || `<p class="muted" style="margin:0">${state.region ? `Sin fotos de campo de ${esc(regName(state.region))} en las últimas ${V.indeciWindowH} h.` : "Aún no hay fotos procesadas."}</p>`;
   $("#ind-strip").onclick = e => { const b = e.target.closest(".ph"); if (b) openLightbox(F, +b.dataset.i); };
   const pend = V.indeci.filter(i => i.clase === "reporte" && i.fotos == null).length;
-  $("#strip-note").textContent = `${F.length} fotos de ${new Set(F.map(f => f.key)).size} reportes · extraídas del anexo de cada PDF${pend ? ` · ${pend} reportes aún en cola` : ""}. Crédito: INDECI / COER.`;
+  $("#strip-note").textContent = `${F.length} fotos de ${new Set(F.map(f => f.key)).size} reportes, de lo más reciente a lo más antiguo por llegada del reporte`
+    + ` · la fecha bajo cada foto es cuándo se tomó, que puede ser muy anterior${pend ? ` · ${pend} reportes aún en cola` : ""}. Crédito: INDECI / COER.`;
 }
 
 /* ── vista satelital (NASA GIBS vía el colector) ─────────────────── */
