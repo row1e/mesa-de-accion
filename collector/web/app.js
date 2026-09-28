@@ -579,7 +579,7 @@ function renderIndeci() {
   $("#feed").innerHTML = rows.map(i => {
     const hr = new Date(i.pub).toLocaleTimeString("es-PE", {hour: "2-digit", minute: "2-digit", timeZone: "America/Lima"});
     const isNew = i._first_seen && Date.now() / 1000 - i._first_seen < 1800;
-    if (i.clase === "reporte") return `<li><span class="hr">${hr}</span><div><div class="kind">${esc(title(i.tipo))} N° ${esc(i.num)}${i.seq ? ` · reporte ${esc(i.seq)}` : ""}${i.fotos ? `<span class="fcount">${i.fotos} foto${i.fotos > 1 ? "s" : ""}</span>` : ""}${isNew ? ` <span class="new">nuevo</span>` : ""}</div><div class="ev"><a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(title(i.evento))}</a>${danosChips(i.danos)}</div><div class="loc">${esc(title(i.distrito))}${i.provincia ? ", " + esc(title(i.provincia)) : ""} · ${esc(title(i.dpto))}${i.prov ? ` <span class="mono muted">${i.prov}</span>` : ""}</div></div></li>`;
+    if (i.clase === "reporte") return `<li><span class="hr">${hr}</span><div><div class="kind">${esc(title(i.tipo))} N° ${esc(i.num)}${i.seq ? ` · reporte ${esc(i.seq)}` : ""}${i.fotos ? `<span class="fcount">${i.fotos} foto${i.fotos > 1 ? "s" : ""}</span>` : ""}${isNew ? ` <span class="new">nuevo</span>` : ""}${i.seguimiento ? `<span class="segchip">Seguimiento · ocurrió ${esc(fmtDay(i.ocurrencia))}</span>` : ""}</div><div class="ev"><a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(title(i.evento))}</a>${danosChips(i.danos)}</div><div class="loc">${esc(title(i.distrito))}${i.provincia ? ", " + esc(title(i.provincia)) : ""} · ${esc(title(i.dpto))}${i.prov ? ` <span class="mono muted">${i.prov}</span>` : ""}</div></div></li>`;
     return `<li><span class="hr">${hr}</span><div><div class="kind">${esc(kinds[i.clase] || i.clase)}${isNew ? ` <span class="new">nuevo</span>` : ""}</div><div class="loc"><a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.titulo)}</a></div></div></li>`;
   }).join("") || `<li class="muted">Sin ítems en la ventana.</li>`;
   const rep = V.indeci.filter(i => i.clase === "reporte");
@@ -675,10 +675,12 @@ async function loadLatest(append = false) {
   if (state.latSource) q.set("source", state.latSource);
   if (state.region) q.set("region", state.region);
   if (append && LAT.next) q.set("before", LAT.next);
+  q.set("seguimientos", state.latSeg ? "true" : "false");
   try {
     const d = await (await fetch(`/api/latest?${q}`, {cache: "no-store"})).json();
     if (n !== LAT.req) return;
     LAT.rows = append ? LAT.rows.concat(d.rows) : d.rows; LAT.counts = d.counts24h || {}; LAT.more = d.more; LAT.next = d.next_before;
+    LAT.ocultos = (append ? LAT.ocultos || 0 : 0) + (d.seguimientos_ocultos || 0);
     renderLatest();
   } catch { $("#latest").innerHTML = `<li class="empty">El colector no respondió.</li>`; }
 }
@@ -701,11 +703,16 @@ function renderLatest() {
   $("#latest").innerHTML = LAT.rows.map((r, i) => `<li><button type="button" class="row ${r.detail || r.group ? "" : "nod"}" data-i="${i}">
       <span class="rt">${ago(r.received)}<small>${new Date(r.received * 1000).toLocaleString("es-PE", {timeZone: "America/Lima", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"})}</small></span>
       <span class="src">${esc(SHORT[r.source] || r.source)}${r.imagen ? `<img class="lthumb" src="${esc(r.imagen)}" alt="" loading="lazy">` : ""}</span>
-      <span class="body"><span class="tt">${r.level ? lvlChip(r.level) : ""}${esc(r.title)}${danosChips(r.danos)}${r.backfill ? `<span class="bf" title="Llegó en la carga inicial del colector: es histórico, no nuevo">carga inicial</span>` : ""}</span>
+      <span class="body"><span class="tt">${r.level ? lvlChip(r.level) : ""}${esc(r.title)}${danosChips(r.danos)}${r.backfill ? `<span class="bf" title="Llegó en la carga inicial del colector: es histórico, no nuevo">carga inicial</span>` : ""}${r.seguimiento ? `<span class="segchip" title="Reporte nuevo sobre un evento que ocurrió hace ${r.dias_desde_evento} días">Seguimiento · evento de hace ${r.dias_desde_evento} días</span>` : ""}</span>
         ${r.subtitle ? `<span class="ss" style="display:block">${esc(r.subtitle)}</span>` : ""}
-        <span class="mm" style="display:block">${[r.place, r.event_time && `${r.kind === "noticia" || r.kind === "comunicado" ? "publicado" : r.kind === "aviso" ? "emitido" : "ocurrido"} ${fmtEvent(r.event_time)}`, r.group ? "ver cada uno →" : ""].filter(Boolean).map(esc).join(" · ")}</span></span></button></li>`).join("")
+        <span class="mm" style="display:block">${[r.place, r.event_time && `${r.kind === "noticia" || r.kind === "comunicado" ? "publicado" : r.kind === "aviso" ? "emitido" : "ocurrido"} ${fmtEvent(r.event_time)}`, r.ocurrencia && r.reportado ? `reportado ${fmtEvent(r.reportado)}` : "", r.group ? "ver cada uno →" : ""].filter(Boolean).map(esc).join(" · ")}</span></span></button></li>`).join("")
     || `<li class="empty">${state.latSource === "provias" ? "El servidor de emergencias viales de PROVIAS no acepta conexión. Sus notas de prensa llegan por “PROVIAS notas”." : `Sin registros en los últimos 7 días${state.region ? ` para ${esc(regName(state.region))}` : ""}.`}</li>`;
   $("#lat-more").hidden = !LAT.more;
+  const soloIndeci = !state.latSource || state.latSource === "indeci";
+  $("#lat-seg").hidden = !soloIndeci;
+  $("#lat-seg").innerHTML = `<label><input type="checkbox" id="lat-seg-cb" ${state.latSeg ? "checked" : ""}> Incluir seguimientos de eventos antiguos</label>
+    <span class="muted">${state.latSeg ? "Se muestran marcados como «Seguimiento»." : LAT.ocultos ? `${LAT.ocultos} reporte${LAT.ocultos > 1 ? "s" : ""} INDECI oculto${LAT.ocultos > 1 ? "s" : ""}: siguen eventos ocurridos hace más de 7 días.` : ""}</span>`;
+  $("#lat-seg-cb").onchange = e => { state.latSeg = e.target.checked; loadLatest(); };
 }
 $("#lat-src").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setLatSource(b.dataset.src); });
 $("#lat-head").addEventListener("click", e => { const b = e.target.closest(".rbtn"); if (b) { refresh(b.dataset.src, b); setTimeout(() => loadLatest(), 6000); } });

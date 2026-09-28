@@ -290,6 +290,9 @@ def build():
         fotos_dia, seen_sha = [], set()
         for i in indeci:   # ya ordenado del más nuevo al más viejo
             rec = pdfs.get(i["_key"])
+            oc = _fecha_ocurrencia(rec) if rec else None
+            i["ocurrencia"] = oc
+            i["seguimiento"] = bool(oc and i.get("ts")) and (datetime.date.fromtimestamp(i["ts"]) - datetime.date.fromisoformat(oc)).days > 7
             i["fotos"] = len(rec.get("fotos", [])) if rec else None      # None = PDF aún no procesado
             for f in (rec or {}).get("fotos", []):
                 if f.get("sha") in seen_sha:

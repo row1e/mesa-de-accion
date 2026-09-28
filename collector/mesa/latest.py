@@ -17,6 +17,17 @@ from .sources import SOURCES
 LEVEL = {"AMARILLO": 2, "NARANJA": 3, "ROJO": 4}
 BULK = {("serfor", "foco"): ("foco de calor nuevo", "focos de calor nuevos"),
         ("firms", "deteccion"): ("detección satelital nueva", "detecciones satelitales nuevas")}
+# Un reporte INDECI sobre un evento ocurrido más de estos días antes es un SEGUIMIENTO, no una emergencia
+# nueva: INDECI sigue publicando complementarios de eventos de hace meses (31 % de los reportes de una
+# semana típica). Mismo umbral que la ventana de "nuevos" del panel de daños.
+SEGUIMIENTO_DIAS = 7
+
+
+def _ocurrencia(rec):
+    from .snapshot import _fecha_ocurrencia   # import local: snapshot importa este módulo
+    return _fecha_ocurrencia(rec) if rec else None
+
+
 FEED_KINDS = [("senamhi_avisos", "aviso"), ("senamhi_hidro", "aviso_estacion"), ("indeci", "item"), ("igp", "sismo"),
               ("serfor", "alerta"), ("serfor", "foco"), ("ingemmet", "zona_alerta"), ("enfen", "comunicado"),
               ("com_pnp", "noticia"), ("com_provias", "noticia"), ("com_mtc", "noticia"), ("com_mininter", "noticia"),
@@ -61,9 +72,15 @@ def summarize(source, kind, it):
         rep = it.get("clase") == "reporte"
         rec = db.get_item("indeci", "reporte_pdf", it["_key"]) if rep else None
         base["danos"] = ((rec or {}).get("danos") or {}).get("totales") or None
+        reportado = datetime.datetime.fromtimestamp(it["ts"]).isoformat(timespec="minutes") if it.get("ts") else it.get("pub")
+        oc = _ocurrencia(rec) if rep else None
+        dias = (datetime.date.fromtimestamp(it["ts"]) - datetime.date.fromisoformat(oc)).days if oc and it.get("ts") else None
+        base |= {"ocurrencia": oc, "reportado": reportado, "dias_desde_evento": dias,
+                 "seguimiento": dias is not None and dias > SEGUIMIENTO_DIAS}
         return base | {"title": f"{_t(it.get('evento'))} — {_t(it.get('distrito'))}" if rep else it.get("titulo"),
                        "subtitle": f"{_t(it.get('tipo'))} N° {it.get('num')}" + (f" · reporte {it['seq']}" if it.get("seq") else "") if rep else "Boletín",
-                       "event_time": datetime.datetime.fromtimestamp(it["ts"]).isoformat(timespec="minutes") if it.get("ts") else it.get("pub"),
+                       # "ocurrido" es la fecha del evento según el PDF; la hora del reporte va aparte
+                       "event_time": oc or reportado,
                        "place": f"{_t(it.get('provincia'))} · {_t(it.get('dpto'))}" if rep else None,
                        "reg": (it["prov"][:2] if it.get("prov") else None) or (rc(re.split(r"\s*[–-]\s*", it.get("dpto") or "")[-1]) if rep else None)}
     if kind == "sismo":
@@ -104,12 +121,12 @@ def _in_region(row, region):
     return not region or row.get("reg") == region or region in (row.get("regs") or [])
 
 
-def feed(source=None, region=None, limit=60, before=None, days=7):
+def feed(source=None, region=None, limit=60, before=None, days=7, seguimientos=True):
     """Filas más recientes. `before` = received del último elemento de la página anterior (paginación)."""
     import time
     since = time.time() - days * 86400
     kinds = [(s, k) for s, k in FEED_KINDS if not source or s == source]
-    rows = []
+    rows, ocultos = [], 0
     for s, k in kinds:
         q = "SELECT key, first_seen, last_seen, current, payload FROM items WHERE source=? AND kind=? AND first_seen>=?"
         args = [s, k, since]
@@ -123,8 +140,12 @@ def feed(source=None, region=None, limit=60, before=None, days=7):
             it = {**json.loads(r["payload"]), "_key": r["key"], "_first_seen": r["first_seen"], "_last_seen": r["last_seen"], "_current": r["current"]}
             row = summarize(s, k, it)
             row["backfill"] = r["first_seen"] < first + BACKFILL_WINDOW   # llegó en la carga inicial de la fuente (histórico)
-            if _in_region(row, region):
-                rows.append(row)
+            if not _in_region(row, region):
+                continue
+            if not seguimientos and row.get("seguimiento"):
+                ocultos += 1
+                continue
+            rows.append(row)
 
     # agrupar masivos por lectura cuando no se filtra por esa fuente
     if not source:
@@ -167,20 +188,22 @@ def feed(source=None, region=None, limit=60, before=None, days=7):
     rows.sort(key=lambda r: (r["received"], r.get("event_time") or ""), reverse=True)
     page = rows[:limit]
     return {"rows": page, "more": len(rows) > limit, "next_before": page[-1]["received"] if len(rows) > limit and page else None,
+            "seguimientos_ocultos": ocultos,
             "sources": {sid: {"org": m["org"], "name": m["name"]} for sid, m in SOURCES.items()}}
 
 
-def counts(region=None, hours=24):
+def counts(region=None, hours=24, seguimientos=True):
     """Registros nuevos por fuente en las últimas `hours` horas (para los filtros)."""
     import time
     since = time.time() - hours * 3600
     out = {}
     for s, k in FEED_KINDS:
         since_k = max(since, _first_batch(s, k) + BACKFILL_WINDOW)   # la carga inicial no cuenta como "nuevo"
-        if region:
-            n = sum(1 for r in db.conn().execute("SELECT key, first_seen, last_seen, current, payload FROM items WHERE source=? AND kind=? AND first_seen>=?", (s, k, since_k))
-                    if _in_region(summarize(s, k, {**json.loads(r["payload"]), "_key": r["key"], "_first_seen": r["first_seen"],
-                                                   "_last_seen": r["last_seen"], "_current": r["current"]}), region))
+        if region or (not seguimientos and s == "indeci"):
+            filas = (summarize(s, k, {**json.loads(r["payload"]), "_key": r["key"], "_first_seen": r["first_seen"],
+                                      "_last_seen": r["last_seen"], "_current": r["current"]})
+                     for r in db.conn().execute("SELECT key, first_seen, last_seen, current, payload FROM items WHERE source=? AND kind=? AND first_seen>=?", (s, k, since_k)))
+            n = sum(1 for f in filas if _in_region(f, region) and (seguimientos or not f.get("seguimiento")))
         else:
             n = db.conn().execute("SELECT COUNT(*) FROM items WHERE source=? AND kind=? AND first_seen>=?", (s, k, since_k)).fetchone()[0]
         out[s] = out.get(s, 0) + n

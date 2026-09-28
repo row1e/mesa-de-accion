@@ -399,6 +399,12 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 body.filtered .regbar{background:#2A2418}
 
 
+
+/* seguimientos: reportes nuevos sobre eventos antiguos */
+.lat-seg{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:13px;color:var(--ink-2);padding:8px 2px 2px}
+.lat-seg label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.segchip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;border-radius:2px;padding:0 6px;margin-left:6px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line);vertical-align:1px;white-space:nowrap}
+
 /* asistente de IA */
 .ia-top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
 .ia-top .filters{margin:0}
@@ -540,6 +546,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <p class="lede">Lo que fue llegando al colector, del más reciente al más antiguo. “Recibido” es cuándo lo recibimos; la otra fecha es la que le da la fuente (ocurrencia, emisión o publicación). Elija una fuente para ver solo lo suyo y su estado.</p>
     <div class="panel latest-panel">
       <div class="srcf" id="lat-src" role="tablist" aria-label="Filtrar por fuente"></div>
+      <div class="lat-seg" id="lat-seg"></div>
       <div class="lat-head" id="lat-head" hidden></div>
       <ol class="latest" id="latest"></ol>
       <button type="button" class="more" id="lat-more" hidden>Cargar más antiguos</button>

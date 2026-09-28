@@ -96,12 +96,13 @@ def get_detail(source: str, kind: str, key: str, fresh: bool = False):
 
 @app.get("/api/latest")
 def get_latest(source: str | None = None, region: str | None = None, limit: int = Query(60, le=300),
-               before: float | None = None, days: int = Query(7, le=60)):
+               before: float | None = None, days: int = Query(7, le=60), seguimientos: bool = False):
     """Últimos registros recibidos (todas las fuentes o una), opcionalmente por región; paginar con `before`."""
     if source and source not in SOURCES:
         raise HTTPException(404, f"fuente desconocida: {source}")
-    data = latest.feed(source=source, region=region, limit=limit, before=before, days=days)
-    data["counts24h"] = latest.counts(region=region)
+    # Por defecto no se muestran los reportes INDECI que siguen eventos ocurridos hace más de una semana.
+    data = latest.feed(source=source, region=region, limit=limit, before=before, days=days, seguimientos=seguimientos)
+    data["counts24h"] = latest.counts(region=region, seguimientos=seguimientos)
     return data
 
 
