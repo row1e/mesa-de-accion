@@ -602,9 +602,17 @@ function renderSismos() {
   s.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(0).tickPadding(6).tickFormat(d => "M" + d)).select(".domain").remove();
   s.append("g").selectAll("circle").data(V.sismos).join("circle").attr("cx", d => x(new Date(d[0] + "T" + d[1]))).attr("cy", d => y(d[2]))
     .attr("r", d => Math.max(1.6, (d[2] - 2.5) * 1.8)).attr("fill", css("--sismo")).attr("fill-opacity", .28).attr("stroke", css("--sismo")).attr("stroke-width", .8)
-    .on("mousemove", (e, d) => showTip(e, `<b>M${d[2]}</b> · ${fmtDay(d[0])} ${d[1]}<br>${esc(d[6])}`)).on("mouseleave", hideTip);
-  s.append("g").selectAll("text").data(V.sismos.filter(d => d[2] >= 6)).join("text").attr("x", d => x(new Date(d[0] + "T" + d[1]))).attr("y", d => y(d[2]) - 12).attr("text-anchor", "middle").style("font-weight", 600).text(d => "M" + d[2]);
-  $("#sismos").innerHTML = V.sismos.filter(d => d[2] >= 5).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1])).map(d => `<tr><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num"><b>${d[2]}</b></td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("");
+    .style("cursor", "pointer")
+    .on("mousemove", (e, d) => showTip(e, `<b>M${d[2]}</b> · ${fmtDay(d[0])} ${d[1]}<br>${esc(d[6])}<br><span style="opacity:.7">Clic para ver la ficha completa</span>`)).on("mouseleave", hideTip)
+    .on("click", (e, d) => { hideTip(); openDetail({source: "igp", kind: "sismo", key: d[8]}); });
+  // las etiquetas M6+ quedan encima de los puntos: que no se coman el clic
+  s.append("g").style("pointer-events", "none").selectAll("text").data(V.sismos.filter(d => d[2] >= 6)).join("text").attr("x", d => x(new Date(d[0] + "T" + d[1]))).attr("y", d => y(d[2]) - 12).attr("text-anchor", "middle").style("font-weight", 600).text(d => "M" + d[2]);
+  $("#sismos").innerHTML = V.sismos.filter(d => d[2] >= 5).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1])).map(d => `<tr class="clk" tabindex="0" data-sismo="${esc(d[8])}" title="Ver la ficha completa"><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num"><b>${d[2]}</b></td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("");
+  $("#sismos").querySelectorAll("[data-sismo]").forEach(tr => {
+    const go = () => openDetail({source: "igp", kind: "sismo", key: tr.dataset.sismo});
+    tr.addEventListener("click", go);
+    tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  });
 }
 function renderSerfor() {
   const st = ["Alertado","Confirmado","Controlado","Extinguido"];
