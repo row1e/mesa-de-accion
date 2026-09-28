@@ -3,10 +3,11 @@ import json
 import time
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 
-from . import config, db, detail, ficha, geo, latest, runner, sat, snapshot
+from . import asistente, config, db, detail, ficha, geo, latest, runner, sat, snapshot
 from .sources import SOURCES, midis
 
 app = FastAPI(title="Mesa de Acción · Colector", version="0.1")
@@ -180,3 +181,83 @@ def midis_distritos(prov: str | None = None, limit: int = Query(2000, le=5000)):
     """Catálogo de distritos recogido de REDInforma; `prov` filtra por ubigeo provincial de 4 dígitos."""
     rows = db.get_items("midis", "distrito", limit=limit, order="key")
     return [r for r in rows if not prov or r.get("prov") == prov]
+
+
+# ── Asistente de IA (mesa/asistente.py) ─────────────────────────────────────
+class IAGenerar(BaseModel):
+    tipo: str
+    alcance: str = "registro"
+    source: str | None = None
+    kind: str | None = None
+    key: str | None = None
+    actor: str
+
+
+class IAPieza(BaseModel):
+    etiqueta: str
+    texto: str
+
+
+class IAEditar(BaseModel):
+    piezas: list[IAPieza]
+    actor: str
+
+
+class IAAccion(BaseModel):
+    actor: str
+    confirmar_cifras: bool = False
+    motivo: str | None = None
+
+
+def _ia(fn, *a, **kw):
+    try:
+        return fn(*a, **kw)
+    except asistente.IAError as e:
+        raise HTTPException(e.status, str(e)) from None
+
+
+@app.get("/api/ia/estado")
+def ia_estado():
+    return {"habilitado": asistente.habilitado(), "modelo": asistente.MODELO,
+            "tipos": {k: {"nombre": v[0], "alcances": sorted(v[1])} for k, v in asistente.TIPOS.items()}}
+
+
+@app.post("/api/ia/borradores")
+def ia_generar(b: IAGenerar, request: Request):
+    """Genera un borrador. Tarda lo que tarde el modelo (típicamente 10-60 s), con un reintento si falla la verificación."""
+    ref = {"source": b.source, "kind": b.kind, "key": b.key} if b.alcance == "registro" else None
+    if b.alcance == "registro" and not all(ref.values()):
+        raise HTTPException(400, "Falta source, kind o key del registro.")
+    return _ia(asistente.generar, b.tipo, b.alcance, ref, b.actor, request.client.host if request.client else None)
+
+
+@app.get("/api/ia/borradores")
+def ia_listar(estado: str | None = None, limit: int = Query(50, le=500)):
+    return asistente.listar(estado, limit)
+
+
+@app.get("/api/ia/borradores/{bid}")
+def ia_obtener(bid: int, dossier: bool = False):
+    """Borrador con su verificación y su auditoría completa; `dossier=true` agrega los datos que recibió el modelo."""
+    return _ia(asistente.obtener, bid, dossier)
+
+
+@app.post("/api/ia/borradores/{bid}/editar")
+def ia_editar(bid: int, b: IAEditar, request: Request):
+    return _ia(asistente.editar, bid, [p.model_dump() for p in b.piezas], b.actor, request.client.host if request.client else None)
+
+
+@app.post("/api/ia/borradores/{bid}/aprobar")
+def ia_aprobar(bid: int, b: IAAccion, request: Request):
+    return _ia(asistente.aprobar, bid, b.actor, b.confirmar_cifras, request.client.host if request.client else None)
+
+
+@app.post("/api/ia/borradores/{bid}/descartar")
+def ia_descartar(bid: int, b: IAAccion, request: Request):
+    return _ia(asistente.descartar, bid, b.actor, b.motivo, request.client.host if request.client else None)
+
+
+@app.post("/api/ia/borradores/{bid}/texto", response_class=PlainTextResponse)
+def ia_texto(bid: int, b: IAAccion, request: Request):
+    """Texto final con la línea de fuente. Solo para borradores aprobados; cada entrega queda registrada."""
+    return _ia(asistente.texto_final, bid, b.actor, request.client.host if request.client else None)

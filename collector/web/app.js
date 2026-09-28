@@ -434,6 +434,7 @@ function renderDetail(d) {
       <button type="button" class="x" aria-label="Cerrar ficha">×</button></div>
     ${d.error ? `<div class="err">${esc(d.error)}. Se muestra el dato guardado.</div>` : ""}
     ${d.links?.length ? `<div class="links">${d.links.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}</div>` : ""}
+    ${iaBox({source: d.source, kind: d.kind, key: d.key})}
     <dl>${(d.facts || []).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(fmtVal(v))}</dd>`).join("")}</dl>
     ${d.text ? `<div class="body">${esc(d.text)}</div>` : ""}
     ${d.fotos?.length ? `<div><div class="gal">${d.fotos.map((f, i) => phHtml(f, i)).join("")}</div><p class="credit">${d.fotos.length} foto${d.fotos.length > 1 ? "s" : ""} del anexo fotográfico del reporte · Crédito: INDECI / COER</p></div>` : ""}
@@ -939,3 +940,151 @@ function renderAll() {
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });
 setInterval(poll, 15000);
 setInterval(() => H.length && renderHealth(), 30000);
+
+
+/* ── asistente de IA: borradores verificados ───────────────────────────
+   El servidor hace todo lo que importa (verificar cifras, bloquear, citar, exigir aprobación,
+   registrar). Aquí solo se muestra y se firma cada acción con el nombre de quien la hace. */
+const IA = {estado: null, filtro: "", borradores: []};
+const IA_ESTADOS = {borrador: "Por revisar", aprobado: "Aprobado", bloqueado: "Bloqueado", descartado: "Descartado"};
+const iaActor = () => { try { return localStorage.getItem("mesa.firma") || ""; } catch { return ""; } };
+function iaPedirFirma() {
+  const n = (prompt("¿Con qué nombre firma? Cada acción del asistente queda registrada a su nombre.", iaActor()) || "").trim();
+  if (n) { try { localStorage.setItem("mesa.firma", n); } catch { /* sin almacenamiento: se pedirá de nuevo */ } }
+  iaFirma();
+  return n;
+}
+const iaFirmado = () => iaActor() || iaPedirFirma();
+function iaFirma() {
+  const a = iaActor();
+  $("#ia-firma").innerHTML = a ? `Firmando como <b>${esc(a)}</b> · <button type="button" id="ia-cambiar">cambiar</button>` : `<button type="button" id="ia-cambiar">Indicar mi nombre</button>`;
+  $("#ia-cambiar").onclick = iaPedirFirma;
+}
+async function iaPost(url, body) {
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const txt = await r.text();
+  if (!r.ok) { let m = txt; try { m = JSON.parse(txt).detail || txt; } catch { /* texto plano */ } throw new Error(m); }
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+function iaBox(ref) {
+  const E = IA.estado;
+  if (!E) return "";
+  const tipos = Object.entries(E.tipos).filter(([, t]) => t.alcances.includes("registro"));
+  return `<div class="iabox" data-ref="${esc(JSON.stringify(ref))}"><span class="lbl">Redactar con IA · a partir de este registro</span>
+    <div class="btns">${tipos.map(([k, t]) => `<button type="button" class="iabtn sec" data-ia-gen="${k}" ${E.habilitado ? "" : "disabled"}>${esc(t.nombre)}</button>`).join("")}</div>
+    ${E.habilitado ? "" : `<span class="muted" style="font-size:12px">El asistente no está configurado en este servidor (falta la clave de la API de Claude).</span>`}</div>`;
+}
+async function iaGenerar(tipo, ref) {
+  const actor = iaFirmado(); if (!actor) return;
+  const box = $("#detail"), n = ++detailReq, nombre = IA.estado.tipos[tipo].nombre;
+  box.hidden = false; box.scrollTop = 0;
+  box.innerHTML = `<div class="dh"><div><div class="src-org">Asistente de IA · ${esc(nombre)}</div><h3>Redactando y verificando cifras…</h3></div><button type="button" class="x" aria-label="Cerrar ficha">×</button></div>
+    <p class="ia-wait">El modelo redacta solo con los datos de la fuente. Luego cada cifra se compara con esos datos; si alguna no coincide se reintenta una vez. Suele tardar entre 10 y 60 segundos.</p>`;
+  try {
+    const b = await iaPost("/api/ia/borradores", {tipo, alcance: ref ? "registro" : "briefing", ...(ref || {}), actor});
+    iaCargar();
+    if (n === detailReq) iaMostrar(b);
+  } catch (e) {
+    if (n === detailReq) box.innerHTML = `<div class="dh"><div><div class="src-org">Asistente de IA</div><h3>No se pudo redactar</h3></div><button type="button" class="x" aria-label="Cerrar ficha">×</button></div><div class="err">${esc(e.message)}</div>`;
+  }
+}
+const IA_ACC = {generado: "Generado", bloqueado: "Bloqueado por verificación", editado: "Editado", aprobado: "Aprobado", descartado: "Descartado", entregado: "Texto copiado", error: "Error"};
+function iaMostrar(b) {
+  const box = $("#detail"), V_ = b.verificacion || {}, edit = b.estado === "borrador";
+  const lim = {Titular: 90, "Zócalo": 60, X: 260};
+  const cif = (V_.cifras || []);
+  const ver = b.estado === "bloqueado"
+    ? `<div class="ia-ver mal"><b>Bloqueado: el texto no se entrega.</b> Tras dos intentos seguía teniendo cifras que no están en los datos de la fuente${V_.no_encontradas?.length ? `: <span class="cif">${V_.no_encontradas.map(esc).join(", ")}</span>` : ""}${V_.en_letras?.length ? `; números en letras: <span class="cif">${V_.en_letras.map(esc).join(", ")}</span>` : ""}. Descártelo y vuelva a intentarlo.</div>`
+    : V_.ok
+      ? `<div class="ia-ver"><b>Cifras verificadas.</b> ${cif.length === 1 ? "La cifra del texto está en los datos de la fuente." : cif.length ? `Las ${cif.length} cifras del texto están en los datos de la fuente.` : "El texto no contiene cifras."}</div>`
+      : `<div class="ia-ver mal"><b>Cifras sin respaldo en los datos</b> (introducidas al editar): <span class="cif">${[...(V_.no_encontradas || []), ...(V_.en_letras || [])].map(esc).join(", ")}</span>. Para aprobar tendrá que confirmarlo bajo su responsabilidad.</div>`;
+  box.hidden = false; box.scrollTop = 0; box.focus({preventScroll: true});
+  box.innerHTML = `<div class="dh"><div><div class="src-org">Asistente de IA · ${esc(b.tipo_nombre)} · <span class="iachip ${b.estado}">${IA_ESTADOS[b.estado]}</span></div>
+      <h3>${esc(b.titulo || "")}</h3><div class="sub">Borrador N° ${b.id} · pedido por ${esc(b.autor || "")} · ${when(b.creado)}${b.aprobado_por ? ` · aprobado por ${esc(b.aprobado_por)}` : ""}</div></div>
+      <button type="button" class="x" aria-label="Cerrar ficha">×</button></div>
+    ${ver}
+    ${V_.advertencia_modelo ? `<div class="err" style="background:var(--warn-bg);color:var(--warn)">Advertencia del modelo: ${esc(V_.advertencia_modelo)}</div>` : ""}
+    ${b.contenido ? b.contenido.map((pz, i) => `<div class="ia-pieza"><label for="iap${i}">${esc(pz.etiqueta)}</label>
+      <textarea id="iap${i}" data-et="${esc(pz.etiqueta)}" ${edit ? "" : "readonly"} rows="${Math.min(12, Math.max(2, Math.ceil(pz.texto.length / 70)))}">${esc(pz.texto)}</textarea>
+      <span class="len ${lim[pz.etiqueta] && pz.texto.length > lim[pz.etiqueta] ? "over" : ""}" data-max="${lim[pz.etiqueta] || ""}">${pz.texto.length}${lim[pz.etiqueta] ? ` / ${lim[pz.etiqueta]}` : ""} caracteres</span></div>`).join("") : ""}
+    <div class="ia-cita"><b>Fuente:</b> ${(b.cita || []).map(c => `${esc(c.institucion)} · ${esc(c.documento || "")}${c.hora_dato ? ` · ${esc(c.hora_dato)}` : ""}${c.url ? ` · <a href="${esc(c.url)}" target="_blank" rel="noopener">ver original</a>` : ""}`).join("<br>")}</div>
+    <div class="ia-acc">
+      ${edit ? `<button type="button" class="iabtn sec" data-ia-acc="editar">Guardar cambios</button><button type="button" class="iabtn ok" data-ia-acc="aprobar">Aprobar</button>` : ""}
+      ${b.estado === "aprobado" ? `<button type="button" class="iabtn ok" data-ia-acc="copiar">Copiar texto con fuente</button>` : ""}
+      ${["borrador", "bloqueado"].includes(b.estado) ? `<button type="button" class="iabtn bad" data-ia-acc="descartar">Descartar</button>` : ""}
+    </div>
+    <details class="ia-log"><summary>Registro de actividad (${b.auditoria.length})</summary><ol>${b.auditoria.map(a => `<li>${stamp(a.ts)} · <b>${esc(IA_ACC[a.accion] || a.accion)}</b> · ${esc(a.actor || "")}${a.detalle?.confirmado_por_editor ? " · confirmó cifras sin verificar: " + esc(a.detalle.cifras_no_verificadas.join(", ")) : ""}${a.detalle?.motivo ? " · " + esc(a.detalle.motivo) : ""}</li>`).join("")}</ol></details>
+    <details class="ia-log" data-ia-dossier><summary>Datos exactos que recibió el modelo</summary><pre>Cargando…</pre></details>`;
+  box.querySelectorAll(".ia-pieza textarea").forEach(t => t.addEventListener("input", () => {
+    const len = t.parentElement.querySelector(".len"), mx = +len.dataset.max || 0;
+    len.textContent = `${t.value.length}${mx ? ` / ${mx}` : ""} caracteres`; len.classList.toggle("over", !!mx && t.value.length > mx);
+  }));
+  box.querySelector("[data-ia-dossier]").addEventListener("toggle", async e => {
+    if (!e.target.open || e.target.dataset.cargado) return;
+    e.target.dataset.cargado = 1;
+    const d = await (await fetch(`/api/ia/borradores/${b.id}?dossier=true`)).json();
+    e.target.querySelector("pre").textContent = JSON.stringify(d.dossier, null, 1);
+  });
+  box.querySelectorAll("[data-ia-acc]").forEach(btn => btn.onclick = () => iaAccion(b, btn.dataset.iaAcc, btn));
+}
+async function iaAccion(b, acc, btn) {
+  const actor = iaFirmado(); if (!actor) return;
+  const piezas = [...$("#detail").querySelectorAll(".ia-pieza textarea")].map(t => ({etiqueta: t.dataset.et, texto: t.value}));
+  const cambiado = b.contenido && piezas.some((p, i) => p.texto !== b.contenido[i]?.texto);
+  btn.disabled = true;
+  try {
+    let r;
+    if (acc === "editar") r = await iaPost(`/api/ia/borradores/${b.id}/editar`, {piezas, actor});
+    else if (acc === "aprobar") {
+      if (cambiado) b = await iaPost(`/api/ia/borradores/${b.id}/editar`, {piezas, actor});   // se aprueba lo que se ve
+      let confirmar = false;
+      if (!b.verificacion.ok) {
+        confirmar = confirm(`Estas cifras no están en los datos de la fuente: ${[...b.verificacion.no_encontradas, ...b.verificacion.en_letras].join(", ")}.\n\n¿Aprueba el texto bajo su responsabilidad? Quedará registrado.`);
+        if (!confirmar) { iaMostrar(b); return; }
+      }
+      r = await iaPost(`/api/ia/borradores/${b.id}/aprobar`, {actor, confirmar_cifras: confirmar});
+      toast("Borrador aprobado.");
+    } else if (acc === "descartar") {
+      const motivo = prompt("Motivo del descarte (opcional):", "");
+      if (motivo === null) { btn.disabled = false; return; }
+      r = await iaPost(`/api/ia/borradores/${b.id}/descartar`, {actor, motivo});
+    } else if (acc === "copiar") {
+      const texto = await iaPost(`/api/ia/borradores/${b.id}/texto`, {actor});
+      await navigator.clipboard.writeText(texto);
+      toast("Texto copiado, con la línea de fuente.");
+      r = await (await fetch(`/api/ia/borradores/${b.id}`)).json();
+    }
+    iaMostrar(r); iaCargar();
+  } catch (e) {
+    toast(e.message); btn.disabled = false;
+  }
+}
+async function iaCargar() {
+  try {
+    IA.borradores = await (await fetch(`/api/ia/borradores?limit=100${IA.filtro ? "&estado=" + IA.filtro : ""}`)).json();
+  } catch { IA.borradores = []; }
+  const cuenta = e => IA.borradores.filter(b => b.estado === e).length;
+  seg($("#ia-filtro"), [["", "Todos"], ["borrador", "Por revisar"], ["aprobado", "Aprobados"], ["bloqueado", "Bloqueados"], ["descartado", "Descartados"]],
+    IA.filtro, v => { IA.filtro = v; iaCargar(); });
+  $("#ia-list").innerHTML = IA.borradores.map(b => `<li><button type="button" data-bid="${b.id}"><span class="iachip ${b.estado}">${IA_ESTADOS[b.estado]}</span>
+      <span class="t">${esc(b.tipo_nombre)} · ${esc(b.titulo || "")}</span>
+      <span class="s">N° ${b.id} · ${esc(b.autor || "")} · ${ago(b.creado)}${b.aprobado_por ? ` · aprobado por ${esc(b.aprobado_por)}` : ""}</span></button></li>`).join("")
+    || `<li class="muted" style="padding:10px 2px">Aún no hay borradores${IA.filtro ? " en este estado" : ""}.</li>`;
+  $("#ia-list").querySelectorAll("[data-bid]").forEach(el => el.onclick = async () => {
+    iaMostrar(await (await fetch(`/api/ia/borradores/${el.dataset.bid}`)).json());
+  });
+}
+async function iaInit() {
+  try { IA.estado = await (await fetch("/api/ia/estado")).json(); } catch { IA.estado = null; }
+  const E = IA.estado;
+  $("#ia-estado").textContent = !E ? "No se pudo consultar el asistente."
+    : E.habilitado ? `Modelo: ${E.modelo}.` : "El asistente no está configurado en este servidor: falta la clave de la API de Claude. Los borradores existentes se pueden revisar.";
+  $("#ia-briefing").disabled = !E?.habilitado;
+  $("#ia-briefing").onclick = () => iaGenerar("briefing", null);
+  iaFirma(); iaCargar();
+}
+$("#detail").addEventListener("click", e => {
+  const g = e.target.closest("[data-ia-gen]");
+  if (g) iaGenerar(g.dataset.iaGen, JSON.parse(g.closest("[data-ref]").dataset.ref));
+});
+iaInit();

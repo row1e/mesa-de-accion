@@ -398,6 +398,45 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .regbar button:hover{border-color:var(--brand);color:var(--brand)}
 body.filtered .regbar{background:#2A2418}
 
+
+/* asistente de IA */
+.ia-top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.ia-top .filters{margin:0}
+.ia-gen,.iabtn{border:1px solid var(--ink);background:var(--ink);color:var(--ground);border-radius:3px;padding:6px 12px;font-size:13px;font-weight:650;cursor:pointer}
+.ia-gen:disabled,.iabtn:disabled{opacity:.45;cursor:not-allowed}
+.iabtn.sec{background:transparent;color:inherit;border-color:var(--line)}
+.iabtn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.iabtn.bad{background:transparent;color:var(--bad);border-color:var(--bad)}
+.ia-firma{margin-left:auto;font-size:12.5px;color:var(--ink-3)}
+.ia-firma button{border:0;background:none;color:inherit;text-decoration:underline;cursor:pointer;font-size:inherit}
+.ia-list{list-style:none;margin:12px 0 0;padding:0;border-top:1px solid var(--line-2)}
+.ia-list li button{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;padding:8px 2px;border-bottom:1px solid var(--line-2)}
+.ia-list li button:hover .t{text-decoration:underline}
+.ia-list .t{font-weight:600;font-size:13.5px}
+.ia-list .s{grid-column:2;font-size:12px;color:var(--ink-3)}
+.iachip{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:2px;padding:1px 6px;align-self:start;white-space:nowrap}
+.iachip.borrador{background:var(--warn-bg);color:var(--warn)}
+.iachip.aprobado{background:var(--ok-bg);color:var(--ok)}
+.iachip.bloqueado{background:var(--bad-bg);color:var(--bad)}
+.iachip.descartado{background:var(--surface-2);color:var(--ink-3)}
+.iabox{border:1px solid var(--line);background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.iabox .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--ink-3)}
+.iabox .btns{display:flex;flex-wrap:wrap;gap:6px}
+.ia-pieza{display:flex;flex-direction:column;gap:4px}
+.ia-pieza label{font-size:12px;font-weight:700;color:var(--ink-2)}
+.ia-pieza textarea{font:inherit;font-size:14px;line-height:1.5;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:8px;min-height:70px;resize:vertical}
+.ia-pieza textarea[readonly]{background:var(--surface-2)}
+.ia-pieza .len{font-size:11px;color:var(--ink-3);align-self:flex-end}
+.ia-pieza .len.over{color:var(--bad);font-weight:700}
+.ia-ver{font-size:13px;padding:8px 10px;border-left:3px solid var(--ok);background:var(--ok-bg)}
+.ia-ver.mal{border-left-color:var(--bad);background:var(--bad-bg)}
+.ia-ver .cif{font-family:var(--f-mono);font-size:12px}
+.ia-cita{font-size:12.5px;color:var(--ink-2)}
+.ia-acc{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ia-log{font-size:12px}
+.ia-log li{margin-bottom:3px}
+.ia-wait{font-size:14px;color:var(--ink-2);padding:6px 0}
+
 /* navegación entre secciones, dentro de la barra fija */
 .jumpbar{max-width:1320px;margin:0 auto;padding:0 28px 7px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
 .jumpbar a{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:650;color:var(--ground);color:color-mix(in srgb, var(--ground) 72%, var(--ink));text-decoration:none;border:1px solid transparent;border-radius:100px;padding:3px 9px;white-space:nowrap}
@@ -452,6 +491,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
   <nav class="jumpbar" id="jumpbar" aria-label="Ir a una sección">
     <a href="#fuentes">Fuentes</a>
     <a href="#latest-sec">Últimos datos</a>
+    <a href="#ia-sec">Redacción IA</a>
     <a href="#mapa">Mapa</a>
     <a href="#enfen-sec">El Niño</a>
     <a href="#senamhi">SENAMHI</a>
@@ -479,6 +519,20 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
       <thead><tr><th>Institución</th><th>Fuente</th><th>Estado</th><th>Último éxito</th><th>Registros</th><th>Último mensaje</th><th></th></tr></thead>
       <tbody id="board"></tbody>
     </table></div>
+  </section>
+
+  <section id="ia-sec">
+    <div class="sec-head"><div><p class="eyebrow">Asistente de IA</p><h2>Redacción asistida</h2></div><span class="src">borradores verificados contra los datos oficiales</span></div>
+    <p class="lede">La IA redacta a partir de los datos de las fuentes oficiales y nada más. Cada cifra del texto se compara automáticamente con esos datos; si alguna no está, el borrador se bloquea. La fuente se agrega sola. Nada sale sin que una persona lo apruebe, y cada paso queda registrado. Para redactar sobre un registro, ábralo y use «Redactar con IA».</p>
+    <div class="panel ia-panel">
+      <div class="ia-top">
+        <button type="button" class="ia-gen" id="ia-briefing">Generar briefing de turno</button>
+        <div class="filters" id="ia-filtro"></div>
+        <span class="ia-firma" id="ia-firma"></span>
+      </div>
+      <p class="note" id="ia-estado"></p>
+      <ol class="ia-list" id="ia-list"></ol>
+    </div>
   </section>
 
   <section id="latest-sec">

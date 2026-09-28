@@ -34,6 +34,21 @@ CREATE INDEX IF NOT EXISTS items_kind ON items(source, kind, current);
 CREATE TABLE IF NOT EXISTS details(
   source TEXT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL, fetched_at REAL NOT NULL, data TEXT NOT NULL,
   PRIMARY KEY(source, kind, key));
+
+-- Asistente de IA (mesa/asistente.py). Cada borrador guarda los datos exactos que recibió el modelo
+-- (dossier) para poder auditar de dónde salió cada cifra; la auditoría es solo de inserción.
+CREATE TABLE IF NOT EXISTS ia_borradores(
+  id INTEGER PRIMARY KEY, creado REAL NOT NULL, actualizado REAL NOT NULL,
+  tipo TEXT NOT NULL, alcance TEXT NOT NULL, ref TEXT, titulo TEXT,
+  estado TEXT NOT NULL,                 -- borrador | bloqueado | aprobado | descartado
+  modelo TEXT, dossier TEXT NOT NULL, dossier_sha TEXT NOT NULL,
+  contenido TEXT, cita TEXT NOT NULL, verificacion TEXT NOT NULL, uso TEXT,
+  autor TEXT, aprobado_por TEXT, aprobado_en REAL);
+CREATE INDEX IF NOT EXISTS ia_borradores_estado ON ia_borradores(estado, creado);
+CREATE TABLE IF NOT EXISTS ia_auditoria(
+  id INTEGER PRIMARY KEY, ts REAL NOT NULL, borrador_id INTEGER, accion TEXT NOT NULL,
+  actor TEXT, origen TEXT, detalle TEXT);
+CREATE INDEX IF NOT EXISTS ia_auditoria_borrador ON ia_auditoria(borrador_id, ts);
 """
 
 _local = threading.local()
