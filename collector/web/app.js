@@ -867,10 +867,16 @@ function renderDanos() {
 /* ── comunicados gob.pe ─────────────────────────────────────────── */
 const INST = {pnp: "PNP", pvn: "PROVIAS", mtc: "MTC", mininter: "MININTER"};
 let comInst = "all";
+const COM_PASO = 10;              // comunicados visibles de entrada y por cada "Ver más"
+let comTope = COM_PASO, comClave = "";
 function renderComunicados() {
   const C = V.comunicados || [];
   seg($("#com-filters"), [["all", `Todas ${C.length}`], ...Object.entries(INST).map(([k, l]) => [k, `${l} ${C.filter(c => c.inst === k).length}`])], comInst, v => { comInst = v; renderComunicados(); });
-  const rows = C.filter(c => comInst === "all" || c.inst === comInst);
+  const todas = C.filter(c => comInst === "all" || c.inst === comInst);
+  // al cambiar institución o región se vuelve a la primera tanda; las recargas del snapshot la conservan
+  const clave = `${comInst}|${state.region || ""}`;
+  if (clave !== comClave) { comClave = clave; comTope = COM_PASO; }
+  const rows = todas.slice(0, comTope);
   const boot = d3.min(C, c => c._first_seen) || 0;   // el primer lote leído no cuenta como "nuevo"
   $("#com").innerHTML = rows.map(c => {
     const isNew = c._first_seen > boot + 120 && Date.now() / 1000 - c._first_seen < 3600;
@@ -881,6 +887,10 @@ function renderComunicados() {
       ${iaBox({source: c.source || "com_" + c.inst, kind: "noticia", key: c._key}, {compacto: true})}
       <details data-key="${esc(c._key)}" data-src="${esc(c.source || "com_" + c.inst)}"><summary>Leer el texto completo</summary><div class="txt">Consultando gob.pe…</div></details></div></li>`;
   }).join("") || `<li class="muted">${state.region ? `Ningún comunicado de los últimos 14 días menciona ${esc(regName(state.region))}.` : "Sin comunicados en los últimos 14 días."}</li>`;
+  const resto = todas.length - rows.length;
+  $("#com-more").hidden = resto <= 0;
+  $("#com-more").textContent = `Ver ${Math.min(COM_PASO, resto)} más · ${rows.length} de ${todas.length}`;
+  $("#com-more").onclick = () => { comTope += COM_PASO; renderComunicados(); };
   $("#com").querySelectorAll("details").forEach(dt => dt.addEventListener("toggle", () => {
     if (!dt.open || dt.dataset.loaded) return;
     dt.dataset.loaded = "1";
