@@ -870,6 +870,7 @@ function renderComunicados() {
       <div class="inst">${esc(c.inst_nombre)}${isNew ? ` <span class="new">nuevo</span>` : ""}</div>
       <div class="ev"><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.titulo)}</a></div>
       ${c.descripcion && c.descripcion !== c.titulo ? `<div class="d">${esc(c.descripcion)}</div>` : ""}
+      ${iaBox({source: c.source || "com_" + c.inst, kind: "noticia", key: c._key}, {compacto: true})}
       <details data-key="${esc(c._key)}" data-src="${esc(c.source || "com_" + c.inst)}"><summary>Leer el texto completo</summary><div class="txt">Consultando gob.pe…</div></details></div></li>`;
   }).join("") || `<li class="muted">${state.region ? `Ningún comunicado de los últimos 14 días menciona ${esc(regName(state.region))}.` : "Sin comunicados en los últimos 14 días."}</li>`;
   $("#com").querySelectorAll("details").forEach(dt => dt.addEventListener("toggle", () => {
@@ -973,10 +974,12 @@ async function iaPost(url, body) {
   if (!r.ok) { let m = txt; try { m = JSON.parse(txt).detail || txt; } catch { /* texto plano */ } throw new Error(m); }
   try { return JSON.parse(txt); } catch { return txt; }
 }
-function iaBox(ref) {
+function iaBox(ref, {compacto = false} = {}) {
   const E = IA.estado;
   if (!E) return "";
   const tipos = Object.entries(E.tipos).filter(([, t]) => t.alcances.includes("registro"));
+  if (compacto) return `<div class="iarow" data-ref="${esc(JSON.stringify(ref))}"><span class="lbl">Redactar con IA</span>
+    ${tipos.map(([k, t]) => `<button type="button" class="iabtn sec" data-ia-gen="${k}" ${E.habilitado ? "" : `disabled title="Falta la clave de la API de Claude en este servidor"`}>${esc(t.nombre)}</button>`).join("")}</div>`;
   return `<div class="iabox" data-ref="${esc(JSON.stringify(ref))}"><span class="lbl">Redactar con IA · a partir de este registro</span>
     <div class="btns">${tipos.map(([k, t]) => `<button type="button" class="iabtn sec" data-ia-gen="${k}" ${E.habilitado ? "" : "disabled"}>${esc(t.nombre)}</button>`).join("")}</div>
     ${E.habilitado ? "" : `<span class="muted" style="font-size:12px">El asistente no está configurado en este servidor (falta la clave de la API de Claude).</span>`}</div>`;
@@ -1089,7 +1092,12 @@ async function iaInit() {
   $("#ia-briefing").disabled = !E?.habilitado;
   $("#ia-briefing").onclick = () => iaGenerar("briefing", null);
   iaFirma(); iaCargar();
+  try { if (V?.comunicados) renderComunicados(); } catch { /* el snapshot aún no cargó: se dibuja con él */ }
 }
+$("#com").addEventListener("click", e => {
+  const g = e.target.closest("[data-ia-gen]");
+  if (g) iaGenerar(g.dataset.iaGen, JSON.parse(g.closest("[data-ref]").dataset.ref));
+});
 $("#detail").addEventListener("click", e => {
   const g = e.target.closest("[data-ia-gen]");
   if (g) iaGenerar(g.dataset.iaGen, JSON.parse(g.closest("[data-ref]").dataset.ref));
