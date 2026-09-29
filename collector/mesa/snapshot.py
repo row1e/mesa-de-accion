@@ -77,6 +77,18 @@ def _fecha_ocurrencia(rec):
         return None
 
 
+def _hora_ocurrencia(texto):
+    """Fecha y hora de la ocurrencia ("27/9/2026 14:00 horas") → ("2026-09-27", "14:00"); la hora puede faltar."""
+    m = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?", texto or "")
+    if not m:
+        return None, None
+    try:
+        fecha = datetime.date(int(m.group(3)), int(m.group(2)), int(m.group(1))).isoformat()
+    except ValueError:
+        return None, None
+    return fecha, (f"{int(m.group(4)):02d}:{m.group(5)}" if m.group(4) and int(m.group(4)) < 24 else None)
+
+
 def _reparto(rec, fallback_reg, fallback_prov):
     """Reparte las cifras por región y provincia usando las filas de subtotal DPTO./PROV. de la tabla, si existen."""
     from . import indeci_danos
@@ -220,10 +232,11 @@ def build():
         indeci.sort(key=lambda i: i.get("ts") or 0, reverse=True)
 
         year = today[:4]
-        sismos = [[s["fecha"], s["hora"], s["mag"], s["prof"], s["lat"], s["lon"], s["ref"], s["int"], s["codigo"]]
-                  for s in db.get_items("igp", "sismo", current_only=False, order="key") if s["fecha"][:4] == year]
+        sismos_raw = [s for s in db.get_items("igp", "sismo", current_only=False, order="key") if s["fecha"][:4] == year]
+        sismos = [[s["fecha"], s["hora"], s["mag"], s["prof"], s["lat"], s["lon"], s["ref"], s["int"], s["codigo"]] for s in sismos_raw]
         focos = [[f["lon"], f["lat"], f["dep"], f["prov"], f["_key"],
-                  str(f["ubigeo"]).zfill(6)[:2] if f.get("ubigeo") else geo.region_code(f["dep"])]   # índice 5: región
+                  str(f["ubigeo"]).zfill(6)[:2] if f.get("ubigeo") else geo.region_code(f["dep"]),   # índice 5: región
+                  f" ".join(x for x in (f.get("fecha"), f.get("hora")) if x) or None]                   # índice 6: detección satelital
                  for f in db.get_items("serfor", "foco")]
         alertas = db.get_items("serfor", "alerta")
         zonas = db.get_items("ingemmet", "zona_alerta")
@@ -270,6 +283,8 @@ def build():
         for s in sismos:   # índice 9: región por polígono; mar adentro, por la referencia del IGP ("… Santa - Ancash")
             s.append(geo.region_of_point(s[5], s[4]) or rc(s[6].rsplit(" - ", 1)[-1])
                      or (geo.regions_mentioned(s[6].rsplit(",", 1)[-1]) or [None])[0])   # "…, Provincia Constitucional del Callao"
+        for s, raw in zip(sismos, sismos_raw):   # índice 10: cuándo lo recibió la Mesa (el IGP no publica hora de difusión)
+            s.append(raw.get("_first_seen"))
         for a in alertas:
             a["reg"] = str(a.get("ubigeo") or "").zfill(6)[:2] if a.get("ubigeo") else rc(a.get("dep"))
         for z in zonas:
@@ -291,7 +306,10 @@ def build():
         for i in indeci:   # ya ordenado del más nuevo al más viejo
             rec = pdfs.get(i["_key"])
             oc = _fecha_ocurrencia(rec) if rec else None
+            oc_f, oc_h = _hora_ocurrencia((rec or {}).get("hechos")) if oc else _hora_ocurrencia(i.get("descripcion"))
+            oc = oc or oc_f   # sin PDF procesado: la fecha de HECHOS que trae la descripción del feed
             i["ocurrencia"] = oc
+            i["ocurrencia_hora"] = oc_h if oc_f == oc else None
             i["seguimiento"] = bool(oc and i.get("ts")) and (datetime.date.fromtimestamp(i["ts"]) - datetime.date.fromisoformat(oc)).days > 7
             i["fotos"] = len(rec.get("fotos", [])) if rec else None      # None = PDF aún no procesado
             for f in (rec or {}).get("fotos", []):

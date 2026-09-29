@@ -12,6 +12,16 @@ const ago = ts => { if (!ts) return "—"; const s = Math.max(0, Date.now() / 10
 const until = ts => { if (!ts) return "—"; const s = ts - Date.now() / 1000; if (s <= 60) return "en instantes"; if (s < 3600) return `en ${Math.round(s / 60)} min`; return `en ${Math.round(s / 3600)} h`; };
 // Hora exacta en Lima: "jue 11 set 12:04" (segundos y zona en el title)
 const LIMA = {timeZone: "America/Lima"};
+// Fechas del tooltip del mapa: "cuándo ocurrió" y "cuándo se reportó", siempre en hora de Lima
+const limaParts = d => Object.fromEntries(new Intl.DateTimeFormat("en-CA", {...LIMA, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"}).formatToParts(d).map(p => [p.type, p.value]));
+const fmtWhen = (iso, hhmm) => iso ? `${fmtDay(iso)}${hhmm ? " " + hhmm : ""}` : "—";
+const fmtTs = ts => { if (!ts) return "—"; const p = limaParts(new Date(ts * 1000)); return fmtWhen(`${p.year}-${p.month}-${p.day}`, `${p.hour}:${p.minute}`); };
+const fmtUtc = s => s ? fmtTs(Date.parse(s) / 1000) : "—";
+// Segunda fecha abreviada si cae el mismo día que la primera: "lun 28 set 13:33 · recibido 13:41"
+const sameDay = (a, b) => a !== "—" && b !== "—" && a.split(" ").slice(0, 3).join(" ") === b.split(" ").slice(0, 3).join(" ") ? b.split(" ")[3] || b : b;
+const tipWhen = (a, al, b, bl) => `<span class="tw">${al} <b>${a}</b>${b ? ` · ${bl} <b>${sameDay(a, b)}</b>` : ""}</span>`;
+const indeciRep = i => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(i.fecha || ""); return m ? fmtWhen(`${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`, i.hora) : fmtTs(i.ts); };
+const indeciWhen = i => tipWhen(i.ocurrencia ? fmtWhen(i.ocurrencia, i.ocurrencia_hora) : "sin dato", "ocurrió", indeciRep(i), "reportado");
 const stamp = ts => {
   if (!ts) return "—";
   const d = new Date(ts * 1000), p = Object.fromEntries(new Intl.DateTimeFormat("es-PE", {...LIMA, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23"}).formatToParts(d).map(x => [x.type, x.value]));
@@ -455,7 +465,7 @@ function openIndeciGroup(prov) {
   state.pick = null; markPicked();
   const box = $("#detail"); box.hidden = false; box.scrollTop = 0; box.focus({preventScroll: true});
   box.innerHTML = `<div class="dh"><div><div class="src-org">${ORG.indeci} · últimas ${V.indeciWindowH} h</div><h3>${items.length} reporte${items.length > 1 ? "s" : ""} en ${esc(title(p?.n))}</h3><div class="sub">${esc(title(p?.d))} · elija uno para ver la ficha completa</div></div><button type="button" class="x" aria-label="Cerrar ficha">×</button></div>
-    <ul class="plist">${items.map(i => `<li><button type="button" data-key="${esc(i._key)}"><span class="t">${esc(title(i.evento || i.titulo))} — ${esc(title(i.distrito))}</span><span class="s">${esc(title(i.tipo))} N° ${esc(i.num)} · ${new Date(i.pub).toLocaleString("es-PE", {timeZone: "America/Lima", dateStyle: "short", timeStyle: "short"})}</span></button></li>`).join("")}</ul>`;
+    <ul class="plist">${items.map(i => `<li><button type="button" data-key="${esc(i._key)}"><span class="t">${esc(title(i.evento || i.titulo))} — ${esc(title(i.distrito))}</span><span class="s">${esc(title(i.tipo))} N° ${esc(i.num)} · ocurrió ${i.ocurrencia ? fmtWhen(i.ocurrencia, i.ocurrencia_hora) : "sin dato"} · reportado ${indeciRep(i)}${i.seguimiento ? " · seguimiento" : ""}</span></button></li>`).join("")}</ul>`;
   box.querySelectorAll(".plist button").forEach(b => b.onclick = () => openDetail({source: "indeci", kind: "item", key: b.dataset.key}));
 }
 $("#detail").addEventListener("click", e => { if (e.target.closest(".x")) closeDetail(); });
@@ -470,22 +480,22 @@ function renderPoints() {
   const layer = (data, tag, ll) => gPts.append("g").selectAll(tag).data(data).join(tag).attr("class", "pt").each(function (d) { this.__ll = ll(d); });
   if (L.focos) layer(V.focos, "circle", d => [d[0], d[1]]).attr("r", 1.6).attr("fill", css("--fuego")).attr("opacity", .45)
     .attr("stroke", "transparent").attr("stroke-width", 5)
-    .call(on, d => `<b>Foco de calor</b><br>${title(d[3])} · ${title(d[2])}`, d => ({source: "serfor", kind: "foco", key: String(d[4])}));
+    .call(on, d => `<b>Foco de calor</b><br>${title(d[3])} · ${title(d[2])}` + tipWhen(d[6] ? fmtWhen(...d[6].split(" ")) : "—", "detección satelital"), d => ({source: "serfor", kind: "foco", key: String(d[4])}));
   if (L.zonas) layer(V.zonas, "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolTriangle, 34))
     .attr("fill", css("--geo")).attr("stroke", css("--surface")).attr("stroke-width", .6)
-    .call(on, d => `<b>Zona crítica · ${esc(d.nivel)}</b><br>${esc(d.paraje)} — ${esc(d.distrito)}, ${esc(d.provincia)}<br>${esc(d.peligros_g)}<br><span style="opacity:.7">Expuesto: ${esc(d.elemento)}</span>`, d => ({source: "ingemmet", kind: "zona_alerta", key: d._key}));
+    .call(on, d => `<b>Zona crítica · ${esc(d.nivel)}</b><br>${esc(d.paraje)} — ${esc(d.distrito)}, ${esc(d.provincia)}<br>${esc(d.peligros_g)}<br><span style="opacity:.7">Expuesto: ${esc(d.elemento)}</span>` + tipWhen(fmtTs(d._first_seen), "en alerta en la Mesa desde"), d => ({source: "ingemmet", kind: "zona_alerta", key: d._key}));
   if (L.sismos) layer(recentSismos(), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
     .attr("fill", "none").attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
-    .call(on, d => `<b>Sismo M${d[2]}</b> · ${fmtDay(d[0])} ${d[1]}<br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}`, d => ({source: "igp", kind: "sismo", key: d[8]}));
+    .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
   if (L.alertas) layer(V.alertas, "circle", d => [d.lon, d.lat]).attr("r", 3.6)
     .attr("fill", d => d.estado === "Extinguido" ? css("--surface") : css("--fuego")).attr("stroke", css("--fuego")).attr("stroke-width", 1.2)
-    .call(on, d => `<b>Incendio forestal · ${esc(d.estado)}</b><br>${title(d.dist)}, ${title(d.prov)} · ${title(d.dep)}<br>${esc(d.fecha)} ${esc(d.hora || "")} · ${esc(d.cod || "")}`, d => ({source: "serfor", kind: "alerta", key: d._key}));
+    .call(on, d => `<b>Incendio forestal · ${esc(d.estado)}</b><br>${title(d.dist)}, ${title(d.prov)} · ${title(d.dep)}${d.cod ? `<br><span style="opacity:.7">${esc(d.cod)}</span>` : ""}` + tipWhen(fmtWhen(d.fecha, d.hora), "alerta SERFOR", fmtTs(d._first_seen), "recibida"), d => ({source: "serfor", kind: "alerta", key: d._key}));
   if (L.hidro) layer(V.hidro, "circle", d => [d.lon, d.lat]).attr("r", 6)
     .attr("fill", d => css("--n" + Math.min(4, lvlNum(d.color_text)))).attr("stroke", css("--hidro")).attr("stroke-width", 2.4)
-    .call(on, d => `<b>${esc(d.titulo)}</b><br>${esc(d.color_text)} · ${esc(d.fecha_hora?.slice(0,10))}<br>${title(d.nom_distrito)}, ${title(d.nom_provincia)} · ${title(d.nom_departamento)}`, d => ({source: "senamhi_hidro", kind: "aviso_estacion", key: d._key}));
+    .call(on, d => `<b>${esc(d.titulo)}</b><br>${esc(d.color_text)}<br>${title(d.nom_distrito)}, ${title(d.nom_provincia)} · ${title(d.nom_departamento)}` + tipWhen(fmtUtc(d.fecha_hora), "aviso emitido", fmtTs(d._first_seen), "recibido"), d => ({source: "senamhi_hidro", kind: "aviso_estacion", key: d._key}));
   if (L.indeci) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
     .attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10).attr("fill", css("--indeci")).attr("stroke", css("--surface")).attr("stroke-width", 1.2)
-    .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b><br>` + items.slice(0, 5).map(i => `${esc(title(i.evento))} — ${esc(title(i.distrito))}`).join("<br>") + `<br><span style="opacity:.7">Ubicado en la provincia (centroide)</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
+    .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide)</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
   placePoints(); markPicked();
 }
 function renderRail() {

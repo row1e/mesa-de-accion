@@ -23,9 +23,10 @@ BULK = {("serfor", "foco"): ("foco de calor nuevo", "focos de calor nuevos"),
 SEGUIMIENTO_DIAS = 7
 
 
-def _ocurrencia(rec):
-    from .snapshot import _fecha_ocurrencia   # import local: snapshot importa este módulo
-    return _fecha_ocurrencia(rec) if rec else None
+def _ocurrencia(rec, it=None):
+    """Fecha del evento según HECHOS del PDF; si el PDF aún no se procesó, la que trae la descripción del feed."""
+    from .snapshot import _fecha_ocurrencia, _hora_ocurrencia   # import local: snapshot importa este módulo
+    return (_fecha_ocurrencia(rec) if rec else None) or _hora_ocurrencia((it or {}).get("descripcion"))[0]
 
 
 FEED_KINDS = [("senamhi_avisos", "aviso"), ("senamhi_hidro", "aviso_estacion"), ("indeci", "item"), ("igp", "sismo"),
@@ -73,7 +74,7 @@ def summarize(source, kind, it):
         rec = db.get_item("indeci", "reporte_pdf", it["_key"]) if rep else None
         base["danos"] = ((rec or {}).get("danos") or {}).get("totales") or None
         reportado = datetime.datetime.fromtimestamp(it["ts"]).isoformat(timespec="minutes") if it.get("ts") else it.get("pub")
-        oc = _ocurrencia(rec) if rep else None
+        oc = _ocurrencia(rec, it) if rep else None
         dias = (datetime.date.fromtimestamp(it["ts"]) - datetime.date.fromisoformat(oc)).days if oc and it.get("ts") else None
         base |= {"ocurrencia": oc, "reportado": reportado, "dias_desde_evento": dias,
                  "seguimiento": dias is not None and dias > SEGUIMIENTO_DIAS}
