@@ -25,6 +25,8 @@ CHROME_CANDIDATES = [os.environ.get("MESA_CHROME", ""),
                      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
                      "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
                      "/Applications/Chromium.app/Contents/MacOS/Chromium",
+                     *[os.path.join(os.environ.get(v, ""), "Google", "Chrome", "Application", "chrome.exe")
+                       for v in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA") if os.environ.get(v)],
                      shutil.which("google-chrome") or "", shutil.which("chromium") or ""]
 NEAR_KM = 50          # sismos "cercanos": epicentro a menos de esta distancia del límite provincial
 INDECI_DAYS = 7
@@ -206,6 +208,20 @@ def chrome():
     return next((c for c in CHROME_CANDIDATES if c and pathlib.Path(c).exists()), None)
 
 
+def _cerrar(proc):
+    """Cierra Chrome y sus procesos hijos: el grupo de procesos en macOS/Linux, el árbol con taskkill en Windows."""
+    if proc.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
+        return
+    try:
+        os.killpg(proc.pid, 15)
+        proc.wait(timeout=5)
+    except Exception:  # noqa: BLE001
+        os.killpg(proc.pid, 9)
+
+
 def pdf(ubigeo, base_url):
     """Imprime /ficha/{ubigeo} con Chrome headless y devuelve (bytes, nombre_de_archivo)."""
     exe = chrome()
@@ -215,7 +231,8 @@ def pdf(ubigeo, base_url):
     slug = re.sub(r"[^A-Za-z0-9]+", "_", geo.norm(sc["nombre"]).title()).strip("_")
     kind = "Departamento_" if sc["tipo"] == "departamental" else ""
     fname = f"Ficha_{kind}{slug}_{ubigeo}_{datetime.datetime.now(LIMA).strftime('%Y-%m-%d_%H%M')}.pdf"
-    with tempfile.TemporaryDirectory(prefix="mesa-pdf-") as tmp:
+    # En Windows, procesos hijos de Chrome pueden seguir sosteniendo el perfil un momento: no fallar al borrarlo.
+    with tempfile.TemporaryDirectory(prefix="mesa-pdf-", ignore_cleanup_errors=True) as tmp:
         out = pathlib.Path(tmp) / "ficha.pdf"
         cmd = [exe, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--hide-scrollbars",
                "--use-mock-keychain", "--password-store=basic", "--disable-extensions", "--disable-background-networking",
@@ -237,12 +254,7 @@ def pdf(ubigeo, base_url):
                         break
                 time.sleep(0.25)
         finally:
-            if proc.poll() is None:
-                try:
-                    os.killpg(proc.pid, 15)
-                    proc.wait(timeout=5)
-                except Exception:  # noqa: BLE001
-                    os.killpg(proc.pid, 9)
+            _cerrar(proc)
         if not out.exists() or out.stat().st_size < 1000 or not out.read_bytes()[-1024:].rstrip().endswith(b"%%EOF"):
             err = (proc.stderr.read() or b"")[-400:].decode("utf-8", "replace") if proc.stderr else ""
             raise RuntimeError(f"Chrome no generó un PDF completo en 60 s. {err}")
