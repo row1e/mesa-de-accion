@@ -34,11 +34,13 @@ from pydantic import BaseModel
 from . import db, detail, snapshot
 from .sources import SOURCES
 
-MODELO = os.environ.get("MESA_IA_MODEL", "claude-opus-5")
+MODELO = os.environ.get("MESA_IA_MODEL", "claude-sonnet-5")   # textos cortos con datos dados: Sonnet alcanza
 ESFUERZO = os.environ.get("MESA_IA_EFFORT", "medium")   # textos cortos: medium basta; subir si la calidad no alcanza
 LIMA = ZoneInfo("America/Lima")
 TEXTO_MAX = 6000            # caracteres de texto libre de la fuente que se pasan al modelo
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+# Modelos con reintento automático en otro modelo si declinan (fallbacks="default"); a los demás no se les envía.
+CON_FALLBACK = ("claude-opus-5", "claude-fable-5")
 
 
 class IAError(RuntimeError):
@@ -271,11 +273,11 @@ def _llamar(tipo, dossier, correccion=None):
     if correccion:
         tarea += ("\n\nUn borrador anterior no pasó la verificación automática de cifras. " + correccion +
                   " Reescribe usando solo cifras que estén en DATOS, con dígitos.")
+    fallback = {"betas": [FALLBACK_BETA], "fallbacks": "default"} if MODELO.startswith(CON_FALLBACK) else {}
     try:
         r = _cliente.beta.messages.parse(
             model=MODELO, max_tokens=16000, system=SISTEMA,
-            output_config={"effort": ESFUERZO}, output_format=Redaccion,
-            betas=[FALLBACK_BETA], fallbacks="default",
+            output_config={"effort": ESFUERZO}, output_format=Redaccion, **fallback,
             messages=[{"role": "user", "content": f"{tarea}\n\nDATOS:\n{json.dumps(dossier, ensure_ascii=False, indent=1)}"}],
         )
     except anthropic.AuthenticationError:
