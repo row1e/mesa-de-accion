@@ -119,7 +119,14 @@ $("#region").addEventListener("change", e => {
 $("#reg-clear").addEventListener("click", () => setRegion(null));
 const tip = $("#tip");
 const showTip = (e, html) => { tip.innerHTML = html; tip.hidden = false; moveTip(e); };
-const moveTip = e => { const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; };
+// Abajo a la derecha del cursor; si no cabe, del otro lado (p. ej. con el mapa fijado en la esquina inferior derecha).
+const moveTip = e => {
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + w > innerWidth - 8) x = Math.max(8, e.clientX - w - 14);
+  if (y + h > innerHeight - 8) y = Math.max(8, e.clientY - h - 14);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+};
 const hideTip = () => tip.hidden = true;
 addEventListener("scroll", hideTip, {passive: true});
 
