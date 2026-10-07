@@ -4,7 +4,6 @@ import datetime
 import html
 import io
 import re
-import socket
 
 from shapely.geometry import Point
 from shapely.ops import unary_union
@@ -193,11 +192,45 @@ def firms():
 
 
 # ── PROVIAS (solo accesibilidad) ───────────────────────────────────────────────
+# Visor de Emergencias Viales (SGCV) de PROVIAS Nacional: el mismo JSON que usa su mapa.
+PROVIAS = "https://wsgcv.proviasnac.gob.pe/emergenciavial/EmergenciaVial"
+PROVIAS_XHR = {"X-Requested-With": "XMLHttpRequest"}
+TRANSITO = {"01": "Tránsito normal", "02": "Tránsito restringido", "03": "Tránsito interrumpido", "04": "Por confirmar"}
+
+
+def _dmy(s):
+    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", s or "")
+    return f"{m[3]}-{m[2]}-{m[1]}" if m else None
+
+
 def provias():
-    for host in ("www.pvn.gob.pe", "sinac.proviasnac.gob.pe"):
-        try:
-            socket.create_connection((host, 443), timeout=15).close()
-        except OSError as e:
-            raise RuntimeError(f"{host}:443 no acepta conexión ({type(e).__name__})") from None
-    fetch("provias", "https://www.pvn.gob.pe/", name="home.html")
-    return 0, 0, "servidor accesible — falta implementar el lector de emergencias viales"
+    # El panel trae tipo, ruta, tramo y fecha; la lista del mapa, la condición de tránsito vigente (incluye
+    # "por confirmar"), los días transcurridos y si es puente. Se unen por IdEmergenciaVial.
+    adm = "idTipoAdministracion=1_2_4_5_6"
+    panel = fetch_json("provias", f"{PROVIAS}/PanelGetEmergenciaList?fecha=&idDepartamento=&idZonal=&searchValue=&histo=false&{adm}",
+                       name="panel.json", headers=PROVIAS_XHR)
+    mapa = fetch_json("provias", f"{PROVIAS}/GetEmergenciaList?fecha=&idDepartamento=&idZonal=&idCondicionTransito=&idEvento=&{adm}",
+                      name="mapa.json", headers=PROVIAS_XHR)
+    if not panel.get("success") or not mapa.get("success"):
+        raise RuntimeError(f"el visor respondió sin éxito: {panel.get('message') or mapa.get('message') or '—'}")
+    en_mapa = {str(x["IdEmergenciaVial"]): x for x in mapa.get("data") or []}
+    recs = {}
+    for e in panel.get("data") or []:
+        k, m = str(e["IdEmergenciaVial"]), en_mapa.get(str(e["IdEmergenciaVial"]), {})
+        lon, lat = e.get("Longitud"), e.get("Latitud")
+        cod = m.get("CondicionTransitoCodigo") or e.get("CodigoCondicionTransito")
+        prov = geo.province_of_point(lon, lat) if lon and lat else None
+        recs[k] = {"id": e["IdEmergenciaVial"], "lon": round(lon, 5) if lon else None, "lat": round(lat, 5) if lat else None,
+                   "transito_cod": cod, "transito": TRANSITO.get(cod, e.get("CondicionTransito")),
+                   "tipo": " ".join((e.get("TipoEmergencia") or "").split()), "ruta": e.get("Ruta"), "tramo": e.get("Tramo"),
+                   "sector": e.get("Sector"), "km_ini": e.get("ProgresivaIni"), "km_fin": e.get("ProgresivaFin"),
+                   "fecha": _dmy(e.get("Fecha")), "dias": m.get("CantDias"), "puente": m.get("EsPuente") == "1",
+                   "en_mapa": bool(m), "prov": prov, "reg": prov[:2] if prov else (geo.region_of_point(lon, lat) if lon and lat else None)}
+    total, new = db.upsert_items("provias", "emergencia", recs, snapshot=True)
+    ev = fetch_json("provias", f"{PROVIAS}/GetEventos", name="eventos.json", headers=PROVIAS_XHR)
+    eventos = {str(x["IdEvento"]): {"id": x["IdEvento"], "nombre": x.get("Nombre")} for x in ev.get("data") or []}
+    db.upsert_items("provias", "evento", eventos, snapshot=True)
+    n = {t: sum(1 for r in recs.values() if r["transito_cod"] == c) for c, t in TRANSITO.items()}
+    return total, new, (f"{total} emergencias viales ({new} nuevas): {n['Tránsito interrumpido']} interrumpidas, "
+                        f"{n['Tránsito restringido']} restringidas, {n['Por confirmar']} por confirmar"
+                        + (f" · eventos: {'; '.join(e['nombre'] for e in eventos.values())}" if eventos else ""))

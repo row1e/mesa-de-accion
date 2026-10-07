@@ -39,6 +39,6 @@ SOURCES = {
                   sheet="No existía"),
     "respaldo": dict(fn=lambda: __import__("mesa.backup", fromlist=["run"]).run(), org="Colector", name="Respaldo de datos",
                      via="Carpeta de MESA_BACKUP", geo="—", sheet="—", internal=True),
-    "provias": dict(fn=others.provias, org="PROVIAS Nacional", name="Servidor de emergencias viales", via="—", geo="Provincia/distrito (hoja)",
+    "provias": dict(fn=others.provias, org="PROVIAS Nacional", name="Emergencias viales", via="JSON del visor SGCV", geo="Coordenadas → provincia",
                     sheet="MTC vivo; PROVIAS muerto desde 19-05-2026"),
 }

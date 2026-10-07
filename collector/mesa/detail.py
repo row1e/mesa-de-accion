@@ -18,6 +18,7 @@ GEOCATMIN = "https://geocatmin.ingemmet.gob.pe/arcgis/rest/services"
 TTL = {  # segundos que vale el enriquecimiento cacheado
     ("igp", "sismo"): 7 * 86400, ("serfor", "alerta"): 600, ("serfor", "foco"): 3600,
     ("ingemmet", "zona_alerta"): 3600, ("indeci", "item"): 3600, ("senamhi_avisos", "aviso"): 6 * 3600,
+    ("provias", "emergencia"): 1800,
     **{(sid, "noticia"): 6 * 3600 for sid in ("com_pnp", "com_provias", "com_mtc", "com_mininter")},
 }
 LEVEL_WORDS = {"AMARILLO": 2, "NARANJA": 3, "ROJO": 4}
@@ -201,6 +202,36 @@ def _f_zona(it, ex):
             "fields": ex.get("fields") or {k: v for k, v in it.items() if not k.startswith("_")}}
 
 
+def _provias(it):
+    from .sources.others import PROVIAS, PROVIAS_XHR
+    det = fetch_json("provias", f"{PROVIAS}/GetEmergenciaContent?idEmergenciaVial={it['id']}", keep_raw=False, headers=PROVIAS_XHR)
+    lin = fetch_json("provias", f"{PROVIAS}/GetListaFotograficaPorEmergencia?id={it['id']}", keep_raw=False, headers=PROVIAS_XHR)
+    host = PROVIAS.split("/emergenciavial")[0]
+    linea = [{"fecha": x.get("fecha"), "texto": " ".join((x.get("contenido") or "").split()),
+              "fotos": [{"label": " ".join((f.get("contenido") or "").split()) or "Foto", "url": host + f["url"]} for f in x.get("fotos") or [] if f.get("url")]}
+             for x in lin.get("data") or []]
+    return {"fields": {k: v for k, v in (det.get("data") or {}).items() if k != "Fotos"}, "linea": linea}
+
+
+def _f_provias(it, ex):
+    f, linea = ex.get("fields") or {}, ex.get("linea") or []
+    cron = "\n\n".join(f"{x['fecha']} — {x['texto']}" for x in linea[:12] if x["texto"])
+    return {"title": f"{it.get('transito')} · {(it.get('tipo') or '').capitalize()}",
+            "subtitle": f"{it.get('ruta')} · {it.get('tramo')} · sector {it.get('sector')}",
+            "level": None,   # la escala N1–N4 es de avisos; aquí manda la condición de tránsito, que va en el título
+            "facts": [["Condición de tránsito", it.get("transito")], ["Tipo", it.get("tipo")], ["Ruta", f.get("Ruta") or it.get("ruta")],
+                      ["Tramo y sector", f"{it.get('tramo')} · {it.get('sector')}"], ["Progresiva", f"km {it.get('km_ini')} a {it.get('km_fin')}"],
+                      ["Ubicación", (f.get("Ubigeo") or "—").replace("-", " · ").title()], ["Desde", it.get("fecha")],
+                      ["Días", f.get("Duracion", it.get("dias"))], ["Última actualización", f.get("FechaActualizacion") or "—"],
+                      ["Estado", f.get("Estado") or "—"], ["Contratista / concesión", f.get("Contratista") or f.get("Concesion") or "—"],
+                      ["Unidad zonal", f.get("Zonal") or "—"], ["Rutas alternas", (f.get("RutasAlt") or "").strip() or "—"]],
+            "text": "\n\n".join(x for x in (f.get("UltimaActualizacion") and f"Última actualización: {' '.join(f['UltimaActualizacion'].split())}",
+                                             cron and f"Cronología (lo más reciente primero):\n{cron}") if x) or None,
+            "images": [ph for x in linea for ph in x["fotos"]][:6],
+            "links": [{"label": "Visor de Emergencias Viales (PROVIAS)", "url": "https://wsgcv.proviasnac.gob.pe/emergenciavial"}],
+            "fields": f or {k: v for k, v in it.items() if not k.startswith("_")}}
+
+
 def _f_hidro(it, ex):
     raw = it.get("raw") or {}
     links = [{"label": "Mapa de avisos hidrológicos (SENAMHI)", "url": "https://www.senamhi.gob.pe/?p=aviso-hidrologico"}]
@@ -277,11 +308,12 @@ ENRICH = {
     ("serfor", "alerta"): _arc(f"{SERFOR}/2", lambda it: it["_key"]),
     ("serfor", "foco"): _arc(f"{SERFOR}/0", lambda it: it["_key"]),
     ("ingemmet", "zona_alerta"): _arc(f"{GEOCATMIN}/SERV_PERU_ALERTA/MapServer/0", lambda it: it["_key"].split("-")[-1]),
+    ("provias", "emergencia"): _provias,
 }
 FORMAT = {
     ("enfen", "comunicado"): _f_enfen,
     **{(sid, "noticia"): _f_noticia for sid in ("com_pnp", "com_provias", "com_mtc", "com_mininter")},
     ("igp", "sismo"): _f_sismo, ("serfor", "alerta"): _f_alerta, ("serfor", "foco"): _f_foco,
     ("ingemmet", "zona_alerta"): _f_zona, ("senamhi_hidro", "aviso_estacion"): _f_hidro, ("indeci", "item"): _f_indeci,
-    ("senamhi_avisos", "aviso"): _f_aviso, ("firms", "deteccion"): _f_firms,
+    ("senamhi_avisos", "aviso"): _f_aviso, ("firms", "deteccion"): _f_firms, ("provias", "emergencia"): _f_provias,
 }

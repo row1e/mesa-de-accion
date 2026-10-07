@@ -38,7 +38,7 @@ def health():
         elif not h.get("last_run"):
             status = "pendiente"
         elif fails and not last_ok:
-            status = "sin_acceso" if sid == "provias" else "fallando"
+            status = "fallando"
         elif fails:
             status = "fallando"
         elif last_ok and now - last_ok > interval * config.STALE_FACTOR:
@@ -240,6 +240,10 @@ def build():
                  for f in db.get_items("serfor", "foco")]
         alertas = db.get_items("serfor", "alerta")
         zonas = db.get_items("ingemmet", "zona_alerta")
+        vias = [{k: v for k, v in e.items() if k in ("id", "lon", "lat", "transito_cod", "transito", "tipo", "ruta", "tramo", "sector",
+                                                      "km_ini", "km_fin", "fecha", "dias", "puente", "prov", "reg", "_key", "_first_seen")}
+                for e in db.get_items("provias", "emergencia")]
+        vias_eventos = [e.get("nombre") for e in db.get_items("provias", "evento")]
         com = db.get_items("enfen", "comunicado", current_only=False, order="key DESC", limit=1)
         firms_n = len(db.get_items("firms", "deteccion"))
 
@@ -332,7 +336,7 @@ def build():
             "uv": uv, "uvUnmatched": uv_unmatched, "pronostico": pron, "hidro": hidro,
             "indeci": indeci, "indeciWindowH": INDECI_WINDOW_H,
             "indeciUnlocated": sum(1 for i in indeci if i.get("clase") == "reporte" and not i.get("prov")),
-            "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas,
+            "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,
             "enfen": {"ultimo_comunicado": com[0] if com else {}}, "firmsCount": firms_n,
             "comunicados": comunicados, "sidpol": sidpol, "regions": sorted(regions, key=lambda r: r["n"]),
             "fotosDia": fotos_dia[:80], "danos": danos,

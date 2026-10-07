@@ -91,6 +91,19 @@ def region_of_point(lon, lat):
 
 
 @functools.lru_cache(maxsize=1)
+def _provinces_prepared():
+    from shapely.prepared import prep
+    return [(code, prep(p["geom"])) for code, p in provinces().items()]
+
+
+def province_of_point(lon, lat):
+    """Ubigeo provincial (4 dígitos) del punto, o None si cae fuera (mar, frontera)."""
+    from shapely.geometry import Point
+    pt = Point(lon, lat)
+    return next((code for code, g in _provinces_prepared() if g.contains(pt)), None)
+
+
+@functools.lru_cache(maxsize=1)
 def _mention_patterns():
     pats = []
     for f in boundaries()[0]["features"]:

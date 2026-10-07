@@ -176,10 +176,11 @@ def dossier_briefing(lugar=None):
         "sismos_24h_magnitud_4_o_mas": sismos,
         "incendios": {"alertas_no_extinguidas": alertas_activas, "focos_calor_24h": len(D["focos"])},
         "enfen": {k: enfen.get(k) for k in ("titulo", "estado", "fecha") if enfen.get(k)},
+        "vias_provias": _vias(),
     }
     salud = {h["id"]: h for h in snapshot.health()}   # build() no incluye la salud; la API la agrega aparte
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
-             "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen") if s in SOURCES]
+             "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen", "provias") if s in SOURCES]
     return dossier, cita, f"Briefing {now.strftime('%d/%m %H:%M')}"
 
 
@@ -231,10 +232,11 @@ def _dossier_briefing_lugar(code):
         "zonas_criticas_ingemmet": {"en_alerta": len(F["zonas"]),
                                     "ejemplos": [{"distrito": z.get("distrito"), "paraje": z.get("paraje"), "peligro": z.get("peligros_g"),
                                                   "nivel": z.get("nivel")} for z in F["zonas"]][:6]},
+        "vias_provias": _vias(lambda v: v.get("prov") in sc["provs"] or (not v.get("prov") and sc["tipo"] == "departamental" and v.get("reg") == code), eventos=False),
         "enfen_nacional": {k: F["enfen"].get(k) for k in ("numero", "estado", "fecha") if F["enfen"].get(k)},
     }
     salud = {h["id"]: h for h in snapshot.health()}
-    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen")
+    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias")
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
              "url": None} for s in fuentes if s in SOURCES]
     return dossier, cita, f"Briefing {nombre} {now.strftime('%d/%m %H:%M')}"
@@ -356,6 +358,19 @@ def _llamar(tipo, dossier, correccion=None):
         raise IAError("El modelo no devolvió una redacción completa. Intente de nuevo.", 502)
     uso = {"modelo": r.model, "entrada": r.usage.input_tokens, "salida": r.usage.output_tokens}
     return r.parsed_output, uso
+
+
+def _vias(filtro=lambda v: True, eventos=True):
+    """Emergencias viales de PROVIAS para el dossier: conteo por condición de tránsito y las que más importan."""
+    vs = [v for v in db.get_items("provias", "emergencia") if filtro(v)]
+    orden = {"03": 0, "04": 1, "02": 2, "01": 3}
+    top = sorted(vs, key=lambda v: (orden.get(v.get("transito_cod"), 9), -(int(v["fecha"].replace("-", "")) if v.get("fecha") else 0)))
+    eventos = [e.get("nombre") for e in db.get_items("provias", "evento")] if eventos else None   # sin ubicación: solo en el nacional
+    return {"total": len(vs),
+            "por_condicion": {t: sum(1 for v in vs if v.get("transito") == t) for t in ("Tránsito interrumpido", "Tránsito restringido", "Por confirmar")},
+            **({"eventos_activos": eventos} if eventos is not None else {}),
+            "principales": [{"transito": v.get("transito"), "tipo": v.get("tipo"), "ruta": v.get("ruta"), "tramo": v.get("tramo"),
+                             "sector": v.get("sector"), "desde": v.get("fecha")} for v in top if v.get("transito_cod") in ("03", "04")][:8]}
 
 
 # ── Flujo de borradores ──────────────────────────────────────────────────────

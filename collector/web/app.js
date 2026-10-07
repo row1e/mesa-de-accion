@@ -39,7 +39,7 @@ let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = 
 // Denuncias policiales (SIDPOL): fuera del tablero por ahora, no es información de emergencias. Para volver a mostrarlas:
 // true aquí y quitar `hidden` de #sidpol-sec y de su enlace en la barra (index.html).
 const MOSTRAR_DENUNCIAS = false;
-const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
+const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
 function makeView() {
@@ -57,7 +57,7 @@ function makeView() {
     avisos: D.avisos.filter(a => a.regs?.includes(R)), uv: pick(D.uv),
     pronostico: D.pronostico.filter(p => p.reg === R), hidro: D.hidro.filter(h => h.reg === R),
     indeci: D.indeci.filter(i => i.reg === R), sismos: D.sismos.filter(s => s[9] === R),
-    focos: D.focos.filter(f => f[5] === R), alertas: D.alertas.filter(a => a.reg === R), zonas: D.zonas.filter(z => z.reg === R),
+    focos: D.focos.filter(f => f[5] === R), alertas: D.alertas.filter(a => a.reg === R), zonas: D.zonas.filter(z => z.reg === R), vias: (D.vias || []).filter(v => v.reg === R),
     comunicados: (D.comunicados || []).filter(c => c.regs?.includes(R)), sidpol,
     fotosDia: (D.fotosDia || []).filter(f => f.reg === R),
     danos: D.danos ? {...D.danos, ...(D.danos.por_reg[R] || {totales: {}, nuevos: {}, seguimiento: {}, n_eventos: 0, n_nuevos: 0}),
@@ -240,7 +240,7 @@ function initMap() {
 }
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
-  layers: { indeci: true, alertas: true, sismos: true, hidro: true, zonas: false, focos: false } };
+  layers: { indeci: true, alertas: true, sismos: true, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -250,6 +250,7 @@ const layerDefs = [
   { id: "alertas", label: "Alertas de incendio", sw: `<i class="sw" style="background:var(--fuego)"></i>`, n: () => V.alertas.length },
   { id: "sismos", label: "Sismos · 30 días", sw: `<i class="sw" style="border:2px solid var(--sismo)"></i>`, n: () => recentSismos().length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
+  { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n3);transform:rotate(45deg);border-radius:1px"></i>`, n: () => V.vias.length },
   { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
   { id: "focos", label: "Focos de calor 24 h", sw: `<i class="sw" style="background:var(--fuego);opacity:.45"></i>`, n: () => V.focos.length },
 ];
@@ -426,7 +427,7 @@ function showProvince() {   // lleva el bloque de la provincia al tope del panel
 const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Monitoreo satelital", ingemmet: "INGEMMET · Perú Alerta",
   senamhi_hidro: "SENAMHI · Hidrología", senamhi_avisos: "SENAMHI · Avisos meteorológicos", indeci: "INDECI · COEN", firms: "NASA FIRMS",
   enfen: "ENFEN · Comisión Multisectorial", com_pnp: "PNP · Comunicados (gob.pe)", com_provias: "PROVIAS Nacional · Notas de prensa (gob.pe)",
-  com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
+  provias: "PROVIAS Nacional · Emergencias viales", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
 const refId = r => r && `${r.source}|${r.kind}|${r.key}`;
 let detailReq = 0;
 function closeDetail() {
@@ -500,6 +501,9 @@ function renderPoints() {
   if (L.focos) layer(V.focos, "circle", d => [d[0], d[1]]).attr("r", 1.6).attr("fill", css("--fuego")).attr("opacity", .45)
     .attr("stroke", "transparent").attr("stroke-width", 5)
     .call(on, d => `<b>Foco de calor</b><br>${title(d[3])} · ${title(d[2])}` + tipWhen(d[6] ? fmtWhen(...d[6].split(" ")) : "—", "detección satelital"), d => ({source: "serfor", kind: "foco", key: String(d[4])}));
+  if (L.vias) layer(V.vias.filter(v => v.lon != null), "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolDiamond, d => d.transito_cod === "03" ? 70 : 38))
+    .attr("fill", d => viaColor(d.transito_cod)).attr("stroke", css("--surface")).attr("stroke-width", .8)
+    .call(on, d => `<b>${esc(d.transito)}</b><br>${esc(cap(d.tipo))}<br>${esc(d.ruta)} · ${esc(d.tramo)} · ${esc(d.sector)}<br><span style="opacity:.7">km ${esc(d.km_ini)}${d.puente ? " · puente" : ""}</span>` + tipWhen(d.fecha ? fmtWhen(d.fecha) : "—", "desde", d.dias != null ? `${d.dias} días` : "", ""), d => ({source: "provias", kind: "emergencia", key: d._key}));
   if (L.zonas) layer(V.zonas, "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolTriangle, 34))
     .attr("fill", css("--geo")).attr("stroke", css("--surface")).attr("stroke-width", .6)
     .call(on, d => `<b>Zona crítica · ${esc(d.nivel)}</b><br>${esc(d.paraje)} — ${esc(d.distrito)}, ${esc(d.provincia)}<br>${esc(d.peligros_g)}<br><span style="opacity:.7">Expuesto: ${esc(d.elemento)}</span>` + tipWhen(fmtTs(d._first_seen), "en alerta en la Mesa desde"), d => ({source: "ingemmet", kind: "zona_alerta", key: d._key}));
@@ -545,6 +549,7 @@ function renderRail() {
       <dt>INDECI 24 h</dt><dd>${ind.length ? ind.map(i => `${esc(title(i.evento))} — ${esc(title(i.distrito))}`).join("<br>") : "—"}</dd>
       <dt>Incendios</dt><dd>${al.length ? d3.rollups(al, v => v.length, a => a.estado).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") : "—"}</dd>
       <dt>Zonas críticas</dt><dd>${zn.length || "—"}</dd>
+      <dt>Vías (PROVIAS)</dt><dd>${(() => { const vs = V.vias.filter(v => v.prov === p.id); return vs.length ? `${vs.length}: ${[["03", "interrumpida"], ["02", "restringida"], ["04", "por confirmar"]].map(([c, t]) => [vs.filter(v => v.transito_cod === c).length, t]).filter(([n]) => n).map(([n, t]) => `${n} ${t}${n > 1 ? "s" : ""}`).join(", ")}` : "—"; })()}</dd>
       <dt>Daños ${D.danos?.dias || 7} días</dt><dd>${D.danos?.por_prov?.[p.id] ? `${danosChips(D.danos.por_prov[p.id].totales, 4)} <span class="muted">(${D.danos.por_prov[p.id].n_eventos} eventos)</span>` : "—"}</dd></dl>
       ${midisBlock(p.id)}
       ${sidpolBlock(p.id)}
@@ -665,6 +670,38 @@ function renderSerfor() {
   g2.append("rect").attr("x", m.l).attr("y", 5).attr("height", bh - 10).attr("width", d => x2(d[1]) - m.l).attr("fill", css("--fuego")).attr("fill-opacity", .55);
   g2.append("text").attr("class", "num").attr("x", d => x2(d[1]) + 6).attr("y", bh / 2).attr("dy", ".35em").text(d => nf.format(d[1]));
 }
+// Emergencias viales (PROVIAS): condición de tránsito con el mismo color que el visor oficial.
+const VIA_T = [["03", "Interrumpido"], ["02", "Restringido"], ["04", "Por confirmar"], ["01", "Normal"]];
+const viaColor = c => ({"03": css("--n4"), "02": css("--n2"), "04": css("--ink-3"), "01": css("--ok")})[c] || css("--ink-3");
+const cap = s => s ? s.charAt(0) + s.slice(1).toLowerCase() : "";
+let viaF = "";
+function renderVias() {
+  const vs = V.vias, n = c => vs.filter(v => v.transito_cod === c).length;
+  $("#vias-cnt").innerHTML = VIA_T.map(([c, t]) => `<div><div class="big num" style="color:${viaColor(c)}">${n(c)}</div><p>tránsito ${t.toLowerCase()}</p></div>`).join("");
+  const ev = D.viasEventos || [];
+  $("#vias-ev").hidden = !ev.length;
+  $("#vias-ev").textContent = ev.length ? `Evento activo según PROVIAS: ${ev.join(" · ")}` : "";
+  seg($("#vias-f"), [["", `Todas (${vs.length})`], ...VIA_T.filter(([c]) => n(c)).map(([c, t]) => [c, `${t} (${n(c)})`])], viaF, v => { viaF = v; renderVias(); });
+  filterVias();
+}
+function filterVias() {
+  const q = ($("#vq").value || "").toLowerCase();
+  const pn = Object.fromEntries(V.geo.provs.features.map(f => [f.properties.id, f.properties]));
+  const orden = {"03": 0, "04": 1, "02": 2, "01": 3};
+  const rows = V.vias.filter(v => (!viaF || v.transito_cod === viaF)
+      && (!q || [v.ruta, v.tramo, v.sector, v.tipo, pn[v.prov]?.n, pn[v.prov]?.d].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => (orden[a.transito_cod] ?? 9) - (orden[b.transito_cod] ?? 9) || (b.fecha || "").localeCompare(a.fecha || ""));
+  $("#vias").innerHTML = rows.map(v => `<tr class="clk" data-key="${esc(v._key)}" tabindex="0"><td><span class="tr" style="--c:${viaColor(v.transito_cod)}">${esc(v.transito.replace("Tránsito ", ""))}</span></td>
+    <td>${esc(cap(v.tipo))}${v.puente ? ' <span class="muted">· puente</span>' : ""}</td>
+    <td><b>${esc(v.ruta)}</b> · ${esc(v.tramo)}<div class="muted" style="font-size:12px">sector ${esc(v.sector)} · km ${esc(v.km_ini)}</div></td>
+    <td>${v.prov ? `${esc(title(pn[v.prov]?.n))} <span class="muted">· ${esc(title(pn[v.prov]?.d))}</span>` : esc(regName(v.reg)) || "—"}</td>
+    <td class="num" style="white-space:nowrap">${v.fecha ? fmtDay(v.fecha) : "—"}${v.dias != null ? `<div class="muted" style="font-size:12px">${v.dias} días</div>` : ""}</td></tr>`).join("")
+    || `<tr><td colspan="5" class="muted">${q || viaF ? "Ninguna emergencia coincide." : state.region ? `Sin emergencias viales en ${esc(regName(state.region))}.` : "Sin emergencias viales registradas."}</td></tr>`;
+  $("#vias-note").textContent = `${rows.length} de ${V.vias.length} emergencias. Clic en una fila para ver su cronología, contratista y fotos. La condición de tránsito es la del mapa de PROVIAS; "por confirmar" aún no fue validada.`;
+}
+$("#vq").addEventListener("input", () => D && filterVias());
+$("#vias").addEventListener("click", e => { const r = e.target.closest("tr[data-key]"); if (r) openDetail({source: "provias", kind: "emergencia", key: r.dataset.key}); });
+$("#vias").addEventListener("keydown", e => { const r = e.target.closest("tr[data-key]"); if (r && e.key === "Enter") openDetail({source: "provias", kind: "emergencia", key: r.dataset.key}); });
 function renderZonas() {
   const q = ($("#zq").value || "").toLowerCase();
   const rows = V.zonas.filter(z => !q || [z.region, z.provincia, z.distrito, z.peligros_g, z.paraje].join(" ").toLowerCase().includes(q));
@@ -710,7 +747,7 @@ $("#pq").addEventListener("input", () => D && filterPron());
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
   indeci: "INDECI", indeci_fotos: "INDECI fotos", igp: "IGP sismos", serfor: "SERFOR incendios", ingemmet: "INGEMMET", enfen: "ENFEN", firms: "NASA FIRMS",
   com_pnp: "PNP comunicados", com_provias: "PROVIAS notas", com_mtc: "MTC notas", com_mininter: "MININTER notas",
-  sidpol: "SIDPOL denuncias", provias: "PROVIAS servidor"};
+  sidpol: "SIDPOL denuncias", provias: "PROVIAS vías"};
 const LAT = {rows: [], counts: {}, more: false, next: null, req: 0};
 function writeHash() {
   const p = [state.region && `r=${state.region}`, state.latSource && `f=${state.latSource}`].filter(Boolean).join("&");
@@ -758,7 +795,7 @@ function renderLatest() {
       <span class="body"><span class="tt">${r.level ? lvlChip(r.level) : ""}${esc(r.title)}${danosChips(r.danos)}${r.backfill ? `<span class="bf" title="Llegó en la carga inicial del colector: es histórico, no nuevo">carga inicial</span>` : ""}${r.seguimiento ? `<span class="segchip" title="Reporte nuevo sobre un evento que ocurrió hace ${r.dias_desde_evento} días">Seguimiento · evento de hace ${r.dias_desde_evento} días</span>` : ""}</span>
         ${r.subtitle ? `<span class="ss" style="display:block">${esc(r.subtitle)}</span>` : ""}
         <span class="mm" style="display:block">${[r.place, r.event_time && `${r.kind === "noticia" || r.kind === "comunicado" ? "publicado" : r.kind === "aviso" ? "emitido" : "ocurrido"} ${fmtEvent(r.event_time)}`, r.ocurrencia && r.reportado ? `reportado ${fmtEvent(r.reportado)}` : "", r.group ? "ver cada uno →" : ""].filter(Boolean).map(esc).join(" · ")}</span></span></button></li>`).join("")
-    || `<li class="empty">${state.latSource === "provias" ? "El servidor de emergencias viales de PROVIAS no acepta conexión. Sus notas de prensa llegan por “PROVIAS notas”." : `Sin registros en los últimos 7 días${state.region ? ` para ${esc(regName(state.region))}` : ""}.`}</li>`;
+    || `<li class="empty">${`Sin registros en los últimos 7 días${state.region ? ` para ${esc(regName(state.region))}` : ""}.`}</li>`;
   $("#lat-more").hidden = !LAT.more;
   const soloIndeci = !state.latSource || state.latSource === "indeci";
   $("#lat-seg").hidden = !soloIndeci;
@@ -1004,7 +1041,7 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });
