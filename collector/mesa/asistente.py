@@ -71,11 +71,14 @@ TIPOS = {
                   "institución que informa), basadas en los datos. Cada pregunta es una pieza con etiqueta "
                   "\"Pregunta\". Deben poder responderse con hechos y no presuponer lo que los datos no dicen.", {}),
     "briefing": ("Briefing de turno", {"briefing"},
-                 "Escribe el resumen para el inicio de turno de una redacción. Devuelve tres piezas: "
+                 "Escribe el resumen para el inicio de turno de una redacción. Devuelve cuatro piezas: "
                  "\"Lo principal\" (3 a 5 oraciones con lo más relevante), \"Qué está escalando\" (avisos de "
-                 "nivel alto, eventos con muchas personas afectadas o que siguen reportando) y \"Qué vigilar\" "
-                 "(lo que puede cambiar en las próximas horas según los datos). Si una sección no tiene "
-                 "datos que la sustenten, dilo en una frase en lugar de rellenar.", {}),
+                 "nivel alto, eventos con muchas personas afectadas o que siguen reportando), \"Vías\" (estado "
+                 "de las carreteras según PROVIAS en vias_provias: primero las de tránsito interrumpido, luego "
+                 "las por confirmar y después las restringidas, cada una con ruta, tramo o sector, el tipo de "
+                 "problema y desde cuándo; cuántas hay en total por condición; si no hay ninguna registrada, "
+                 "dilo en una frase) y \"Qué vigilar\" (lo que puede cambiar en las próximas horas según los "
+                 "datos). Si una sección no tiene datos que la sustenten, dilo en una frase en lugar de rellenar.", {}),
 }
 
 SISTEMA = """Redactas borradores para la mesa de prensa de un medio de radio y televisión en Perú, a partir de datos oficiales de instituciones del Estado.
@@ -232,7 +235,8 @@ def _dossier_briefing_lugar(code):
         "zonas_criticas_ingemmet": {"en_alerta": len(F["zonas"]),
                                     "ejemplos": [{"distrito": z.get("distrito"), "paraje": z.get("paraje"), "peligro": z.get("peligros_g"),
                                                   "nivel": z.get("nivel")} for z in F["zonas"]][:6]},
-        "vias_provias": _vias(lambda v: v.get("prov") in sc["provs"] or (not v.get("prov") and sc["tipo"] == "departamental" and v.get("reg") == code), eventos=False),
+        "vias_provias": _vias(lambda v: v.get("prov") in sc["provs"] or (not v.get("prov") and sc["tipo"] == "departamental" and v.get("reg") == code),
+                              eventos=False, restringidas=True, limite=12),
         "enfen_nacional": {k: F["enfen"].get(k) for k in ("numero", "estado", "fecha") if F["enfen"].get(k)},
     }
     salud = {h["id"]: h for h in snapshot.health()}
@@ -360,7 +364,7 @@ def _llamar(tipo, dossier, correccion=None):
     return r.parsed_output, uso
 
 
-def _vias(filtro=lambda v: True, eventos=True):
+def _vias(filtro=lambda v: True, eventos=True, restringidas=False, limite=8):
     """Emergencias viales de PROVIAS para el dossier: conteo por condición de tránsito y las que más importan."""
     vs = [v for v in db.get_items("provias", "emergencia") if filtro(v)]
     orden = {"03": 0, "04": 1, "02": 2, "01": 3}
@@ -369,8 +373,11 @@ def _vias(filtro=lambda v: True, eventos=True):
     return {"total": len(vs),
             "por_condicion": {t: sum(1 for v in vs if v.get("transito") == t) for t in ("Tránsito interrumpido", "Tránsito restringido", "Por confirmar")},
             **({"eventos_activos": eventos} if eventos is not None else {}),
+            # En el nacional, solo interrumpidas y por confirmar (las restringidas son más de cien); en un lugar, también estas.
             "principales": [{"transito": v.get("transito"), "tipo": v.get("tipo"), "ruta": v.get("ruta"), "tramo": v.get("tramo"),
-                             "sector": v.get("sector"), "desde": v.get("fecha")} for v in top if v.get("transito_cod") in ("03", "04")][:8]}
+                             "sector": v.get("sector"), "km": v.get("km_ini"), "desde": v.get("fecha"), "dias": v.get("dias"),
+                             "puente": v.get("puente") or None}
+                            for v in top if v.get("transito_cod") in (("03", "04", "02") if restringidas else ("03", "04"))][:limite]}
 
 
 # ── Flujo de borradores ──────────────────────────────────────────────────────
