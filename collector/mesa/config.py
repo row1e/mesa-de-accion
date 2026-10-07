@@ -12,6 +12,7 @@ WEB = ROOT / "web"
 
 HOST = os.environ.get("MESA_HOST", "127.0.0.1")
 PORT = int(os.environ.get("MESA_PORT", "8787"))
+MARCA = os.environ.get("MESA_MARCA", "").strip().lower()   # identidad visual del cliente (ver api.MARCAS); vacía = neutra
 USER_AGENT = os.environ.get(
     "MESA_UA", "MesaDeAccion-Collector/0.1 (+monitoreo de fuentes oficiales; contacto: r@manya.pe)")
 

@@ -1131,3 +1131,26 @@ $("#detail").addEventListener("click", e => {
   if (g) iaGenerar(g.dataset.iaGen, JSON.parse(g.closest("[data-ref]").dataset.ref));
 });
 iaInit();
+
+/* ── tema claro / oscuro ────────────────────────────────────────────
+   Sin elección guardada sigue al sistema. El mapa y los gráficos leen los colores al dibujarse: se redibuja todo. */
+const oscuroSistema = matchMedia("(prefers-color-scheme: dark)");
+const temaEfectivo = () => document.documentElement.dataset.theme || (oscuroSistema.matches ? "dark" : "light");
+function pintarBotonTema() {
+  const otro = temaEfectivo() === "dark" ? "claro" : "oscuro";
+  $("#tema").textContent = `Tema ${otro}`;
+  $("#tema").title = `Cambiar a tema ${otro}`;
+}
+$("#tema").onclick = () => {
+  const t = temaEfectivo() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("mesa.tema", t); } catch { /* sin almacenamiento: dura hasta recargar */ }
+  pintarBotonTema();
+  if (D) renderAll();
+};
+oscuroSistema.addEventListener("change", () => {
+  if (document.documentElement.dataset.theme) return;   // elección guardada: el sistema no la cambia
+  pintarBotonTema();
+  if (D) renderAll();
+});
+pintarBotonTema();

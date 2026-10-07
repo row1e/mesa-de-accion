@@ -3,7 +3,7 @@ import json
 import time
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 
@@ -15,9 +15,25 @@ app = FastAPI(title="Mesa de Acción · Colector", version="0.1")
 app.mount("/media", StaticFiles(directory=config.DATA / "media"), name="media")   # fotos extraídas de los PDF
 
 
+# Marcas de cliente: MESA_MARCA=<clave> pone el logo (web/marcas/<clave>.png) y los colores de [data-marca] en index.html.
+MARCAS = {"irtp": "IRTP"}
+
+
 @app.get("/", include_in_schema=False)
 def index():
-    return FileResponse(config.WEB / "index.html", headers={"Cache-Control": "no-cache"})
+    html = (config.WEB / "index.html").read_text(encoding="utf-8")
+    if config.MARCA in MARCAS:
+        html = (html.replace("<!--MARCA-->", f'<script>document.documentElement.dataset.marca = "{config.MARCA}";</script>')
+                    .replace("<!--MARCA-LOGO-->", f'<img class="marca-logo" src="/marca/{config.MARCA}.png" alt="{MARCAS[config.MARCA]}">'))
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/marca/{name}", include_in_schema=False)
+def marca(name: str):
+    path = config.WEB / "marcas" / name
+    if not path.is_file() or path.parent != config.WEB / "marcas":
+        raise HTTPException(404)
+    return FileResponse(path, headers={"Cache-Control": "max-age=86400"})
 
 
 @app.get("/app.js", include_in_schema=False)

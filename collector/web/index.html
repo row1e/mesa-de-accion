@@ -1,12 +1,14 @@
 <meta charset="utf-8">
 <title>Mesa de Acción · En vivo</title>
+<script>try { const t = localStorage.getItem("mesa.tema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* sin almacenamiento: tema del sistema */ }</script>
+<!--MARCA-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 :root{
   --ground:#F3F3EF; --surface:#FFFFFF; --surface-2:#F8F8F5; --ink:#15140F; --ink-2:#4A4840; --ink-3:#7C796E;
-  --line:#DCDBD3; --line-2:#EAE9E3; --brand:#FFD100; --brand-ink:#15140F;
+  --line:#DCDBD3; --line-2:#EAE9E3; --brand:#FFD100; --brand-ink:#15140F; --brand-on-ink:var(--brand);
   --land:#E6E5DE; --land-line:#FFFFFF; --dep-line:#8E8B80;
   --n1:#7DB46C; --n2:#E9BF1F; --n3:#EA7A1A; --n4:#D0302F;
   --sismo:#3559D6; --fuego:#B0307E; --hidro:#0E8FA3; --geo:#7A5A2E; --indeci:#15140F;
@@ -32,6 +34,11 @@
   --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14; --bad:#F08A84; --bad-bg:#3A1C1A;
   --uv0:#2A2533; --uv1:#43365E; --uv2:#6A52A0; --uv3:#9579D6; --uv4:#C9B6FF;
 }
+/* marca IRTP (MESA_MARCA=irtp): rojo del logo con texto blanco. Sobre la barra fija el rojo de texto cambia con el tema:
+   la barra es oscura en tema claro (rojo luminoso) y clara en tema oscuro (rojo del logo). */
+:root[data-marca="irtp"]{--brand:#C1002D; --brand-ink:#FFFFFF; --brand-on-ink:#FF4D6D}
+@media (prefers-color-scheme: dark){:root[data-marca="irtp"]:not([data-theme="light"]){--brand-on-ink:#C1002D}}
+:root[data-marca="irtp"][data-theme="dark"]{--brand-on-ink:#C1002D}
 *{box-sizing:border-box}
 [hidden]{display:none!important}   /* que ninguna regla de display (grid/flex) anule el atributo hidden */
 body{background:var(--ground);color:var(--ink);font:400 15px/1.5 var(--f-display);font-variation-settings:"wdth" 100;-webkit-font-smoothing:antialiased}
@@ -46,6 +53,9 @@ button,input{font:inherit;color:inherit}
 .mast-in{max-width:1320px;margin:0 auto;padding:18px 28px 16px;display:flex;flex-wrap:wrap;gap:8px 32px;align-items:flex-end;justify-content:space-between}
 .mast h1{margin:0;font-weight:800;font-size:clamp(28px,4vw,44px);line-height:.95;font-variation-settings:"wdth" 68;letter-spacing:-.01em;text-transform:uppercase}
 .mast h1 span{font-weight:400}
+.mast-id{display:flex;align-items:center;gap:16px}
+.marca-logo{display:block;height:56px;width:auto}
+@media (max-width:560px){.marca-logo{height:42px}}
 .mast .meta{display:flex;gap:22px;flex-wrap:wrap;font-size:13px}
 .mast .meta b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.7}
 
@@ -273,7 +283,7 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .srcf{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
 .srcf button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:3px;padding:4px 9px;font-size:12.5px;cursor:pointer}
 .srcf button .n{font-size:11px;font-weight:700;color:var(--ink-3)}
-.srcf button .n.hot{color:var(--ink);background:var(--brand);padding:0 4px;border-radius:2px}
+.srcf button .n.hot{color:var(--brand-ink);background:var(--brand);padding:0 4px;border-radius:2px}
 .srcf button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
 .srcf button[aria-pressed="true"] .n{color:var(--ground)}
 .srcf button .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
@@ -393,12 +403,12 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 /* filtro por región */
 .regbar{position:sticky;top:0;z-index:15;background:var(--ink);color:var(--ground);box-shadow:0 1px 0 rgba(0,0,0,.2)}
 .regbar-in{max-width:1320px;margin:0 auto;padding:8px 28px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;min-height:46px}
-.regbar label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--brand)}
+.regbar label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--brand-on-ink)}
 .regbar select{appearance:none;background:var(--ground) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237C796E'/%3E%3C/svg%3E") no-repeat right 10px center;color:var(--ink);border:0;border-radius:3px;padding:6px 30px 6px 10px;font-size:14px;font-weight:650;min-width:190px;cursor:pointer}
 .regbar #reg-summary{font-size:13px;opacity:.85}
-.regbar #reg-summary b{color:var(--brand);font-weight:650}
+.regbar #reg-summary b{color:var(--brand-on-ink);font-weight:650}
 .regbar button{margin-left:auto;border:1px solid color-mix(in srgb, var(--ground) 35%, transparent);background:transparent;color:inherit;border-radius:3px;padding:5px 11px;font-size:12.5px;cursor:pointer}
-.regbar button:hover{border-color:var(--brand);color:var(--brand)}
+.regbar button:hover{border-color:var(--brand-on-ink);color:var(--brand-on-ink)}
 body.filtered .regbar{background:#2A2418}
 
 
@@ -455,7 +465,7 @@ tr.clk:hover td,tr.clk:focus-visible td{background:var(--surface-2)}
 /* navegación entre secciones, dentro de la barra fija */
 .jumpbar{max-width:1320px;margin:0 auto;padding:0 28px 7px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
 .jumpbar a{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:650;color:var(--ground);color:color-mix(in srgb, var(--ground) 72%, var(--ink));text-decoration:none;border:1px solid transparent;border-radius:100px;padding:3px 9px;white-space:nowrap}
-.jumpbar a:hover{color:var(--brand);border-color:color-mix(in srgb, var(--ground) 30%, transparent)}
+.jumpbar a:hover{color:var(--brand-on-ink);border-color:color-mix(in srgb, var(--ground) 30%, transparent)}
 .jumpbar a[aria-current="true"]{color:var(--brand-ink);background:var(--brand);border-color:var(--brand)}
 @media (max-width:760px){.jumpbar{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}}
 main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no debe tapar el título; --barH la mide app.js */
@@ -468,9 +478,9 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 .regbar #reg-clear:not([hidden]) + .ficha-pick{margin-left:0}
 .ficha-pick select{min-width:210px;max-width:260px;font-weight:500}
 .fp-btn{border:1px solid color-mix(in srgb, var(--ground) 35%, transparent);color:inherit;border-radius:3px;padding:5px 11px;font-size:12.5px;text-decoration:none;white-space:nowrap;cursor:pointer}
-.fp-btn.primary{background:var(--brand);border-color:var(--brand);color:#15140F;font-weight:700}
+.fp-btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:700}
 .fp-btn[aria-disabled="true"]{opacity:.4;pointer-events:none}
-.fp-btn:hover{border-color:var(--brand)}
+.fp-btn:hover{border-color:var(--brand-on-ink)}
 #map .prov.out{opacity:.22}
 #map .dep.reg{stroke:var(--ink);stroke-width:2.2}
 .reg-tag{color:var(--ink-3);font-weight:500}
@@ -480,12 +490,12 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 
 <header class="mast">
   <div class="mast-in">
-    <h1>Mesa de Acción <span>· Fuentes oficiales</span></h1>
+    <div class="mast-id"><!--MARCA-LOGO--><h1>Mesa de Acción <span>· Fuentes oficiales</span></h1></div>
     <div class="meta">
       <div><b>Datos al</b><span id="m-snap" class="num">—</span></div>
       <div><b>Fuentes al día</b><span id="m-src" class="num">—</span></div>
       <div><b>Último éxito de una fuente</b><span id="m-built" class="num">—</span></div>
-      <div class="live"><span id="conn" class="conn">Conectando…</span><button type="button" id="refresh-all" class="mbtn">Actualizar todo</button></div>
+      <div class="live"><span id="conn" class="conn">Conectando…</span><button type="button" id="refresh-all" class="mbtn">Actualizar todo</button><button type="button" id="tema" class="mbtn"></button></div>
     </div>
   </div>
 </header>
