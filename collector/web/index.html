@@ -286,6 +286,10 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .srcf button .n.hot{color:var(--brand-ink);background:var(--brand);padding:0 4px;border-radius:2px}
 .srcf button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
 .srcf button[aria-pressed="true"] .n{color:var(--ground)}
+.srcline{display:flex;align-items:center;gap:6px;margin:-6px 0 10px;font-size:12px;color:var(--ink-3)}
+.srcline .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.srcline .dot.fallando,.srcline .dot.sin_acceso{background:var(--bad)}.srcline .dot.atrasada{background:var(--warn)}
+.srcline .dot.actualizando,.srcline .dot.pendiente{background:var(--ink-3)}
 .srcf button .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
 .srcf button .dot.fallando,.srcf button .dot.sin_acceso{background:var(--bad)}
 .srcf button .dot.atrasada{background:var(--warn)}
@@ -524,7 +528,6 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#igp-sec">Sismos (IGP)</a>
     <a href="#serfor-sec">Incendios (SERFOR)</a>
     <a href="#ing-sec">Zonas críticas (INGEMMET)</a>
-    <a href="#pron-sec">Pronóstico</a>
   </nav>
 </div>
 
@@ -601,11 +604,14 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
   </section>
 
   <section id="senamhi">
-    <div class="sec-head"><div><p class="eyebrow">SENAMHI</p><h2>Avisos meteorológicos</h2></div><span class="src">senamhi.gob.pe/?p=aviso-meteorologico · idesep.senamhi.gob.pe/geoserver (WFS g_aviso:view_aviso)</span></div>
+    <div class="sec-head"><div><p class="eyebrow">SENAMHI · Servicio Nacional de Meteorología e Hidrología</p><h2>Avisos, pronóstico e índice UV</h2></div><span class="src">4 fuentes: avisos meteorológicos · avisos hidrológicos · pronóstico por ciudad · índice UV</span></div>
     <div class="grid2">
-      <div class="panel"><h3>Vigentes y emitidos</h3><div class="scroll"><table><thead><tr><th>N°</th><th>Nivel</th><th>Aviso</th><th>Vigencia</th></tr></thead><tbody id="avisos"></tbody></table></div></div>
-      <div class="panel"><h3>Avisos emitidos por año y nivel</h3><div id="hist"></div><p class="note" id="hist-note"></p></div>
+      <div class="panel"><h3>Avisos meteorológicos vigentes</h3><p class="srcline" data-srcline="senamhi_avisos"></p><div class="scroll"><table><thead><tr><th>N°</th><th>Nivel</th><th>Aviso</th><th>Vigencia</th></tr></thead><tbody id="avisos"></tbody></table></div></div>
+      <div class="panel"><h3>Avisos hidrológicos por estación</h3><p class="srcline" data-srcline="senamhi_hidro"></p><div class="scroll"><table><thead><tr><th>Nivel</th><th>Estación · río</th><th>Ubicación</th></tr></thead><tbody id="hidro"></tbody></table></div></div>
+      <div class="panel"><h3>Índice UV por provincia</h3><p class="srcline" data-srcline="senamhi_uv"></p><input type="search" id="uvq" placeholder="Buscar provincia o departamento"><div class="scroll"><table><thead><tr><th>Provincia</th><th>Dpto.</th><th class="num" id="uvd0"></th><th class="num" id="uvd1"></th><th class="num" id="uvd2"></th></tr></thead><tbody id="uvt"></tbody></table></div><p class="note" id="uv-note"></p></div>
+      <div class="panel"><h3>Pronóstico por ciudad</h3><p class="srcline" data-srcline="senamhi_pronostico"></p><input type="search" id="pq" placeholder="Buscar ciudad o departamento"><div class="scroll"><table><thead><tr><th>Ciudad</th><th>Dpto.</th><th class="num" id="pd0"></th><th class="num" id="pd1"></th><th class="num" id="pd2"></th></tr></thead><tbody id="pron"></tbody></table></div></div>
     </div>
+    <div class="panel" style="margin-top:22px"><h3>Avisos meteorológicos emitidos por año y nivel</h3><div id="hist"></div><p class="note" id="hist-note"></p></div>
   </section>
 
   <section id="indeci-sec">
@@ -655,13 +661,6 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <div class="panel"><input type="search" id="zq" placeholder="Filtrar por región, provincia, distrito o peligro"><div class="scroll"><table><thead><tr><th>Nivel</th><th>Región</th><th>Provincia · Distrito</th><th>Paraje</th><th>Peligro</th><th>Elementos expuestos</th></tr></thead><tbody id="zonas"></tbody></table></div><p class="note" id="zonas-note"></p></div>
   </section>
 
-  <section id="pron-sec">
-    <div class="sec-head"><div><p class="eyebrow">SENAMHI</p><h2>Pronóstico e índice UV</h2></div><span class="src">senamhi.gob.pe/?p=pronostico-meteorologico · /usr/dms/modelo/iuv/prono_ruv.json · mapa-aviso-hidro (GeoJSON)</span></div>
-    <div class="grid2">
-      <div class="panel"><h3>Pronóstico por ciudad</h3><input type="search" id="pq" placeholder="Buscar ciudad o departamento"><div class="scroll"><table><thead><tr><th>Ciudad</th><th>Dpto.</th><th class="num" id="pd0"></th><th class="num" id="pd1"></th><th class="num" id="pd2"></th></tr></thead><tbody id="pron"></tbody></table></div></div>
-      <div class="panel"><h3>Avisos hidrológicos por estación</h3><div class="scroll"><table><thead><tr><th>Nivel</th><th>Estación · río</th><th>Ubicación</th></tr></thead><tbody id="hidro"></tbody></table></div><p class="note" id="uv-note"></p></div>
-    </div>
-  </section>
 
   <footer><span>Colector <span class="mono">collector/</span> · API en <a class="mono" href="/docs">/docs</a> · la página consulta el estado cada 15 s y recarga los datos cuando una fuente trae algo nuevo.</span><span id="f-built"></span></footer>
 <div class="toast" id="toast" role="status" hidden></div>

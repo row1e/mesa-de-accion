@@ -39,7 +39,7 @@ let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = 
 // Denuncias policiales (SIDPOL): fuera del tablero por ahora, no es información de emergencias. Para volver a mostrarlas:
 // true aquí y quitar `hidden` de #sidpol-sec y de su enlace en la barra (index.html).
 const MOSTRAR_DENUNCIAS = false;
-const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec", "pron-sec"];
+const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
 function makeView() {
@@ -167,7 +167,16 @@ function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = fal
 $("#refresh-all").addEventListener("click", e => refresh("all", e.currentTarget));
 
 /* ── estado de fuentes (se re-pinta en cada sondeo) ───────────────── */
+// Línea de fuente bajo cada panel: estado, último éxito y frecuencia (se refresca con cada sondeo de /api/health).
+function renderSrcLines() {
+  document.querySelectorAll("[data-srcline]").forEach(el => {
+    const h = H.find(x => x.id === el.dataset.srcline);
+    el.innerHTML = h ? `<i class="dot ${h.status}"></i>${esc(STATUS[h.status] || h.status)} · actualizado ${ago(h.last_ok)} · ${every(h.interval_s)}` : "";
+    el.title = h ? `${h.org} · ${h.name}${h.last_ok ? " · " + stampFull(h.last_ok) : ""}` : "";
+  });
+}
 function renderHealth() {
+  renderSrcLines();
   const ok = H.filter(h => h.status === "ok").length;
   $("#m-src").textContent = `${ok} de ${H.length}`;
   const newest = Math.max(...H.map(h => h.last_ok || 0));
@@ -658,11 +667,26 @@ let pd = [], pdays = [];
 function renderPron() {
   pd = d3.groups(V.pronostico, p => p.ciudad + "|" + p.departamento);
   pdays = [...new Set(V.pronostico.map(p => p.dia))].slice(0, 3);
-  pdays.forEach((d, i) => $("#pd" + i).textContent = d.replace(/^(\w+),\s*(\d+) de (\w+)/, (m, a, b) => `${a.slice(0,3)} ${b}`));
+  pdays.forEach((d, i) => $("#pd" + i).textContent = d.replace(/^(\p{L}+),\s*(\d+) de (\p{L}+)/u, (m, a, b) => `${a.slice(0,3)} ${+b}`));
   filterPron();
   $("#hidro").innerHTML = V.hidro.map(h => `<tr><td>${lvlChip(Math.min(4, lvlNum(h.color_text)))}</td><td><b>${esc(title(h.nom_estacion))}</b><div class="muted" style="font-size:12px">${esc(title(h.titulo))}</div></td><td>${esc(title(h.nom_distrito))}, ${esc(title(h.nom_provincia))}<div class="muted" style="font-size:12px">${esc(title(h.nom_departamento))} · cuenca ${esc(title(h.nom_cuenca))}</div></td></tr>`).join("") || `<tr><td colspan="3" class="muted">Sin avisos hidrológicos vigentes.</td></tr>`;
-  $("#uv-note").textContent = `Índice UV: ${Object.keys(V.uv).length} provincias con valor (capa “Índice UV” del mapa). ${V.uvUnmatched.length} zonas UV usan códigos que no son provincias INEI.`;
+  uvdays = uvDays.slice(0, 3);
+  [0, 1, 2].forEach(i => { $("#uvd" + i).textContent = uvdays[i] ? fmtDay(uvdays[i]) : ""; $("#uvd" + i).hidden = !uvdays[i]; });   // SENAMHI publica 2 o 3 días
+  filterUv();
+  $("#uv-note").textContent = `Escala SENAMHI: 0–2 bajo · 3–5 moderado · 6–7 alto · 8–10 muy alto · 11+ extremo. Entre paréntesis, la hora pico. También como capa “Índice UV” del mapa. ${V.uvUnmatched.length ? `${V.uvUnmatched.length} zonas UV usan códigos que no son provincias INEI y no aparecen aquí.` : ""}`;
 }
+let uvdays = [];
+const uvChip = v => v == null ? "—" : `<span class="lvl" style="background:${uvColor(v)};color:${v >= 8 ? "#fff" : "#15140F"}">${v}</span>`;
+function filterUv() {
+  const q = ($("#uvq").value || "").toLowerCase();
+  const pn = Object.fromEntries(V.geo.provs.features.map(f => [f.properties.id, f.properties]));
+  const rows = Object.entries(V.uv).map(([c, u]) => ({c, u, n: title(pn[c]?.n), d: title(pn[c]?.d)}))
+    .filter(r => !q || `${r.n} ${r.d}`.toLowerCase().includes(q))
+    .sort((a, b) => (b.u.v[0] ?? -1) - (a.u.v[0] ?? -1) || a.n.localeCompare(b.n));
+  $("#uvt").innerHTML = rows.map(r => `<tr><td>${esc(r.n)}</td><td class="muted">${esc(r.d)}</td>${uvdays.map((_, i) => `<td class="num">${uvChip(r.u.v[i])}${r.u.h[i] ? ` <span class="muted">(${esc(r.u.h[i])})</span>` : ""}</td>`).join("")}</tr>`).join("")
+    || `<tr><td colspan="5" class="muted">${q ? "Ninguna provincia coincide." : "Sin datos de índice UV."}</td></tr>`;
+}
+$("#uvq").addEventListener("input", () => D && filterUv());
 function filterPron() {
   const q = ($("#pq").value || "").toLowerCase();
   $("#pron").innerHTML = pd.filter(([k]) => !q || k.toLowerCase().includes(q)).map(([k, v]) => {
