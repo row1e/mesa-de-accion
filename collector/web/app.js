@@ -96,6 +96,9 @@ function renderRegionBar() {
     ? `${P ? `Provincia <b>${esc(provName(P))}</b> marcada en el mapa · ` : ""}Mostrando solo <b>${esc(regName(R))}</b> · ${plural(lv.length, "provincia bajo aviso", "provincias bajo aviso")} hoy · ${plural(V.indeci.filter(i => i.clase === "reporte").length, "reporte INDECI", "reportes INDECI")} · ${plural(V.alertas.length, "alerta de incendio", "alertas de incendio")}. El estado de las fuentes y ENFEN son nacionales.`
     : `Mostrando todo el Perú. Elija un departamento o una provincia para filtrar el tablero y descargar su ficha PDF.`;
   updateFichaLinks();
+  const lugarTxt = P ? provName(P) : R ? regName(R) : "";
+  $("#ia-briefing").textContent = lugarTxt ? `Generar briefing de turno · ${lugarTxt}` : "Generar briefing de turno · todo el Perú";
+  $("#ia-briefing").title = lugarTxt ? `Solo con los datos de ${lugarTxt} (ENFEN es nacional)` : "Con los datos de todo el país";
   REG_SECTIONS.forEach(id => {
     const h2 = document.querySelector(`#${id} h2`); if (!h2) return;
     let tag = h2.querySelector(".reg-tag");
@@ -1050,7 +1053,8 @@ async function iaGenerar(tipo, ref) {
   box.innerHTML = `<div class="dh"><div><div class="src-org">Asistente de IA · ${esc(nombre)}</div><h3>Redactando y verificando cifras…</h3></div><button type="button" class="x" aria-label="Cerrar ficha">×</button></div>
     <p class="ia-wait">El modelo redacta solo con los datos de la fuente. Luego cada cifra se compara con esos datos; si alguna no coincide se reintenta una vez. Suele tardar entre 10 y 60 segundos.</p>`;
   try {
-    const b = await iaPost("/api/ia/borradores", {tipo, alcance: ref ? "registro" : "briefing", ...(ref || {}), actor});
+    const lugar = !ref && $("#region").value || undefined;   // briefing del lugar elegido; sin lugar, nacional
+    const b = await iaPost("/api/ia/borradores", {tipo, alcance: ref ? "registro" : "briefing", ...(ref || {}), lugar, actor});
     iaCargar();
     if (n === detailReq) iaMostrar(b);
   } catch (e) {

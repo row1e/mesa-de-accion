@@ -140,7 +140,10 @@ def dossier_registro(source, kind, key):
     return dossier, cita, d.get("title")
 
 
-def dossier_briefing():
+def dossier_briefing(lugar=None):
+    """Briefing nacional, o de un departamento (2 dígitos) / provincia (4) con solo los datos de ese lugar."""
+    if lugar:
+        return _dossier_briefing_lugar(lugar)
     D = snapshot.build()
     now = datetime.datetime.now(LIMA)
     hoy = now.date().isoformat()
@@ -178,6 +181,63 @@ def dossier_briefing():
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
              "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen") if s in SOURCES]
     return dossier, cita, f"Briefing {now.strftime('%d/%m %H:%M')}"
+
+
+def _dossier_briefing_lugar(code):
+    # Mismo recorte por lugar que la ficha PDF (mesa/ficha.py): avisos que tocan sus provincias, reportes INDECI y
+    # daños de ese lugar, sismos dentro o a menos de NEAR_KM, incendios, zonas críticas, hidrología y pronóstico.
+    from . import ficha
+    sc = ficha.scope_of(code)
+    if not sc:
+        raise IAError(f"Lugar desconocido: «{code}». Use 2 dígitos (departamento) o 4 (provincia).")
+    F = ficha.build(code)
+    now = datetime.datetime.now(LIMA)
+    hoy = now.date().isoformat()
+    nv = next((n for n in F["niveles"] if n["dia"] == hoy), None)
+    nombre = sc["nombre"].title() if sc["tipo"] == "departamental" else f"{sc['nombre'].title()} ({sc['departamento'].title()})"
+    avisos = [{"numero": a["nro"], "titulo": a["titulo"], "nivel": a["nivel"], "estado": a["estado"],
+               "inicio": a.get("inicio"), "fin": a.get("fin")} for a in F["avisos"]][:10]
+    indeci = [{"evento": i.get("evento"), "distrito": i.get("distrito"), "provincia": i.get("provincia"), "tipo": i.get("tipo"),
+               "numero": i.get("num"), "recibido": _iso(i.get("ts"))} for i in F["indeci"]][:12]
+    dn, lab = F["danos"], F["danos"].get("labels") or {}
+    danos = [{"evento": e.get("evento"), "distrito": e.get("distrito"), "departamento": e.get("dpto"),
+              "ocurrencia": e.get("ocurrencia"), "sigue_reportando_desde_antes": not e.get("nuevo"),
+              "cifras": {lab.get(k, k): v for k, v in e["totales"].items() if v}} for e in dn["eventos"][:6]]
+    hace7 = (now - datetime.timedelta(days=7)).date().isoformat()
+    sismos = [{"fecha": s["fecha"], "hora": s["hora"], "magnitud": s["mag"], "profundidad_km": s["prof"], "referencia": s["ref"],
+               "epicentro": "dentro del lugar" if s["dentro"] else f"a {s['dist_km']} km del límite"}
+              for s in F["sismos"] if s["fecha"] >= hace7][:10]
+    activas = [a for a in F["alertas"] if a.get("estado") != "Extinguido"]
+    pron = {}
+    for p in F["pronostico"]:
+        pron.setdefault(p["ciudad"], []).append({"dia": p["dia"], "max": p["tmax"], "min": p["tmin"], "descripcion": p["descripcion"]})
+    uv = F.get("uv") or F.get("uv_max")
+    dossier = {
+        "alcance": "briefing", "fecha": hoy, "hora_corte": now.strftime("%H:%M"),
+        "lugar": {"nombre": nombre, "tipo": sc["tipo"], "ubigeo": code, "provincias": F["n_provincias"]},
+        "importante": f"Todos los datos son solo de {nombre}, salvo ENFEN, que es nacional. No hables del resto del país.",
+        "avisos_senamhi": {"provincias_por_nivel_hoy": nv["conteo"] if nv else {}, "vigentes": avisos},
+        "hidrologia_estaciones_en_aviso": [{"estacion": h.get("nom_estacion"), "aviso": h.get("titulo"), "nivel": h.get("color_text"),
+                                            "distrito": h.get("nom_distrito")} for h in F["hidro"]][:8],
+        "pronostico_por_ciudad": pron,
+        "indice_uv_mas_alto": {"zona": uv["z"], "valor": uv["v"][0], "hora_pico": uv["h"][0], "dia": uv["dias"][0]} if uv else None,
+        "indeci_ultimos_dias": {"ventana_dias": F.get("indeci_dias"), "reportes": len(F["indeci"]), "recientes": indeci},
+        "danos": {"ventana_dias": dn.get("dias"), "eventos_con_cifras": dn.get("n_eventos"), "eventos_nuevos": dn.get("n_nuevos"),
+                  "mayor_impacto": danos},
+        "sismos_7_dias": sismos,
+        "incendios": {"alertas_no_extinguidas": len(activas), "focos_calor_24h": F["focos"],
+                      "alertas": [{"distrito": a.get("dist"), "provincia": a.get("prov"), "estado": a.get("estado"), "fecha": a.get("fecha")}
+                                  for a in activas][:8]},
+        "zonas_criticas_ingemmet": {"en_alerta": len(F["zonas"]),
+                                    "ejemplos": [{"distrito": z.get("distrito"), "paraje": z.get("paraje"), "peligro": z.get("peligros_g"),
+                                                  "nivel": z.get("nivel")} for z in F["zonas"]][:6]},
+        "enfen_nacional": {k: F["enfen"].get(k) for k in ("numero", "estado", "fecha") if F["enfen"].get(k)},
+    }
+    salud = {h["id"]: h for h in snapshot.health()}
+    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen")
+    cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
+             "url": None} for s in fuentes if s in SOURCES]
+    return dossier, cita, f"Briefing {nombre} {now.strftime('%d/%m %H:%M')}"
 
 
 # ── Verificación de cifras ───────────────────────────────────────────────────
@@ -311,7 +371,7 @@ def _actor(actor):
     return a
 
 
-def generar(tipo, alcance, ref, actor, origen=None):
+def generar(tipo, alcance, ref, actor, origen=None, lugar=None):
     actor = _actor(actor)
     if tipo not in TIPOS or alcance not in TIPOS[tipo][1]:
         raise IAError(f"Tipo «{tipo}» no válido para «{alcance}».")
@@ -320,7 +380,8 @@ def generar(tipo, alcance, ref, actor, origen=None):
     if alcance == "registro":
         dossier, cita, titulo = dossier_registro(ref["source"], ref["kind"], ref["key"])
     else:
-        dossier, cita, titulo = dossier_briefing()
+        dossier, cita, titulo = dossier_briefing(lugar)
+        ref = {"lugar": lugar} if lugar else None
     sha = hashlib.sha256(json.dumps(dossier, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
     limites = TIPOS[tipo][3]
     try:

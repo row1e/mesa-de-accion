@@ -217,6 +217,7 @@ class IAGenerar(BaseModel):
     source: str | None = None
     kind: str | None = None
     key: str | None = None
+    lugar: str | None = None   # briefing de un departamento (2 dígitos) o provincia (4); sin él, nacional
     actor: str
 
 
@@ -255,7 +256,8 @@ def ia_generar(b: IAGenerar, request: Request):
     ref = {"source": b.source, "kind": b.kind, "key": b.key} if b.alcance == "registro" else None
     if b.alcance == "registro" and not all(ref.values()):
         raise HTTPException(400, "Falta source, kind o key del registro.")
-    return _ia(asistente.generar, b.tipo, b.alcance, ref, b.actor, request.client.host if request.client else None)
+    lugar = b.lugar if b.alcance == "briefing" and b.lugar else None
+    return _ia(asistente.generar, b.tipo, b.alcance, ref, b.actor, request.client.host if request.client else None, lugar)
 
 
 @app.get("/api/ia/borradores")
