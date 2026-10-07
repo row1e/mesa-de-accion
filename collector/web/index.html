@@ -557,7 +557,6 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#latest-sec">Últimos datos</a>
     <a href="#enfen-sec">El Niño</a>
     <a href="#senamhi">SENAMHI</a>
-    <a href="#indeci-sec">INDECI</a>
     <a href="#vias-sec">Vías (PROVIAS)</a>
     <a href="#ciud-sec">Nuestros corresponsales</a>
     <a href="#com-sec">Comunicados</a>
@@ -565,6 +564,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#igp-sec">Sismos (IGP)</a>
     <a href="#serfor-sec">Incendios (SERFOR)</a>
     <a href="#ing-sec">Zonas críticas (INGEMMET)</a>
+    <a href="#indeci-sec">INDECI</a>
     <a href="#fuentes">Estado de fuentes</a>
   </nav>
 </div>
@@ -644,18 +644,6 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <div class="panel" style="margin-top:22px"><h3>Avisos meteorológicos emitidos por año y nivel</h3><div id="hist"></div><p class="note" id="hist-note"></p></div>
   </section>
 
-  <section id="indeci-sec">
-    <div class="sec-head"><div><p class="eyebrow">INDECI · COEN</p><h2>Reportes de emergencia</h2></div><span class="src">portal.indeci.gob.pe/emergencias/feed/ · anexo fotográfico de cada PDF</span></div>
-    <div class="panel danos-panel" id="danos"></div>
-    <div class="panel strip-panel">
-      <div class="strip-head"><h3>Imágenes de campo · últimas 24 h</h3><span class="note" id="strip-note"></span></div>
-      <div class="strip" id="ind-strip"></div>
-    </div>
-    <div class="grid2">
-      <div class="panel"><div class="filters" id="ind-filters"></div><div class="scroll" style="padding:0 18px"><ul class="feed" id="feed"></ul></div></div>
-      <div class="panel"><h3>Eventos reportados en la muestra</h3><div id="ind-chart"></div><p class="note" id="ind-note"></p></div>
-    </div>
-  </section>
 
   <section id="vias-sec">
     <div class="sec-head"><div><p class="eyebrow">PROVIAS Nacional · Visor de Emergencias Viales</p><h2>Emergencias en la red vial nacional</h2></div><span class="src">wsgcv.proviasnac.gob.pe/emergenciavial</span></div>
@@ -744,6 +732,18 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
   <section id="ing-sec">
     <div class="sec-head"><div><p class="eyebrow">INGEMMET · Perú Alerta</p><h2>Zonas críticas bajo aviso</h2></div><span class="src">geocatmin.ingemmet.gob.pe/arcgis/rest/services/SERV_PERU_ALERTA/MapServer/0</span></div>
     <div class="panel"><input type="search" id="zq" placeholder="Filtrar por región, provincia, distrito o peligro"><div class="scroll"><table><thead><tr><th>Nivel</th><th>Región</th><th>Provincia · Distrito</th><th>Paraje</th><th>Peligro</th><th>Elementos expuestos</th></tr></thead><tbody id="zonas"></tbody></table></div><p class="note" id="zonas-note"></p></div>
+  </section>
+  <section id="indeci-sec">
+    <div class="sec-head"><div><p class="eyebrow">INDECI · COEN</p><h2>Reportes de emergencia</h2></div><span class="src">portal.indeci.gob.pe/emergencias/feed/ · anexo fotográfico de cada PDF</span></div>
+    <div class="panel danos-panel" id="danos"></div>
+    <div class="panel strip-panel">
+      <div class="strip-head"><h3>Imágenes de campo · últimas 24 h</h3><span class="note" id="strip-note"></span></div>
+      <div class="strip" id="ind-strip"></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><div class="filters" id="ind-filters"></div><div class="scroll" style="padding:0 18px"><ul class="feed" id="feed"></ul></div></div>
+      <div class="panel"><h3>Eventos reportados en la muestra</h3><div id="ind-chart"></div><p class="note" id="ind-note"></p></div>
+    </div>
   </section>
 
 
