@@ -57,6 +57,9 @@ textarea{min-height:110px;resize:vertical}
 .check{display:flex;gap:10px;align-items:flex-start;font-size:14px;margin-top:10px}
 .check input{margin-top:4px;width:18px;height:18px;flex:none}
 input[aria-invalid="true"]{border-color:#B42323;box-shadow:0 0 0 1px #B42323}
+.err{margin:6px 0 0;color:#B42323;font-size:13.5px;font-weight:600}
+:root[data-theme="dark"] .err{color:#F08A84}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .err{color:#F08A84}}
 .send{width:100%;background:var(--brand);color:var(--brand-ink);border:0;border-radius:4px;padding:14px;font-size:17px;font-weight:750;cursor:pointer}
 .legal{font-size:12.5px;color:var(--ink-3);margin-top:12px}
 .done{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--ok);padding:18px;margin-top:4px}
@@ -125,7 +128,8 @@ input[aria-invalid="true"]{border-color:#B42323;box-shadow:0 0 0 1px #B42323}
     <fieldset>
       <legend>¿Quién reporta?</legend>
       <div class="row">
-        <input type="text" id="nombre" autocomplete="name" placeholder="Nombre y apellido" aria-label="Nombre y apellido" required>
+        <input type="text" id="nombre" autocomplete="name" placeholder="Nombre y apellido" aria-label="Nombre y apellido" required aria-describedby="nombre-err">
+        <p class="err" id="nombre-err" hidden></p>
         <div class="chips" role="radiogroup" aria-label="Reporto como">
           <label><input type="radio" name="quien" value="ciudadano" checked><span>Ciudadano/a</span></label>
           <label><input type="radio" name="quien" value="medio"><span>Medio de comunicación</span></label>
@@ -146,13 +150,14 @@ input[aria-invalid="true"]{border-color:#B42323;box-shadow:0 0 0 1px #B42323}
     </fieldset>
 
     <fieldset>
-      <label class="q" for="tel">Tu teléfono <span class="hint">· opcional, solo para verificar</span></label>
-      <input type="tel" id="tel" inputmode="tel" autocomplete="tel" placeholder="9xx xxx xxx">
-      <label class="check"><input type="checkbox" id="ok-contacto"> Autorizo que la mesa de noticias me contacte para verificar este reporte. No se publicará mi teléfono.</label>
+      <label class="q" for="tel">Tu teléfono <span class="hint">· obligatorio, para verificar el reporte</span></label>
+      <input type="tel" id="tel" inputmode="tel" autocomplete="tel" placeholder="9xx xxx xxx" required aria-describedby="tel-err tel-nota">
+      <p class="err" id="tel-err" hidden></p>
+      <p class="hint" id="tel-nota" style="margin:8px 0 0">La mesa de noticias puede llamarte o escribirte para confirmar lo que reportas. Tu teléfono no se publica.</p>
     </fieldset>
 
     <button type="submit" class="send">Enviar reporte</button>
-    <p class="legal">Vista previa. Al conectarse, los reportes se guardarán con fecha y hora, y la mesa de noticias los contrastará con SENAMHI, INDECI y las demás fuentes oficiales antes de usarlos.</p>
+    <p class="legal">Vista previa. Al conectarse, los reportes se guardarán con fecha y hora, y la mesa de noticias confirmará cada uno con quien lo envió y lo contrastará con SENAMHI, INDECI y las demás fuentes oficiales antes de usarlos.</p>
   </form>
 
   <div class="done" id="done" hidden role="status">
@@ -174,11 +179,19 @@ $("#foto").onchange = e => {
 const quien = () => document.querySelector('input[name="quien"]:checked')?.value;
 const verQuien = () => { $("#medio").hidden = quien() !== "medio"; $("#autoridad").hidden = quien() !== "autoridad"; };
 document.querySelectorAll('input[name="quien"]').forEach(r => r.onchange = verQuien);
-$("#nombre").oninput = () => $("#nombre").removeAttribute("aria-invalid");
+// Nombre y teléfono son obligatorios: sin un teléfono no se puede verificar el reporte.
+const marcar = (id, msg) => { const el = $("#" + id), err = $("#" + id + "-err"); el.toggleAttribute("aria-invalid", !!msg); if (msg) el.setAttribute("aria-invalid", "true"); err.textContent = msg || ""; err.hidden = !msg; };
+// Celular (9 dígitos) o fijo con código de ciudad (7–9 dígitos); se acepta +51 delante y espacios o guiones.
+const telOk = v => { let d = v.replace(/[^\d]/g, ""); if (d.length === 11 && d.startsWith("51")) d = d.slice(2); return d.length >= 7 && d.length <= 9; };
+["nombre", "tel"].forEach(id => $("#" + id).addEventListener("input", () => marcar(id, "")));
 $("#f").onsubmit = e => {
   e.preventDefault();
-  if (!$("#nombre").value.trim()) { $("#nombre").focus(); $("#nombre").setAttribute("aria-invalid", "true"); $("#nombre").placeholder = "Escribe tu nombre para enviar"; return; }
+  const faltas = [];
+  if (!$("#nombre").value.trim()) { marcar("nombre", "Escribe tu nombre para enviar el reporte."); faltas.push("nombre"); }
+  if (!$("#tel").value.trim()) { marcar("tel", "El teléfono es obligatorio: sin él no podemos verificar tu reporte."); faltas.push("tel"); }
+  else if (!telOk($("#tel").value)) { marcar("tel", "Revisa el número: celular de 9 dígitos (ej.: 987 654 321) o fijo con código de ciudad."); faltas.push("tel"); }
+  if (faltas.length) { $("#" + faltas[0]).focus(); return; }
   $("#f").hidden = true; $("#done").hidden = false; scrollTo(0, 0);
 };
-$("#otro").onclick = () => { $("#f").reset(); verQuien(); $("#thumb").hidden = true; $("#geo").classList.remove("on"); $("#geo").textContent = "📍 Usar mi ubicación actual"; $("#done").hidden = true; $("#f").hidden = false; };
+$("#otro").onclick = () => { $("#f").reset(); verQuien(); marcar("nombre", ""); marcar("tel", ""); $("#thumb").hidden = true; $("#geo").classList.remove("on"); $("#geo").textContent = "📍 Usar mi ubicación actual"; $("#done").hidden = true; $("#f").hidden = false; };
 </script>
