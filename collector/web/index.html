@@ -286,6 +286,23 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .srcf button .n.hot{color:var(--brand-ink);background:var(--brand);padding:0 4px;border-radius:2px}
 .srcf button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
 .srcf button[aria-pressed="true"] .n{color:var(--ground)}
+/* reportes ciudadanos (vista previa) */
+.ciud{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ciud li{position:relative;border:1px solid var(--line-2);border-left:3px solid var(--brand);background:var(--surface-2);padding:10px 12px}
+.ciud .ch{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font-size:12.5px;padding-right:64px}
+.ciud .tipo{font-weight:700;font-size:13px}
+.ciud .t{margin:4px 0 2px;font-size:14px;line-height:1.4}
+.ciud .s{margin:0;font-size:12px;color:var(--ink-3)}
+.ciud .cruce{margin:6px 0 0;font-size:12px;color:var(--ink-2)}
+.ciud .acc{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ciud .acc button,.ciud-f button{border:1px solid var(--line);background:var(--surface);border-radius:3px;padding:4px 10px;font-size:12.5px}
+.ciud .acc button:disabled,.ciud-f button:disabled{opacity:.55;cursor:not-allowed}
+.ciud-f button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
+.ciud-f .n{font-weight:700;margin-left:4px}
+.ciud .ej{position:absolute;top:8px;right:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);background:var(--warn-bg);padding:1px 6px;border-radius:2px}
+.phone{width:100%;max-width:360px;margin:0 auto;border:8px solid var(--ink);border-radius:26px;overflow:hidden;background:var(--ground)}
+.phone iframe{display:block;width:100%;height:600px;border:0}
+.ciud-open{display:inline-block;border-color:var(--line)}
 .srcline{display:flex;align-items:center;gap:6px;margin:-6px 0 10px;font-size:12px;color:var(--ink-3)}
 .srcline .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
 .srcline .dot.fallando,.srcline .dot.sin_acceso{background:var(--bad)}.srcline .dot.atrasada{background:var(--warn)}
@@ -523,6 +540,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#enfen-sec">El Niño</a>
     <a href="#senamhi">SENAMHI</a>
     <a href="#indeci-sec">INDECI</a>
+    <a href="#ciud-sec">Reportes ciudadanos</a>
     <a href="#com-sec">Comunicados</a>
     <a href="#sidpol-sec" hidden>Denuncias</a>
     <a href="#igp-sec">Sismos (IGP)</a>
@@ -627,6 +645,45 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     </div>
   </section>
 
+  <section id="ciud-sec">
+    <div class="sec-head"><div><p class="eyebrow">Ciudadanía · vista previa, aún sin conectar</p><h2>Reportes ciudadanos</h2></div><span class="src">formulario público: /reportar</span></div>
+    <p class="lede">Lo que reporten las personas llegará aquí <b>sin verificar</b>. La mesa lo contrasta con las fuentes oficiales y, si corresponde, lo llama al número que dejó antes de usarlo al aire.</p>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Bandeja de reportes</h3>
+        <div class="filters ciud-f" aria-label="Estado (vista previa)"><button type="button" aria-pressed="true">Sin verificar <span class="n">4</span></button><button type="button" disabled>Verificados</button><button type="button" disabled>Descartados</button></div>
+        <ul class="ciud">
+          <li><span class="ej">Ejemplo</span><div class="ch"><span class="tipo">Huaico o deslizamiento</span><span class="muted">hace 6 min · con foto</span></div>
+            <p class="t">“Se activó la quebrada, baja agua con piedras por la avenida principal. Hay autos atrapados.”</p>
+            <p class="s">Lima · Huarochirí · referencia: puente peatonal · personas afectadas: sí · contacto autorizado</p>
+            <p class="cruce">Cruce automático: <b>aviso SENAMHI vigente</b> en la provincia · sin reporte INDECI aún</p>
+            <div class="acc"><button type="button" disabled>Verificar</button><button type="button" disabled>Descartar</button><button type="button" disabled>Redactar con IA</button></div></li>
+          <li><span class="ej">Ejemplo</span><div class="ch"><span class="tipo">Lluvia intensa o inundación</span><span class="muted">hace 18 min</span></div>
+            <p class="t">“El río subió mucho desde la madrugada, el agua ya entró a varias casas del barrio.”</p>
+            <p class="s">Tumbes · Zarumilla · personas afectadas: sí · sin contacto</p>
+            <p class="cruce">Cruce automático: <b>estación hidrológica en aviso</b> en la cuenca</p>
+            <div class="acc"><button type="button" disabled>Verificar</button><button type="button" disabled>Descartar</button><button type="button" disabled>Redactar con IA</button></div></li>
+          <li><span class="ej">Ejemplo</span><div class="ch"><span class="tipo">Incendio</span><span class="muted">hace 41 min · con video</span></div>
+            <p class="t">“Se ve humo y fuego en el cerro, avanza hacia las chacras.”</p>
+            <p class="s">Cusco · Calca · personas afectadas: no sé · contacto autorizado</p>
+            <p class="cruce">Cruce automático: <b>foco de calor SERFOR</b> a menos de 5 km</p>
+            <div class="acc"><button type="button" disabled>Verificar</button><button type="button" disabled>Descartar</button><button type="button" disabled>Redactar con IA</button></div></li>
+          <li><span class="ej">Ejemplo</span><div class="ch"><span class="tipo">Vía bloqueada</span><span class="muted">hace 1 h</span></div>
+            <p class="t">“Cayeron rocas en la carretera, no pasan carros en ninguno de los dos sentidos.”</p>
+            <p class="s">Junín · Tarma · personas afectadas: no · sin contacto</p>
+            <p class="cruce">Cruce automático: sin dato oficial todavía</p>
+            <div class="acc"><button type="button" disabled>Verificar</button><button type="button" disabled>Descartar</button><button type="button" disabled>Redactar con IA</button></div></li>
+        </ul>
+        <p class="note">Los cuatro reportes son ejemplos para mostrar el flujo. Nada de esta sección está conectado todavía.</p>
+      </div>
+      <div class="panel ciud-form">
+        <h3>Así reporta la ciudadanía</h3>
+        <p class="muted" style="margin:0 0 12px;font-size:13.5px">Un formulario para el celular: qué pasa, dónde, una foto y, si quiere, un teléfono para verificar. Se podría difundir con un QR en pantalla y en redes.</p>
+        <div class="phone"><iframe src="/reportar" title="Vista previa del formulario ciudadano" loading="lazy"></iframe></div>
+        <p style="margin:12px 0 0"><a class="fp-btn ciud-open" href="/reportar" target="_blank" rel="noopener">Abrir el formulario ↗</a></p>
+      </div>
+    </div>
+  </section>
   <section id="com-sec">
     <div class="sec-head"><div><p class="eyebrow">gob.pe · PNP · PROVIAS · MTC · MININTER</p><h2>Comunicados oficiales</h2></div><span class="src">gob.pe/institucion/{pnp|pvn|mtc|mininter}/noticias.json</span></div>
     <div class="panel"><div class="filters" id="com-filters"></div><ul class="feed com" id="com"></ul><button type="button" class="more" id="com-more" hidden></button><p class="note" id="com-note"></p></div>

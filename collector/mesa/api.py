@@ -19,13 +19,23 @@ app.mount("/media", StaticFiles(directory=config.DATA / "media"), name="media") 
 MARCAS = {"irtp": "IRTP"}
 
 
-@app.get("/", include_in_schema=False)
-def index():
-    html = (config.WEB / "index.html").read_text(encoding="utf-8")
+def _con_marca(pagina):
+    html = (config.WEB / pagina).read_text(encoding="utf-8")
     if config.MARCA in MARCAS:
         html = (html.replace("<!--MARCA-->", f'<script>document.documentElement.dataset.marca = "{config.MARCA}";</script>')
                     .replace("<!--MARCA-LOGO-->", f'<img class="marca-logo" src="/marca/{config.MARCA}.png" alt="{MARCAS[config.MARCA]}">'))
     return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/", include_in_schema=False)
+def index():
+    return _con_marca("index.html")
+
+
+@app.get("/reportar", include_in_schema=False)
+def reportar():
+    """Formulario ciudadano. Vista previa: no envía ni guarda nada (todo ocurre en el navegador)."""
+    return _con_marca("reportar.html")
 
 
 @app.get("/marca/{name}", include_in_schema=False)

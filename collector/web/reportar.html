@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reportar una emergencia · Mesa de Acción</title>
+<script>try { const t = localStorage.getItem("mesa.tema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* sin almacenamiento: tema del sistema */ }</script>
+<!--MARCA-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap">
+<style>
+/* Formulario ciudadano. VISTA PREVIA: no envía ni guarda nada; la foto se muestra solo en este navegador. */
+:root{
+  --ground:#F3F3EF; --surface:#FFFFFF; --surface-2:#F8F8F5; --ink:#15140F; --ink-2:#4A4840; --ink-3:#7C796E; --line:#DCDBD3;
+  --brand:#FFD100; --brand-ink:#15140F; --ok:#2F7D4F; --ok-bg:#E3F1E7; --warn:#9A6A00; --warn-bg:#FBF0D2;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--ground:#121210; --surface:#1B1A17; --surface-2:#22211D; --ink:#F1F0EA; --ink-2:#C4C2B8; --ink-3:#8F8C81; --line:#35342E;
+    --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14}
+}
+:root[data-theme="dark"]{--ground:#121210; --surface:#1B1A17; --surface-2:#22211D; --ink:#F1F0EA; --ink-2:#C4C2B8; --ink-3:#8F8C81; --line:#35342E;
+  --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14}
+:root[data-marca="irtp"]{--brand:#C1002D; --brand-ink:#FFFFFF}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ground);color:var(--ink);font:400 16px/1.5 var(--f-display);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.mast{background:var(--brand);color:var(--brand-ink);padding:16px 16px 14px}
+.mast-in{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.marca-logo{display:block;height:44px;width:auto}
+.mast h1{margin:0;font-size:24px;line-height:1;font-weight:800;font-variation-settings:"wdth" 70;text-transform:uppercase}
+.mast p{margin:4px 0 0;font-size:13.5px;opacity:.85}
+main{max-width:560px;margin:0 auto;padding:16px 16px 48px}
+.preview{background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:9px 12px;font-size:13.5px;font-weight:600;margin-bottom:14px}
+.sos{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--brand);padding:10px 12px;font-size:14px;margin-bottom:18px}
+.sos b{font-size:15px}
+fieldset{border:0;margin:0 0 20px;padding:0}
+legend,label.q{display:block;font-weight:700;font-size:15px;margin-bottom:8px;padding:0}
+.hint{font-weight:400;color:var(--ink-3);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips label{position:relative}
+.chips input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.chips span{display:inline-block;border:1px solid var(--line);background:var(--surface);border-radius:100px;padding:8px 14px;font-size:14.5px}
+.chips input:checked + span{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:650}
+.chips input:focus-visible + span{outline:2px solid var(--ink);outline-offset:2px}
+select,input[type=text],input[type=tel],textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:4px;background:var(--surface);font-size:16px}
+textarea{min-height:110px;resize:vertical}
+.row{display:grid;gap:10px}
+.geo{border:1px dashed var(--line);background:transparent;border-radius:4px;padding:9px 12px;cursor:pointer;font-size:14.5px;text-align:left}
+.geo.on{border-style:solid;border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+.file{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed var(--line);border-radius:4px;padding:18px;text-align:center;cursor:pointer;background:var(--surface)}
+.file input{display:none}
+.thumb{margin-top:10px;max-width:100%;max-height:220px;border-radius:4px;display:block}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;margin-top:10px}
+.check input{margin-top:4px;width:18px;height:18px;flex:none}
+.send{width:100%;background:var(--brand);color:var(--brand-ink);border:0;border-radius:4px;padding:14px;font-size:17px;font-weight:750;cursor:pointer}
+.legal{font-size:12.5px;color:var(--ink-3);margin-top:12px}
+.done{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--ok);padding:18px;margin-top:4px}
+.done h2{margin:0 0 6px;font-size:21px}
+.done p{margin:0 0 10px;color:var(--ink-2)}
+.done button{border:1px solid var(--line);background:transparent;border-radius:4px;padding:9px 14px;cursor:pointer}
+</style>
+
+<header class="mast">
+  <div class="mast-in"><!--MARCA-LOGO--><div><h1>Reporta una emergencia</h1><p>Tu reporte llega a la mesa de noticias, que lo verifica antes de publicarlo.</p></div></div>
+</header>
+
+<main>
+  <p class="preview" role="note">Vista previa: este formulario todavía no envía datos.</p>
+  <p class="sos"><b>¿Hay riesgo para la vida?</b> Llama primero: Bomberos <b>116</b> · Policía <b>105</b> · SAMU <b>106</b>.</p>
+
+  <form id="f" novalidate>
+    <fieldset>
+      <legend>¿Qué está pasando?</legend>
+      <div class="chips">
+        <label><input type="radio" name="tipo" value="lluvia" required><span>Lluvia intensa o inundación</span></label>
+        <label><input type="radio" name="tipo" value="huaico"><span>Huaico o deslizamiento</span></label>
+        <label><input type="radio" name="tipo" value="incendio"><span>Incendio</span></label>
+        <label><input type="radio" name="tipo" value="sismo"><span>Daños por sismo</span></label>
+        <label><input type="radio" name="tipo" value="via"><span>Vía bloqueada</span></label>
+        <label><input type="radio" name="tipo" value="otro"><span>Otro</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>¿Dónde?</legend>
+      <div class="row">
+        <select id="dep" aria-label="Departamento">
+          <option value="">Departamento…</option>
+          <option>Amazonas</option><option>Áncash</option><option>Apurímac</option><option>Arequipa</option><option>Ayacucho</option>
+          <option>Cajamarca</option><option>Callao</option><option>Cusco</option><option>Huancavelica</option><option>Huánuco</option>
+          <option>Ica</option><option>Junín</option><option>La Libertad</option><option>Lambayeque</option><option>Lima</option>
+          <option>Loreto</option><option>Madre de Dios</option><option>Moquegua</option><option>Pasco</option><option>Piura</option>
+          <option>Puno</option><option>San Martín</option><option>Tacna</option><option>Tumbes</option><option>Ucayali</option>
+        </select>
+        <input type="text" id="lugar" placeholder="Distrito, centro poblado o referencia" aria-label="Distrito o referencia">
+        <button type="button" class="geo" id="geo">📍 Usar mi ubicación actual</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <label class="q" for="desc">Cuéntanos qué ves <span class="hint">· qué, desde cuándo, cuántas personas o viviendas</span></label>
+      <textarea id="desc" placeholder="Ej.: el río se desbordó a las 6 a. m. y hay agua en unas 20 casas de la calle principal."></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>Foto o video <span class="hint">· opcional, ayuda a verificar</span></legend>
+      <label class="file"><input type="file" id="foto" accept="image/*,video/*"><b>Tomar o elegir una foto</b><span class="hint">No grabes si eso te pone en riesgo.</span></label>
+      <img id="thumb" class="thumb" alt="Vista previa de la foto elegida" hidden>
+    </fieldset>
+
+    <fieldset>
+      <legend>¿Hay personas afectadas?</legend>
+      <div class="chips">
+        <label><input type="radio" name="afectados" value="si"><span>Sí</span></label>
+        <label><input type="radio" name="afectados" value="no"><span>No</span></label>
+        <label><input type="radio" name="afectados" value="nose"><span>No sé</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <label class="q" for="tel">Tu teléfono <span class="hint">· opcional, solo para verificar</span></label>
+      <input type="tel" id="tel" inputmode="tel" autocomplete="tel" placeholder="9xx xxx xxx">
+      <label class="check"><input type="checkbox" id="ok-contacto"> Autorizo que la mesa de noticias me contacte para verificar este reporte. No se publicarán mis datos.</label>
+    </fieldset>
+
+    <button type="submit" class="send">Enviar reporte</button>
+    <p class="legal">Vista previa. Al conectarse, los reportes se guardarán con fecha y hora, y la mesa de noticias los contrastará con SENAMHI, INDECI y las demás fuentes oficiales antes de usarlos.</p>
+  </form>
+
+  <div class="done" id="done" hidden role="status">
+    <h2>Gracias, reporte recibido</h2>
+    <p>Así verá la confirmación quien reporte. En esta vista previa no se envió ni se guardó nada.</p>
+    <button type="button" id="otro">Hacer otro reporte</button>
+  </div>
+</main>
+
+<script>
+// Todo ocurre en este navegador: no hay envío, ni geolocalización real, ni subida de archivos.
+const $ = s => document.querySelector(s);
+$("#geo").onclick = () => { $("#geo").classList.add("on"); $("#geo").textContent = "📍 Ubicación agregada (vista previa: no se tomó la real)"; };
+$("#foto").onchange = e => {
+  const f = e.target.files[0], t = $("#thumb");
+  if (f && f.type.startsWith("image/")) { t.src = URL.createObjectURL(f); t.hidden = false; } else t.hidden = true;
+};
+$("#f").onsubmit = e => { e.preventDefault(); $("#f").hidden = true; $("#done").hidden = false; scrollTo(0, 0); };
+$("#otro").onclick = () => { $("#f").reset(); $("#thumb").hidden = true; $("#geo").classList.remove("on"); $("#geo").textContent = "📍 Usar mi ubicación actual"; $("#done").hidden = true; $("#f").hidden = false; };
+</script>
