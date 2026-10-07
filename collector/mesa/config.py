@@ -29,6 +29,7 @@ INTERVALS = {
     "senamhi_uv": 6 * 3600,
     "enfen": 12 * 3600,
     "provias": 15 * 60,       # visor de emergencias viales (SGCV)
+    "provias_fotos": 10 * 60, # cronología y fotos, hasta 40 emergencias por turno
     "com_pnp": 15 * 60, "com_provias": 15 * 60, "com_mtc": 15 * 60, "com_mininter": 15 * 60,   # gob.pe, una fuente por institución
     "indeci_fotos": 5 * 60,
     "respaldo": 24 * 3600,    # copia diaria de data/ (mesa/backup.py)   # procesa hasta 15 PDF nuevos por turno (reportes de las últimas 72 h)

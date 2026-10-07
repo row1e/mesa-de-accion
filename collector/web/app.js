@@ -687,6 +687,14 @@ function renderVias() {
   const ev = D.viasEventos || [];
   $("#vias-ev").hidden = !ev.length;
   $("#vias-ev").textContent = ev.length ? `Evento activo según PROVIAS: ${ev.join(" · ")}` : "";
+  const VF = (D.viasFotos || []).filter(f => !state.region || f.reg === state.region).map(f => ({
+    url: f.url, caption: f.caption ? (f.caption === f.caption.toUpperCase() ? cap(f.caption) : f.caption) : cap(f.tipo), reg: f.reg, fecha: f.fecha ? fmtDay(f.fecha) : null, shotLabel: "Avance del",
+    meta: `${f.transito.replace("Tránsito ", "")} · ${f.ruta} · ${cap(f.sector)}`, ref: {source: "provias", kind: "emergencia", key: f.key},
+    credit: "Foto: PROVIAS Nacional — visor de emergencias viales"}));
+  $("#vias-strip").innerHTML = VF.map((f, i) => phHtml(f, i, {reg: !state.region})).join("")
+    || `<p class="muted" style="margin:0">${state.region ? `Sin fotos de emergencias viales en ${esc(regName(state.region))}.` : "Aún no hay fotos: el colector las va revisando de a 40 emergencias cada 10 min."}</p>`;
+  $("#vias-strip").onclick = e => { const b = e.target.closest(".ph"); if (b) openLightbox(VF, +b.dataset.i); };
+  $("#vstrip-note").textContent = VF.length ? `${VF.length} fotos de ${new Set(VF.map(f => f.ref.key)).size} emergencias, de lo más reciente a lo más antiguo · hasta 3 por emergencia · la fecha es la del avance que reportó PROVIAS. Crédito: PROVIAS Nacional.` : "";
   seg($("#vias-f"), [["", `Todas (${vs.length})`], ...VIA_T.filter(([c]) => n(c)).map(([c, t]) => [c, `${t} (${n(c)})`])], viaF, v => { viaF = v; renderVias(); });
   filterVias();
 }
@@ -827,7 +835,7 @@ function lbShow() {
   const f = LB.list[LB.i];
   $("#lb-img").src = f.url; $("#lb-img").alt = fotoTitle(f);
   $("#lb-cap").innerHTML = `${esc(fotoTitle(f))}<span class="cr">${esc(f.credit || "Foto: INDECI / COER — anexo fotográfico del reporte")}${f.fecha ? " · " + esc(f.fecha) : ""} · ${LB.i + 1} de ${LB.list.length}</span>`
-    + (f.key ? `<button type="button" data-open="${esc(f.key)}">Ver el reporte completo</button>` : "");
+    + (f.ref || f.key ? `<button type="button" data-open>${f.ref ? "Ver la ficha de la emergencia" : "Ver el reporte completo"}</button>` : "");
   $("#lb").querySelectorAll(".lb-nav").forEach(b => b.hidden = LB.list.length < 2);
 }
 function openLightbox(list, i = 0) { LB.list = list; LB.i = i; lbShow(); $("#lb").hidden = false; $("#lb .lb-x").focus(); }
@@ -837,7 +845,7 @@ $("#lb").addEventListener("click", e => {
   const nav = e.target.closest(".lb-nav");
   if (nav) { LB.i = (LB.i + (nav.classList.contains("next") ? 1 : -1) + LB.list.length) % LB.list.length; return lbShow(); }
   const open = e.target.closest("[data-open]");
-  if (open) { closeLightbox(); openDetail({source: "indeci", kind: "item", key: open.dataset.open}); }
+  if (open) { const f = LB.list[LB.i]; closeLightbox(); openDetail(f.ref || {source: "indeci", kind: "item", key: f.key}); }
 });
 addEventListener("keydown", e => {
   if ($("#lb").hidden) return;
@@ -850,8 +858,8 @@ addEventListener("keydown", e => {
 const phHtml = (f, i, {reg = false, when = false} = {}) => `<button type="button" class="ph" data-i="${i}" aria-label="Ampliar: ${esc(fotoTitle(f))}">
   ${reg && f.reg ? `<span class="reg">${esc(regName(f.reg))}</span>` : ""}${when && f.ts ? `<span class="when">${esc(ago(f.ts))}</span>` : ""}<img src="${esc(f.url)}" alt="" loading="lazy">
   <span class="cap"><b>${esc(fotoTitle(f))}</b>
-    ${[f.dpto && title(f.dpto), f.tipo && f.num ? `${title(f.tipo)} N° ${f.num}` : ""].filter(Boolean).length ? `<span class="meta">${esc([f.dpto && title(f.dpto), f.tipo && f.num ? `${title(f.tipo)} N° ${f.num}` : ""].filter(Boolean).join(" · "))}</span>` : ""}
-    ${f.fecha ? `<span class="shot">Foto tomada el ${esc(f.fecha)}</span>` : ""}</span></button>`;
+    ${(m => m ? `<span class="meta">${esc(m)}</span>` : "")(f.meta || [f.dpto && title(f.dpto), f.tipo && f.num ? `${title(f.tipo)} N° ${f.num}` : ""].filter(Boolean).join(" · "))}
+    ${f.fecha ? `<span class="shot">${esc(f.shotLabel || "Foto tomada el")} ${esc(f.fecha)}</span>` : ""}</span></button>`;
 function renderStrip() {
   const F = V.fotosDia || [];
   $("#ind-strip").innerHTML = F.map((f, i) => phHtml(f, i, {reg: !state.region, when: true})).join("")

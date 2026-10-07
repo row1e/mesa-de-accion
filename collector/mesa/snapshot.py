@@ -244,6 +244,14 @@ def build():
                                                       "km_ini", "km_fin", "fecha", "dias", "puente", "prov", "reg", "_key", "_first_seen")}
                 for e in db.get_items("provias", "emergencia")]
         vias_eventos = [e.get("nombre") for e in db.get_items("provias", "evento")]
+        # Fotos de emergencias viales: hasta 3 por emergencia vigente, de la más reciente a la más antigua
+        vias_by, vias_fotos = {v["_key"]: v for v in vias}, []
+        for ln in db.get_items("provias", "linea", current_only=False):
+            v = vias_by.get(ln["_key"])
+            for f in (ln.get("fotos") or [])[:3] if v else []:
+                vias_fotos.append({**f, "key": v["_key"], "transito": v.get("transito"), "transito_cod": v.get("transito_cod"),
+                                   "tipo": v.get("tipo"), "ruta": v.get("ruta"), "sector": v.get("sector"), "prov": v.get("prov"), "reg": v.get("reg")})
+        vias_fotos.sort(key=lambda f: f.get("fecha") or "", reverse=True)
         com = db.get_items("enfen", "comunicado", current_only=False, order="key DESC", limit=1)
         firms_n = len(db.get_items("firms", "deteccion"))
 
@@ -336,7 +344,7 @@ def build():
             "uv": uv, "uvUnmatched": uv_unmatched, "pronostico": pron, "hidro": hidro,
             "indeci": indeci, "indeciWindowH": INDECI_WINDOW_H,
             "indeciUnlocated": sum(1 for i in indeci if i.get("clase") == "reporte" and not i.get("prov")),
-            "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,
+            "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos, "viasFotos": vias_fotos[:80],
             "enfen": {"ultimo_comunicado": com[0] if com else {}}, "firmsCount": firms_n,
             "comunicados": comunicados, "sidpol": sidpol, "regions": sorted(regions, key=lambda r: r["n"]),
             "fotosDia": fotos_dia[:80], "danos": danos,

@@ -4,6 +4,7 @@ import datetime
 import html
 import io
 import re
+import time
 
 from shapely.geometry import Point
 from shapely.ops import unary_union
@@ -234,3 +235,33 @@ def provias():
     return total, new, (f"{total} emergencias viales ({new} nuevas): {n['Tránsito interrumpido']} interrumpidas, "
                         f"{n['Tránsito restringido']} restringidas, {n['Por confirmar']} por confirmar"
                         + (f" · eventos: {'; '.join(e['nombre'] for e in eventos.values())}" if eventos else ""))
+
+
+def provias_fotos(limite=40, cada=6 * 3600):
+    """Fotos de la cronología de cada emergencia vial (el visor las entrega de a una emergencia).
+
+    Por turno revisa hasta `limite`: primero las nunca revisadas, luego interrumpidas y por confirmar, y entre
+    las demás las revisadas hace más tiempo. Cada emergencia se vuelve a mirar cada `cada` segundos. Solo se
+    guarda la dirección de cada foto: las imágenes se muestran desde el visor de PROVIAS."""
+    vias = db.get_items("provias", "emergencia")
+    lineas = {x["_key"]: x for x in db.get_items("provias", "linea", current_only=False)}
+    ahora, orden = time.time(), {"03": 0, "04": 1, "02": 2, "01": 3}
+    revisado = lambda v: lineas.get(v["_key"], {}).get("revisado") or 0   # noqa: E731
+    pend = sorted((v for v in vias if ahora - revisado(v) > cada),
+                  key=lambda v: (v["_key"] in lineas, orden.get(v.get("transito_cod"), 9), revisado(v)))
+    host = PROVIAS.split("/emergenciavial")[0]
+    hechas, fotos, errores = {}, 0, []
+    for v in pend[:limite]:
+        try:
+            d = fetch_json("provias_fotos", f"{PROVIAS}/GetListaFotograficaPorEmergencia?id={v['id']}", keep_raw=False, headers=PROVIAS_XHR)
+        except Exception as e:  # noqa: BLE001 — una emergencia que no responde no detiene la cola
+            errores.append(f"{v['id']}: {type(e).__name__}")
+            continue
+        fs = [{"url": host + f["url"], "caption": " ".join((f.get("contenido") or "").split()) or None, "fecha": _dmy(x.get("fecha"))}
+              for x in d.get("data") or [] for f in x.get("fotos") or [] if f.get("url")]
+        hechas[v["_key"]] = {"id": v["id"], "revisado": ahora, "n_fotos": len(fs), "fotos": fs[:12]}
+        fotos += len(fs)
+    if hechas:
+        db.upsert_items("provias", "linea", hechas)
+    msg = f"{len(hechas)} emergencias revisadas · {fotos} fotos · quedan {len(pend) - len(hechas)} por revisar"
+    return len(hechas), fotos, msg + (f" · errores: {', '.join(errores)}" if errores else "")
