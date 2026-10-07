@@ -303,7 +303,7 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .tr{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;white-space:nowrap}
 .tr::before{content:"";width:10px;height:10px;transform:rotate(45deg);background:var(--c)}
 #vias tr.clk{cursor:pointer}#vias tr.clk:hover{background:var(--surface-2)}
-/* reportes ciudadanos (vista previa) */
+/* nuestros corresponsales: reportes desde el lugar (vista previa) */
 .ciud{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .ciud li{position:relative;border:1px solid var(--line-2);border-left:3px solid var(--brand);background:var(--surface-2);padding:10px 12px}
 .ciud .ch{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font-size:12.5px;padding-right:64px}
@@ -559,7 +559,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#senamhi">SENAMHI</a>
     <a href="#indeci-sec">INDECI</a>
     <a href="#vias-sec">Vías (PROVIAS)</a>
-    <a href="#ciud-sec">Reportes ciudadanos</a>
+    <a href="#ciud-sec">Nuestros corresponsales</a>
     <a href="#com-sec">Comunicados</a>
     <a href="#sidpol-sec" hidden>Denuncias</a>
     <a href="#igp-sec">Sismos (IGP)</a>
@@ -670,8 +670,8 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     </div>
   </section>
   <section id="ciud-sec">
-    <div class="sec-head"><div><p class="eyebrow">Ciudadanía · vista previa, aún sin conectar</p><h2>Reportes ciudadanos</h2></div><span class="src">formulario público: /reportar</span></div>
-    <p class="lede">Lo que reporten las personas llegará aquí <b>sin verificar</b>. La mesa lo contrasta con las fuentes oficiales y llama al número que dejó quien reporta (obligatorio) antes de usarlo al aire.</p>
+    <div class="sec-head"><div><p class="eyebrow">Reportes desde el lugar · vista previa, aún sin conectar</p><h2>Nuestros corresponsales</h2></div><span class="src">formulario público: /reportar</span></div>
+    <p class="lede">Lo que envíen los corresponsales y las personas en el lugar llegará aquí <b>sin verificar</b>. La mesa lo contrasta con las fuentes oficiales y llama al número que dejó quien reporta (obligatorio) antes de usarlo al aire.</p>
     <div class="grid2">
       <div class="panel">
         <h3>Bandeja de reportes</h3>
@@ -705,9 +705,9 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
         <p class="note">Los cuatro reportes son ejemplos para mostrar el flujo. Nada de esta sección está conectado todavía.</p>
       </div>
       <div class="panel ciud-form">
-        <h3>Así reporta la ciudadanía</h3>
+        <h3>Así reportan los corresponsales</h3>
         <p class="muted" style="margin:0 0 12px;font-size:13.5px">Un formulario para el celular: qué pasa, dónde, una foto, quién reporta (y, si es de un medio, cuál, por qué canal y su cargo) y un teléfono obligatorio para verificar. Se podría difundir con un QR en pantalla y en redes.</p>
-        <div class="phone"><iframe src="/reportar" title="Vista previa del formulario ciudadano" loading="lazy"></iframe></div>
+        <div class="phone"><iframe src="/reportar" title="Vista previa del formulario de reporte" loading="lazy"></iframe></div>
         <p style="margin:12px 0 0"><a class="fp-btn ciud-open" href="/reportar" target="_blank" rel="noopener">Abrir el formulario ↗</a></p>
       </div>
     </div>
