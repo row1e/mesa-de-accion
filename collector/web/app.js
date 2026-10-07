@@ -61,9 +61,9 @@ function makeView() {
       eventos: D.danos.eventos.filter(e => e.por_reg && e.por_reg[R]).map(e => ({...e, totales: e.por_reg[R]}))} : null,
     indeciUnlocated: D.indeci.filter(i => i.reg === R && i.clase === "reporte" && !i.prov).length};
 }
-function setRegion(code, {zoom: doZoom = true} = {}) {
+function setRegion(code, {zoom: doZoom = true, prov = null} = {}) {
   state.region = code || null;
-  if (state.sel && state.region && !state.sel.startsWith(state.region)) state.sel = null;
+  state.sel = prov;   // elegir un departamento (o todo el Perú) quita la provincia marcada
   writeHash(); loadLatest();
   $("#region").value = state.region || "";
   renderAll();
@@ -72,18 +72,27 @@ function setRegion(code, {zoom: doZoom = true} = {}) {
     f ? zoomToFeature(f) : zoomTo(d3.zoomIdentity);
   }
 }
+const provName = id => title(D?.geo?.provs?.features?.find(f => f.properties.id === id)?.properties.n || "");
 function renderRegionBar() {
   const sel = $("#region");
-  if (sel.options.length <= 1) sel.insertAdjacentHTML("beforeend", D.regions.map(r => `<option value="${r.id}">${esc(title(r.n))}</option>`).join(""));
-  sel.value = state.region || "";
-  const R = state.region;
+  // Un solo selector: departamento (filtra el tablero) o provincia (filtra por su departamento y la marca en el mapa).
+  // Lo elegido es también lo que imprime la ficha PDF.
+  if (sel.options.length <= 1) {
+    const byDep = d3.group(D.geo.provs.features.map(f => f.properties), p => p.id.slice(0, 2));
+    sel.insertAdjacentHTML("beforeend", D.regions.map(r => `<optgroup label="${esc(title(r.n))}">`
+      + `<option value="${r.id}">${esc(title(r.n))} · todo el departamento</option>`
+      + (byDep.get(r.id) || []).sort((a, b) => a.n.localeCompare(b.n)).map(p => `<option value="${p.id}">${esc(title(p.n))}</option>`).join("")
+      + `</optgroup>`).join(""));
+  }
+  const R = state.region, P = state.sel && R && state.sel.startsWith(R) ? state.sel : null;
+  sel.value = P || R || "";
   document.body.classList.toggle("filtered", !!R);
   $("#reg-clear").hidden = !R;
   const lv = Object.values(V.levelsByDay[D.snapshot] || {});
   $("#reg-summary").innerHTML = R
-    ? `Mostrando solo <b>${esc(regName(R))}</b> · ${plural(lv.length, "provincia bajo aviso", "provincias bajo aviso")} hoy · ${plural(V.indeci.filter(i => i.clase === "reporte").length, "reporte INDECI", "reportes INDECI")} · ${plural(V.alertas.length, "alerta de incendio", "alertas de incendio")}. El estado de las fuentes y ENFEN son nacionales.`
-    : `Mostrando las 25 regiones. Elija una para filtrar mapa, avisos, emergencias, denuncias y comunicados.`;
-  renderFichaPicker();
+    ? `${P ? `Provincia <b>${esc(provName(P))}</b> marcada en el mapa · ` : ""}Mostrando solo <b>${esc(regName(R))}</b> · ${plural(lv.length, "provincia bajo aviso", "provincias bajo aviso")} hoy · ${plural(V.indeci.filter(i => i.clase === "reporte").length, "reporte INDECI", "reportes INDECI")} · ${plural(V.alertas.length, "alerta de incendio", "alertas de incendio")}. El estado de las fuentes y ENFEN son nacionales.`
+    : `Mostrando todo el Perú. Elija un departamento o una provincia para filtrar el tablero y descargar su ficha PDF.`;
+  updateFichaLinks();
   REG_SECTIONS.forEach(id => {
     const h2 = document.querySelector(`#${id} h2`); if (!h2) return;
     let tag = h2.querySelector(".reg-tag");
@@ -91,31 +100,19 @@ function renderRegionBar() {
     tag.textContent = R ? ` · ${regName(R)}` : "";
   });
 }
-function renderFichaPicker() {
-  const sel = $("#ficha-prov"), feats = D.geo.provs.features.filter(f => !state.region || f.properties.id.startsWith(state.region));
-  const byDep = d3.groups(feats.map(f => f.properties).sort((a, b) => a.d.localeCompare(b.d) || a.n.localeCompare(b.n)), p => p.d);
-  const opt = p => `<option value="${p.id}">${esc(title(p.n))}</option>`;
-  const depOpt = r => `<option value="${r.id}">${esc(title(r.n))} · departamento completo</option>`;
-  const regs = D.regions.filter(r => !state.region || r.id === state.region);
-  sel.innerHTML = `<option value="">Elegir departamento o provincia…</option>`
-    + `<optgroup label="Departamentos">${regs.map(depOpt).join("")}</optgroup>`
-    + byDep.map(([d, ps]) => `<optgroup label="Provincias · ${esc(title(d))}">${ps.map(opt).join("")}</optgroup>`).join("");
-  sel.value = state.sel && feats.some(f => f.properties.id === state.sel) ? state.sel : (state.region || "");
-  updateFichaLinks();
-}
 function updateFichaLinks() {
-  const id = $("#ficha-prov").value;
+  const id = $("#region").value;
   for (const [el, href] of [[$("#ficha-dl"), `/ficha/${id}.pdf`], [$("#ficha-ver"), `/ficha/${id}`]]) {
-    if (id) { el.href = href; el.removeAttribute("aria-disabled"); if (el.id === "ficha-dl") el.setAttribute("download", ""); }
+    if (id) { el.href = href; el.removeAttribute("aria-disabled"); el.removeAttribute("title"); if (el.id === "ficha-dl") el.setAttribute("download", ""); }
     else { el.removeAttribute("href"); el.setAttribute("aria-disabled", "true"); }
   }
 }
-$("#ficha-prov").addEventListener("change", e => {
-  updateFichaLinks();
-  if (e.target.value.length === 4) { state.sel = e.target.value; renderMap(); renderRail(); }
-});
 $("#ficha-dl").addEventListener("click", () => toast("Generando la ficha PDF… (unos segundos)"));
-$("#region").addEventListener("change", e => setRegion(e.target.value));
+$("#region").addEventListener("change", e => {
+  const v = e.target.value;
+  if (v.length === 4) { setRegion(v.slice(0, 2), {prov: v}); showProvince(); }
+  else setRegion(v);
+});
 $("#reg-clear").addEventListener("click", () => setRegion(null));
 const tip = $("#tip");
 const showTip = (e, html) => { tip.innerHTML = html; tip.hidden = false; moveTip(e); };
@@ -400,7 +397,7 @@ function showProvince() {   // lleva el bloque de la provincia al tope del panel
     side.scrollTo({top: el.offsetTop - side.offsetTop - 8, behavior: reduceMotion ? "auto" : "smooth"});
     el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");   // señal de que el contenido cambió
   }
-  if ($("#ficha-prov") && state.sel) { $("#ficha-prov").value = state.sel; updateFichaLinks(); }
+  if (D) renderRegionBar();   // el selector de lugar y la ficha PDF siguen a la provincia elegida en el mapa
 }
 
 /* ── ficha de detalle ───────────────────────────────────────────── */
