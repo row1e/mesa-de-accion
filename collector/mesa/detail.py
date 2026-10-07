@@ -208,7 +208,8 @@ def _provias(it):
     lin = fetch_json("provias", f"{PROVIAS}/GetListaFotograficaPorEmergencia?id={it['id']}", keep_raw=False, headers=PROVIAS_XHR)
     host = PROVIAS.split("/emergenciavial")[0]
     linea = [{"fecha": x.get("fecha"), "texto": " ".join((x.get("contenido") or "").split()),
-              "fotos": [{"label": " ".join((f.get("contenido") or "").split()) or "Foto", "url": host + f["url"]} for f in x.get("fotos") or [] if f.get("url")]}
+              "fotos": [{"label": " ".join((f.get("contenido") or "").split()) or "Foto", "url": host + f["url"], "fecha": x.get("fecha"),
+                         "credit": "Foto: PROVIAS Nacional — visor de emergencias viales"} for f in x.get("fotos") or [] if f.get("url")]}
              for x in lin.get("data") or []]
     return {"fields": {k: v for k, v in (det.get("data") or {}).items() if k != "Fotos"}, "linea": linea}
 

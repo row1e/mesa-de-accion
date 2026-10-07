@@ -250,7 +250,7 @@ const layerDefs = [
   { id: "alertas", label: "Alertas de incendio", sw: `<i class="sw" style="background:var(--fuego)"></i>`, n: () => V.alertas.length },
   { id: "sismos", label: "Sismos · 30 días", sw: `<i class="sw" style="border:2px solid var(--sismo)"></i>`, n: () => recentSismos().length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
-  { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n3);transform:rotate(45deg);border-radius:1px"></i>`, n: () => V.vias.length },
+  { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
   { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
   { id: "focos", label: "Focos de calor 24 h", sw: `<i class="sw" style="background:var(--fuego);opacity:.45"></i>`, n: () => V.focos.length },
 ];
@@ -470,11 +470,15 @@ function renderDetail(d) {
     ${d.fotos?.length ? `<div><div class="gal">${d.fotos.map((f, i) => phHtml(f, i)).join("")}</div><p class="credit">${d.fotos.length} foto${d.fotos.length > 1 ? "s" : ""} del anexo fotográfico del reporte · Crédito: INDECI / COER</p></div>` : ""}
     ${d.mapa ? `<div class="mapa"><button type="button" class="ph" data-mapa><img src="${esc(d.mapa.url)}" alt="Mapa de ubicación" loading="lazy"></button><span>Mapa de ubicación del reporte. ${esc(d.mapa.nota)}</span></div>` : ""}
     ${d.sat ? `<div class="satbox" id="satbox"></div>` : ""}
-    ${d.images?.length ? `<div class="imgs">${d.images.map(i => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="${esc(i.label)}" loading="lazy"><span>${esc(i.label)}</span></a>`).join("")}</div>` : ""}
+    ${d.images?.length ? `<div class="imgs">${d.images.map((i, n) => `<button type="button" data-img="${n}" aria-label="Ampliar: ${esc(i.label)}"><img src="${esc(i.url)}" alt="${esc(i.label)}" loading="lazy"><span>${esc(i.label)}${i.fecha ? ` · ${esc(i.fecha)}` : ""}</span></button>`).join("")}</div>` : ""}
     ${d.pdf_text ? `<details><summary>Texto del reporte PDF (ubicación, daños, contexto)</summary><pre>${esc(d.pdf_text)}</pre></details>` : ""}
     ${fields.length ? `<details><summary>Todos los campos (${fields.length})</summary><table>${fields.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${isUrl(v) ? `<a href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a>` : esc(fmtVal(v))}</td></tr>`).join("")}</table></details>` : ""}
     <div class="meta"><span>Recibido ${when(d.first_seen)}</span>${d.fetched_at ? `<span>Fuente consultada ${when(d.fetched_at)}</span>` : ""}<button type="button" data-fresh>Volver a consultar la fuente</button><span class="mono">${esc(d.key)}</span></div>`;
   $("#detail [data-fresh]").onclick = () => openDetail({source: d.source, kind: d.kind, key: d.key}, true);
+  $("#detail .imgs")?.addEventListener("click", e => {
+    const b = e.target.closest("[data-img]"); if (!b) return;
+    openLightbox(d.images.map(i => ({url: i.url, caption: i.label, fecha: i.fecha, credit: i.credit || `Imagen: ${ORG[d.source] || d.source}`})), +b.dataset.img);
+  });
   if (d.sat) loadSat({...d.sat, base: d.sat.date, layer: "auto"});
   const credit = "Foto: INDECI / COER — anexo fotográfico del reporte";
   $("#detail .gal")?.addEventListener("click", e => { const b = e.target.closest(".ph"); if (b) openLightbox(d.fotos.map(f => ({...f, credit})), +b.dataset.i); });
@@ -501,8 +505,10 @@ function renderPoints() {
   if (L.focos) layer(V.focos, "circle", d => [d[0], d[1]]).attr("r", 1.6).attr("fill", css("--fuego")).attr("opacity", .45)
     .attr("stroke", "transparent").attr("stroke-width", 5)
     .call(on, d => `<b>Foco de calor</b><br>${title(d[3])} · ${title(d[2])}` + tipWhen(d[6] ? fmtWhen(...d[6].split(" ")) : "—", "detección satelital"), d => ({source: "serfor", kind: "foco", key: String(d[4])}));
-  if (L.vias) layer(V.vias.filter(v => v.lon != null), "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolDiamond, d => d.transito_cod === "03" ? 70 : 38))
-    .attr("fill", d => viaColor(d.transito_cod)).attr("stroke", css("--surface")).attr("stroke-width", .8)
+  // Contorno oscuro: el color de la condición de tránsito (verde/amarillo/rojo, como el visor oficial) se confunde con
+  // los niveles de aviso del mapa base si no lleva borde.
+  if (L.vias) layer(V.vias.filter(v => v.lon != null), "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolDiamond, d => d.transito_cod === "03" ? 110 : 64))
+    .attr("fill", d => viaColor(d.transito_cod)).attr("stroke", css("--ink")).attr("stroke-width", 1.4)
     .call(on, d => `<b>${esc(d.transito)}</b><br>${esc(cap(d.tipo))}<br>${esc(d.ruta)} · ${esc(d.tramo)} · ${esc(d.sector)}<br><span style="opacity:.7">km ${esc(d.km_ini)}${d.puente ? " · puente" : ""}</span>` + tipWhen(d.fecha ? fmtWhen(d.fecha) : "—", "desde", d.dias != null ? `${d.dias} días` : "", ""), d => ({source: "provias", kind: "emergencia", key: d._key}));
   if (L.zonas) layer(V.zonas, "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolTriangle, 34))
     .attr("fill", css("--geo")).attr("stroke", css("--surface")).attr("stroke-width", .6)
