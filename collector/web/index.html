@@ -297,6 +297,16 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .srcf button .n.hot{color:var(--brand-ink);background:var(--brand);padding:0 4px;border-radius:2px}
 .srcf button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
 .srcf button[aria-pressed="true"] .n{color:var(--ground)}
+/* enlaces oficiales: logo sobre fondo blanco en ambos temas (los logos son para fondo claro) */
+.ftes{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.fte{background:var(--surface);border:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.fte-logo{height:78px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line-2);border-radius:3px;padding:8px;margin-bottom:4px}
+.fte-logo img{max-height:62px;max-width:100%;object-fit:contain}
+.fte h3{margin:0;font-size:16px}
+.fte p{margin:0;color:var(--ink-2);font-size:13px;line-height:1.4}
+.fte ul{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
+.fte a{font-size:13.5px;font-weight:600;color:var(--ink);text-decoration-color:var(--brand);text-decoration-thickness:2px;text-underline-offset:3px}
+.fte a:hover{text-decoration-thickness:3px}
 /* emergencias viales (PROVIAS) */
 .vias-ev{margin:0 0 12px;padding:9px 12px;border-left:4px solid var(--n4);background:var(--bad-bg);color:var(--bad);font-size:14px;font-weight:600}
 .vias-cnt{margin-top:0}
@@ -565,6 +575,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#serfor-sec">Incendios (SERFOR)</a>
     <a href="#ing-sec">Zonas críticas (INGEMMET)</a>
     <a href="#indeci-sec">INDECI</a>
+    <a href="#enlaces-sec">Enlaces oficiales</a>
     <a href="#fuentes">Estado de fuentes</a>
   </nav>
 </div>
@@ -755,6 +766,68 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
   <figure><img id="lb-img" alt=""><figcaption id="lb-cap"></figcaption></figure>
   <button type="button" class="lb-nav next" aria-label="Foto siguiente">›</button>
 </div>
+  <section id="enlaces-sec">
+    <div class="sec-head"><div><p class="eyebrow">Fuentes del Estado peruano</p><h2>Enlaces oficiales de emergencia</h2></div><span class="src">se abren en una pestaña nueva</span></div>
+    <p class="lede">Las páginas oficiales donde cada institución publica sus avisos, reportes y visores, para consultar el original o seguir una emergencia en vivo.</p>
+    <div class="ftes">
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/senamhi.svg" alt="Logo de SENAMHI" loading="lazy"></div>
+          <h3>SENAMHI</h3><p>Avisos de lluvia, temperatura y ríos; pronóstico y monitoreo de El Niño.</p>
+          <ul><li><a href="https://www.senamhi.gob.pe/?p=aviso-meteorologico" target="_blank" rel="noopener">Avisos meteorológicos ↗</a></li><li><a href="https://www.senamhi.gob.pe/?p=aviso-hidrologico" target="_blank" rel="noopener">Avisos hidrológicos ↗</a></li><li><a href="https://www.senamhi.gob.pe/?p=pronostico-meteorologico" target="_blank" rel="noopener">Pronóstico por ciudad ↗</a></li><li><a href="https://www.senamhi.gob.pe/?p=fenomeno-el-nino" target="_blank" rel="noopener">Fenómeno El Niño ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/enfen.png" alt="Logo de ENFEN" loading="lazy"></div>
+          <h3>ENFEN</h3><p>Comisión multisectorial: estado oficial del sistema de alerta ante El Niño y La Niña.</p>
+          <ul><li><a href="https://enfen.imarpe.gob.pe/comunicados/" target="_blank" rel="noopener">Comunicados oficiales ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/indeci.png" alt="Logo de INDECI" loading="lazy"></div>
+          <h3>INDECI · COEN</h3><p>Reportes de emergencias en todo el país, con daños y acciones.</p>
+          <ul><li><a href="https://portal.indeci.gob.pe/emergencias/" target="_blank" rel="noopener">Emergencias del día ↗</a></li><li><a href="https://www.gob.pe/indeci" target="_blank" rel="noopener">INDECI en gob.pe ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/igp.jpg" alt="Logo de IGP" loading="lazy"></div>
+          <h3>IGP</h3><p>Instituto Geofísico: sismos reportados, magnitud, profundidad e intensidad.</p>
+          <ul><li><a href="https://ultimosismo.igp.gob.pe/" target="_blank" rel="noopener">Último sismo y catálogo ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/dhn.png" alt="Logo de DHN – Marina de Guerra del Perú" loading="lazy"></div>
+          <h3>DHN · Marina de Guerra</h3><p>Centro Nacional de Alerta de Tsunamis: boletines tras cada sismo en el mar.</p>
+          <ul><li><a href="https://www.dhn.mil.pe/portal/boletin-sismo-tsunami" target="_blank" rel="noopener">Boletín de sismo y tsunami ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/provias.png" alt="Logo de PROVIAS Nacional – MTC" loading="lazy"></div>
+          <h3>PROVIAS Nacional</h3><p>Carreteras nacionales: tramos interrumpidos o restringidos, con fotos y avances.</p>
+          <ul><li><a href="https://wsgcv.proviasnac.gob.pe/emergenciavial" target="_blank" rel="noopener">Visor de emergencias viales ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/serfor.png" alt="Logo de SERFOR" loading="lazy"></div>
+          <h3>SERFOR</h3><p>Incendios forestales y focos de calor detectados por satélite.</p>
+          <ul><li><a href="https://geo.serfor.gob.pe/visor/" target="_blank" rel="noopener">Visor de incendios ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/ingemmet.jpg" alt="Logo de INGEMMET" loading="lazy"></div>
+          <h3>INGEMMET</h3><p>Zonas críticas por huaicos, deslizamientos y otros peligros geológicos.</p>
+          <ul><li><a href="https://geocatmin.ingemmet.gob.pe/geocatmin/" target="_blank" rel="noopener">GEOCATMIN · Perú Alerta ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/ana.jpg" alt="Logo de ANA" loading="lazy"></div>
+          <h3>ANA</h3><p>Autoridad Nacional del Agua: niveles y caudales de ríos en tiempo real.</p>
+          <ul><li><a href="https://snirh.ana.gob.pe/" target="_blank" rel="noopener">SNIRH · monitoreo de ríos ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/cenepred.png" alt="Logo de CENEPRED" loading="lazy"></div>
+          <h3>CENEPRED</h3><p>Escenarios de riesgo, mapas y estudios para la gestión del riesgo de desastres.</p>
+          <ul><li><a href="https://sigrid.cenepred.gob.pe/sigridv3/" target="_blank" rel="noopener">SIGRID · mapas de riesgo ↗</a></li></ul>
+        </article>
+        <article class="fte">
+          <div class="fte-logo"><img src="/fuentes/bomberos.png" alt="Logo de Cuerpo General de Bomberos Voluntarios del Perú" loading="lazy"></div>
+          <h3>Bomberos del Perú</h3><p>Emergencias que atienden las compañías de bomberos, en vivo.</p>
+          <ul><li><a href="https://sgonorte.bomberosperu.gob.pe/24horas" target="_blank" rel="noopener">Emergencias de las últimas 24 h ↗</a></li></ul>
+        </article>
+    </div>
+    <p class="note">Si hay riesgo para la vida: Bomberos <b>116</b> · Policía <b>105</b> · SAMU <b>106</b>.</p>
+  </section>
   <section id="fuentes">
     <div class="sec-head"><div><p class="eyebrow">Colector local</p><h2>Estado de las fuentes</h2></div></div>
     <p class="lede">Cada fuente se consulta sola a su propio ritmo. “Atrasada” significa que su último éxito supera tres veces su intervalo; “Fallando”, que el último intento dio error. El botón ↻ fuerza una lectura (máximo una por minuto por fuente).</p>

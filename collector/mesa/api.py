@@ -46,6 +46,15 @@ def marca(name: str):
     return FileResponse(path, headers={"Cache-Control": "max-age=86400"})
 
 
+@app.get("/fuentes/{name}", include_in_schema=False)
+def logo_fuente(name: str):
+    """Logos de las instituciones para la sección de enlaces oficiales."""
+    path = config.WEB / "fuentes" / name
+    if not path.is_file() or path.parent != config.WEB / "fuentes":
+        raise HTTPException(404)
+    return FileResponse(path, headers={"Cache-Control": "max-age=86400"})
+
+
 @app.get("/app.js", include_in_schema=False)
 def app_js():
     return FileResponse(config.WEB / "app.js", media_type="text/javascript", headers={"Cache-Control": "no-cache"})
