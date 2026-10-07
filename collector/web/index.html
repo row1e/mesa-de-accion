@@ -100,6 +100,17 @@ tr:last-child td{border-bottom:0}
 .zoom button:last-child{border-bottom:0;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
 .zoom button:hover{background:var(--surface-2)}
 .zoom-hint{position:absolute;bottom:10px;left:12px;font-size:11.5px;color:var(--ink-3);pointer-events:none}
+/* mapa fijo al bajar: la columna del mapa se muda a una ventana en la esquina */
+.pinbtn{border:1px solid var(--line);background:var(--surface);border-radius:3px;padding:5px 11px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.pinbtn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground);font-weight:600}
+@media (max-width:900px){.pinbtn{display:none}}
+.mapdock{position:fixed;right:16px;bottom:16px;z-index:14;width:min(360px,32vw);background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden;box-shadow:0 10px 32px rgba(0,0,0,.22)}
+.dock-head{display:flex;align-items:center;gap:6px;padding:5px 6px 5px 12px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.dock-head button{border:1px solid var(--line);background:var(--surface);border-radius:3px;padding:2px 8px;font-size:12px;letter-spacing:0;text-transform:none;font-weight:500;cursor:pointer}
+.dock-head #dock-ir{margin-left:auto}
+.dock-body .mapcol{height:min(470px,58vh);border:0}
+.dock-body .zoom-hint{display:none}
+.mapph{display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink-3);font-size:13.5px}
 .side{height:var(--mapH);overflow-y:auto;display:flex;flex-direction:column;min-width:0}
 @media (max-width:900px){.side{height:auto}}
 .controls{display:flex;flex-direction:column;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line-2)}
@@ -535,10 +546,9 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     </div>
   </div>
   <nav class="jumpbar" id="jumpbar" aria-label="Ir a una sección">
-    <a href="#fuentes">Fuentes</a>
-    <a href="#latest-sec">Últimos datos</a>
-    <a href="#ia-sec">Redacción IA</a>
     <a href="#mapa">Mapa</a>
+    <a href="#ia-sec">Redacción IA</a>
+    <a href="#latest-sec">Últimos datos</a>
     <a href="#enfen-sec">El Niño</a>
     <a href="#senamhi">SENAMHI</a>
     <a href="#indeci-sec">INDECI</a>
@@ -548,6 +558,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#igp-sec">Sismos (IGP)</a>
     <a href="#serfor-sec">Incendios (SERFOR)</a>
     <a href="#ing-sec">Zonas críticas (INGEMMET)</a>
+    <a href="#fuentes">Estado de fuentes</a>
   </nav>
 </div>
 
@@ -557,15 +568,31 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 
 <main class="wrap">
   <div class="thesis" id="thesis"></div>
-
-  <section id="fuentes">
-    <div class="sec-head"><div><p class="eyebrow">Colector local</p><h2>Estado de las fuentes</h2></div></div>
-    <p class="lede">Cada fuente se consulta sola a su propio ritmo. “Atrasada” significa que su último éxito supera tres veces su intervalo; “Fallando”, que el último intento dio error. El botón ↻ fuerza una lectura (máximo una por minuto por fuente).</p>
-    <div class="board"><table>
-      <thead><tr><th>Institución</th><th>Fuente</th><th>Estado</th><th>Último éxito</th><th>Registros</th><th>Último mensaje</th><th></th></tr></thead>
-      <tbody id="board"></tbody>
-    </table></div>
+  <section id="mapa">
+    <div class="sec-head"><div><p class="eyebrow">Cruce espacial</p><h2>Nivel de peligro por provincia</h2></div><button type="button" id="map-pin" class="pinbtn" aria-pressed="false" title="Al bajar por la página, el mapa queda en una ventana en la esquina">Fijar mapa al bajar</button></div>
+    <p class="lede">Los polígonos de cada aviso SENAMHI, cruzados con los límites provinciales del INEI. Una provincia cuenta cuando el aviso cubre al menos el 3&nbsp;% de su área; se pinta con el nivel más alto entre los avisos del día. Sobre eso, las capas puntuales de las demás fuentes.</p>
+    <div class="maprow">
+      <div class="mapcol">
+        <svg id="map" role="img" aria-label="Mapa del Perú por provincias"></svg>
+        <div class="zoom" role="group" aria-label="Zoom del mapa">
+          <button type="button" data-z="in" aria-label="Acercar">+</button>
+          <button type="button" data-z="out" aria-label="Alejar">−</button>
+          <button type="button" data-z="reset" aria-label="Ver todo el Perú">Perú</button>
+        </div>
+        <span class="zoom-hint">Arrastre para mover · Ctrl + rueda o pellizco para acercar</span>
+      </div>
+      <aside class="side" id="side">
+        <div class="controls">
+          <div><span class="ctl-label">Capa base</span><div class="seg" id="mode"></div></div>
+          <div><span class="ctl-label">Día</span><div class="pills" id="days"></div></div>
+          <div><span class="ctl-label">Capas</span><div class="layers" id="layers"></div></div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="rail" id="rail"></div>
+      </aside>
+    </div>
   </section>
+
 
   <section id="ia-sec">
     <div class="sec-head"><div><p class="eyebrow">Asistente de IA</p><h2>Redacción asistida</h2></div><span class="src">borradores verificados contra los datos oficiales</span></div>
@@ -593,30 +620,6 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     </div>
   </section>
 
-  <section id="mapa">
-    <div class="sec-head"><div><p class="eyebrow">Cruce espacial</p><h2>Nivel de peligro por provincia</h2></div></div>
-    <p class="lede">Los polígonos de cada aviso SENAMHI, cruzados con los límites provinciales del INEI. Una provincia cuenta cuando el aviso cubre al menos el 3&nbsp;% de su área; se pinta con el nivel más alto entre los avisos del día. Sobre eso, las capas puntuales de las demás fuentes.</p>
-    <div class="maprow">
-      <div class="mapcol">
-        <svg id="map" role="img" aria-label="Mapa del Perú por provincias"></svg>
-        <div class="zoom" role="group" aria-label="Zoom del mapa">
-          <button type="button" data-z="in" aria-label="Acercar">+</button>
-          <button type="button" data-z="out" aria-label="Alejar">−</button>
-          <button type="button" data-z="reset" aria-label="Ver todo el Perú">Perú</button>
-        </div>
-        <span class="zoom-hint">Arrastre para mover · Ctrl + rueda o pellizco para acercar</span>
-      </div>
-      <aside class="side" id="side">
-        <div class="controls">
-          <div><span class="ctl-label">Capa base</span><div class="seg" id="mode"></div></div>
-          <div><span class="ctl-label">Día</span><div class="pills" id="days"></div></div>
-          <div><span class="ctl-label">Capas</span><div class="layers" id="layers"></div></div>
-          <div class="legend" id="legend"></div>
-        </div>
-        <div class="rail" id="rail"></div>
-      </aside>
-    </div>
-  </section>
 
   <section id="enfen-sec">
     <div class="sec-head"><div><p class="eyebrow">ENFEN · Comisión Multisectorial</p><h2>Estado nacional ante El Niño</h2></div><span class="src">enfen.imarpe.gob.pe · comunicados oficiales (PDF)</span></div>
@@ -733,7 +736,19 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
   <figure><img id="lb-img" alt=""><figcaption id="lb-cap"></figcaption></figure>
   <button type="button" class="lb-nav next" aria-label="Foto siguiente">›</button>
 </div>
+  <section id="fuentes">
+    <div class="sec-head"><div><p class="eyebrow">Colector local</p><h2>Estado de las fuentes</h2></div></div>
+    <p class="lede">Cada fuente se consulta sola a su propio ritmo. “Atrasada” significa que su último éxito supera tres veces su intervalo; “Fallando”, que el último intento dio error. El botón ↻ fuerza una lectura (máximo una por minuto por fuente).</p>
+    <div class="board"><table>
+      <thead><tr><th>Institución</th><th>Fuente</th><th>Estado</th><th>Último éxito</th><th>Registros</th><th>Último mensaje</th><th></th></tr></thead>
+      <tbody id="board"></tbody>
+    </table></div>
+  </section>
 </main>
+<div class="mapdock" id="mapdock" hidden role="region" aria-label="Mapa fijado">
+  <div class="dock-head"><span>Mapa</span><button type="button" id="dock-ir">Ir al mapa</button><button type="button" id="dock-soltar" aria-label="Dejar de fijar el mapa" title="Dejar de fijar el mapa">×</button></div>
+  <div class="dock-body"></div>
+</div>
 <div class="tip" id="tip" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>

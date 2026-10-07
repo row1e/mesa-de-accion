@@ -1178,3 +1178,33 @@ oscuroSistema.addEventListener("change", () => {
   if (D) renderAll();
 });
 pintarBotonTema();
+
+/* ── mapa fijo al bajar ─────────────────────────────────────────────
+   Con la opción activa, al pasar la sección del mapa su columna se muda a una ventana en la esquina
+   (mismo SVG: zoom, capas y clics siguen funcionando) y vuelve a su lugar al subir. No en pantallas angostas. */
+const mapCol = document.querySelector(".maprow .mapcol"), mapPh = document.createElement("div");
+mapPh.className = "mapcol mapph";
+mapPh.textContent = "El mapa está en la ventana de la esquina mientras recorre la página.";
+const anchoMapa = matchMedia("(min-width: 901px)");
+let mapaFijo = (() => { try { return localStorage.getItem("mesa.mapaFijo") === "1"; } catch { return false; } })();
+let mapaPasado = false;   // la sección del mapa quedó arriba, fuera de la pantalla
+function ubicarMapa() {
+  const acoplar = mapaFijo && mapaPasado && anchoMapa.matches;
+  if (acoplar && mapCol.parentNode !== $("#mapdock .dock-body")) { mapCol.replaceWith(mapPh); $("#mapdock .dock-body").append(mapCol); }
+  if (!acoplar && mapPh.isConnected) mapPh.replaceWith(mapCol);
+  $("#mapdock").hidden = !acoplar;
+  $("#map-pin").setAttribute("aria-pressed", String(mapaFijo));
+  $("#map-pin").textContent = mapaFijo ? "Mapa fijo al bajar ✓" : "Fijar mapa al bajar";
+}
+function fijarMapa(v) {
+  mapaFijo = v;
+  try { localStorage.setItem("mesa.mapaFijo", v ? "1" : "0"); } catch { /* sin almacenamiento: dura hasta recargar */ }
+  ubicarMapa();
+}
+new IntersectionObserver(([e]) => { mapaPasado = !e.isIntersecting && e.boundingClientRect.top < 0; ubicarMapa(); },
+  {rootMargin: "-140px 0px 0px 0px"}).observe(document.querySelector(".maprow"));
+anchoMapa.addEventListener("change", ubicarMapa);
+$("#map-pin").onclick = () => fijarMapa(!mapaFijo);
+$("#dock-soltar").onclick = () => fijarMapa(false);
+$("#dock-ir").onclick = () => $("#mapa").scrollIntoView({behavior: reduceMotion ? "auto" : "smooth"});
+ubicarMapa();
