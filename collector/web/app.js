@@ -36,6 +36,9 @@ const STATUS = { ok: "Al día", actualizando: "Actualizando", atrasada: "Atrasad
 let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = vista filtrada por región
 
 /* ── filtro por región ──────────────────────────────────────────── */
+// Denuncias policiales (SIDPOL): fuera del tablero por ahora, no es información de emergencias. Para volver a mostrarlas:
+// true aquí y quitar `hidden` de #sidpol-sec y de su enlace en la barra (index.html).
+const MOSTRAR_DENUNCIAS = false;
 const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec", "pron-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
@@ -705,7 +708,7 @@ function setLatSource(src, scroll = false) {
 }
 function renderLatest() {
   const hs = Object.fromEntries(H.map(h => [h.id, h]));
-  const ids = H.filter(h => !h.internal).map(h => h.id).filter(id => id !== "indeci_fotos");
+  const ids = H.filter(h => !h.internal).map(h => h.id).filter(id => id !== "indeci_fotos" && (MOSTRAR_DENUNCIAS || id !== "sidpol"));
   $("#lat-src").innerHTML = [["", "Todas", Object.values(LAT.counts).reduce((a, b) => a + b, 0)], ...ids.map(id => [id, SHORT[id] || id, LAT.counts[id]])]
     .map(([id, label, n]) => `<button type="button" role="tab" data-src="${id}" aria-pressed="${(state.latSource || "") === id}" title="${id ? esc(hs[id]?.name || "") + " · " + (STATUS[hs[id]?.status] || "") : "Todas las fuentes"}">
       ${id ? `<i class="dot ${hs[id]?.status || ""}"></i>` : ""}${esc(label)}${n != null ? `<span class="n ${n ? "hot" : ""}" title="nuevos en 24 h">${nf.format(n)}</span>` : ""}</button>`).join("");
@@ -947,7 +950,7 @@ function renderSidpol() {
 }
 function sidpolBlock(code) {
   const S = V.sidpol, r = S?.provs[code];
-  if (!r) return "";
+  if (!r || !MOSTRAR_DENUNCIAS) return "";
   const last = S.months.length - 1, tot = sumRow(r, S.mods);
   const byMod = S.mods.map(m => [m, r[m][last], r[m][0]]).filter(x => x[1] || x[2]).sort((a, b) => b[1] - a[1]);
   return `<div class="sidblk"><p class="eyebrow">Denuncias policiales · ${MONTH(S.periodo)} · SIDPOL</p>
@@ -967,7 +970,7 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });

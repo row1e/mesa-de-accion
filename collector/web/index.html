@@ -520,10 +520,10 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#senamhi">SENAMHI</a>
     <a href="#indeci-sec">INDECI</a>
     <a href="#com-sec">Comunicados</a>
-    <a href="#sidpol-sec">Denuncias</a>
-    <a href="#igp-sec">Sismos</a>
-    <a href="#serfor-sec">Incendios</a>
-    <a href="#ing-sec">Zonas críticas</a>
+    <a href="#sidpol-sec" hidden>Denuncias</a>
+    <a href="#igp-sec">Sismos (IGP)</a>
+    <a href="#serfor-sec">Incendios (SERFOR)</a>
+    <a href="#ing-sec">Zonas críticas (INGEMMET)</a>
     <a href="#pron-sec">Pronóstico</a>
   </nav>
 </div>
@@ -626,7 +626,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <div class="panel"><div class="filters" id="com-filters"></div><ul class="feed com" id="com"></ul><button type="button" class="more" id="com-more" hidden></button><p class="note" id="com-note"></p></div>
   </section>
 
-  <section id="sidpol-sec">
+  <section id="sidpol-sec" hidden>
     <div class="sec-head"><div><p class="eyebrow">PNP · MININTER · SIDPOL</p><h2>Denuncias policiales</h2></div><span class="src">datosabiertos.gob.pe/dataset/denuncias-policiales-1 (CSV mensual)</span></div>
     <div class="grid2">
       <div class="panel"><h3 id="sid-h3">Denuncias por mes</h3><div class="filters" id="sid-mods"></div><div id="sid-chart"></div><p class="note" id="sid-note"></p></div>
