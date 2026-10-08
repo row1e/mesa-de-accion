@@ -95,11 +95,11 @@ begin
   try
     if FileExists(F) then
       S.LoadFromFile(F);
+    { Se quitan los comentarios y se reescribe uno sin tildes: Inno guarda el archivo en ANSI y la Mesa lo lee como UTF-8 }
     for i := S.Count - 1 downto 0 do
-      if (Pos('MESA_MARCA=', S[i]) = 1) or ((Clave <> '') and (Pos('ANTHROPIC_API_KEY=', S[i]) = 1)) then
+      if (Pos('#', Trim(S[i])) = 1) or (Pos('MESA_MARCA=', S[i]) = 1) or ((Clave <> '') and (Pos('ANTHROPIC_API_KEY=', S[i]) = 1)) then
         S.Delete(i);
-    if S.Count = 0 then
-      S.Add('# Configuración de Mesa de Acción. Una línea CLAVE=valor por ajuste; se aplica al reiniciar la Mesa.');
+    S.Insert(0, '# Configuracion de Mesa de Accion. Una linea CLAVE=valor por ajuste; se aplica al reiniciar la Mesa.');
     S.Add('MESA_MARCA=irtp');
     if Clave <> '' then
       S.Add('ANTHROPIC_API_KEY=' + Clave);

@@ -41,6 +41,9 @@ jobs:
       - name: Prueba de humo (la app arranca y responde)
         run: |
           $env:LOCALAPPDATA = "$env:RUNNER_TEMP\prueba"
+          # config.env como lo deja el instalador: ANSI (Windows-1252), con tildes y fin de línea CRLF
+          New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\MesaDeAccion" | Out-Null
+          [IO.File]::WriteAllText("$env:LOCALAPPDATA\MesaDeAccion\config.env", "# Configuración de Mesa de Acción`r`nMESA_MARCA=irtp`r`n", [Text.Encoding]::GetEncoding(1252))
           $p = Start-Process collector\dist\MesaDeAccion\MesaDeAccion.exe -ArgumentList "--minimizado" -PassThru
           $ok = $false
           for ($i = 0; $i -lt 60; $i++) {
@@ -48,7 +51,8 @@ jobs:
             try { $r = Invoke-RestMethod http://127.0.0.1:8787/api/health -TimeoutSec 5; $ok = $true; break } catch {}
           }
           if ($ok) {
-            Invoke-WebRequest http://127.0.0.1:8787/ -UseBasicParsing | Out-Null
+            $home_ = Invoke-WebRequest http://127.0.0.1:8787/ -UseBasicParsing
+            if ($home_.Content -notmatch 'marca-logo') { throw "El tablero no tomó la marca de config.env" }
             Invoke-WebRequest http://127.0.0.1:8787/fuentes/indeci.png -UseBasicParsing | Out-Null
             Write-Host "La Mesa respondió: $($r.Count) fuentes"
           }

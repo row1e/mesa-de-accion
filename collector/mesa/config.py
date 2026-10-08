@@ -14,9 +14,13 @@ def _cargar_config(path):
     """Archivo de configuración: una línea CLAVE=valor por ajuste (MESA_MARCA, ANTHROPIC_API_KEY, MESA_BACKUP…).
     Las líneas con # son comentarios. Lo que ya está en el entorno tiene prioridad sobre el archivo."""
     try:
-        lineas = pathlib.Path(path).read_text(encoding="utf-8-sig").splitlines()
+        crudo = pathlib.Path(path).read_bytes()
     except (FileNotFoundError, NotADirectoryError):
         return
+    try:
+        lineas = crudo.decode("utf-8-sig").splitlines()
+    except UnicodeDecodeError:   # editado con el Bloc de notas antiguo o escrito por el instalador en ANSI (Windows-1252)
+        lineas = crudo.decode("cp1252", "replace").splitlines()
     for ln in lineas:
         ln = ln.strip()
         if ln and not ln.startswith("#") and "=" in ln:
