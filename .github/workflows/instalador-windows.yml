@@ -48,13 +48,18 @@ jobs:
           $ok = $false
           for ($i = 0; $i -lt 60; $i++) {
             Start-Sleep -Seconds 2
-            try { $r = Invoke-RestMethod http://127.0.0.1:8787/api/health -TimeoutSec 5; $ok = $true; break } catch {}
+            try { $r = Invoke-RestMethod http://127.0.0.1:8787/api/licencia -TimeoutSec 5; $ok = $true; break } catch {}
           }
           if ($ok) {
+            # Sin código de licencia la app empaquetada debe mostrar la página de licencia (con la marca) y negar la API
+            if (-not $r.requerida -or -not $r.bloqueada) { throw "La app empaquetada no exige licencia" }
             $home_ = Invoke-WebRequest http://127.0.0.1:8787/ -UseBasicParsing
-            if ($home_.Content -notmatch 'marca-logo') { throw "El tablero no tomó la marca de config.env" }
+            if ($home_.Content -notmatch 'Código de licencia') { throw "Sin licencia no mostró la página de licencia" }
+            if ($home_.Content -notmatch 'marca-logo') { throw "No tomó la marca de config.env" }
+            try { Invoke-WebRequest http://127.0.0.1:8787/api/health -UseBasicParsing | Out-Null; throw "La API respondió sin licencia" }
+            catch { if ($_.Exception.Response.StatusCode.value__ -ne 403) { throw } }
             Invoke-WebRequest http://127.0.0.1:8787/fuentes/indeci.png -UseBasicParsing | Out-Null
-            Write-Host "La Mesa respondió: $($r.Count) fuentes"
+            Write-Host "La Mesa respondió y exige licencia: $($r.motivo)"
           }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           Get-Content "$env:RUNNER_TEMP\prueba\MesaDeAccion\logs\mesa.log" -Tail 40 -ErrorAction SilentlyContinue

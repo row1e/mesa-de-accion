@@ -6,3 +6,4 @@ pymupdf>=1.24
 truststore>=0.9
 certifi>=2024.2
 anthropic>=1.8
+cryptography>=43    # licencia firmada (solo la exige la app instalada)

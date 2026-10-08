@@ -150,6 +150,7 @@ const sigOf = hs => hs.map(h => `${h.id}:${h.last_ok}`).join("|");
 async function poll() {
   try {
     const r = await fetch("/api/health", {cache: "no-store"});
+    if (r.status === 403) { location.reload(); return; }   // la licencia venció mientras el tablero estaba abierto
     const j = await r.json();
     H = j.sources;
     const sig = sigOf(H);
@@ -1270,3 +1271,12 @@ $("#map-pin").onclick = () => fijarMapa(!mapaFijo);
 $("#dock-soltar").onclick = () => fijarMapa(false);
 $("#dock-ir").onclick = () => $("#mapa").scrollIntoView({behavior: reduceMotion ? "auto" : "smooth"});
 ubicarMapa();
+
+/* ── aviso de licencia (app instalada): desde 10 días antes del vencimiento ─────────────── */
+fetch("/api/licencia", {cache: "no-store"}).then(r => r.json()).then(e => {
+  if (!e.requerida || !e.aviso) return;
+  const f = new Date(e.vence + "T12:00:00").toLocaleDateString("es-PE", {day: "numeric", month: "long"});
+  $("#lic-aviso").hidden = false;
+  $("#lic-aviso").innerHTML = `La licencia de la Mesa vence el ${esc(f)} (${e.dias === 0 ? "hoy" : e.dias === 1 ? "mañana" : `en ${e.dias} días`}).`
+    + (e.contacto ? ` Para renovarla: ${esc(e.contacto)}.` : "") + ` <a href="/licencia">Ingresar un código nuevo</a>`;
+}).catch(() => {});

@@ -399,6 +399,9 @@ def generar(tipo, alcance, ref, actor, origen=None, lugar=None):
         raise IAError(f"Tipo «{tipo}» no válido para «{alcance}».")
     if not habilitado():
         raise IAError("El asistente de IA no está configurado: falta la clave de la API de Claude.", 503)
+    from . import licencia
+    if licencia.bloqueada():
+        raise IAError("La licencia de la Mesa venció o falta: el asistente está desactivado.", 403)
     if alcance == "registro":
         dossier, cita, titulo = dossier_registro(ref["source"], ref["kind"], ref["key"])
     else:

@@ -7,10 +7,47 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 
-from . import asistente, config, db, detail, ficha, geo, latest, runner, sat, snapshot
+from . import asistente, config, db, detail, ficha, geo, latest, licencia, runner, sat, snapshot
 from .sources import SOURCES, midis
 
 app = FastAPI(title="Mesa de Acción · Colector", version="0.1")
+
+
+# Licencia (solo en la app instalada): vencida o ausente, el tablero muestra la página de licencia y la API no
+# entrega datos. Quedan abiertos lo necesario para esa página: /api/licencia, logos y marca.
+LIBRES = ("/api/licencia", "/marca/", "/fuentes/", "/licencia")
+
+
+@app.middleware("http")
+async def control_licencia(request: Request, call_next):
+    p = request.url.path
+    if licencia.requerida() and not p.startswith(LIBRES) and licencia.bloqueada():
+        if p in ("/", "/index.html", "/reportar"):
+            return _con_marca("licencia.html")
+        return JSONResponse({"detail": "Licencia vencida o ausente.", "licencia": licencia.estado()}, status_code=403)
+    return await call_next(request)
+
+
+class LicenciaCodigo(BaseModel):
+    codigo: str
+
+
+@app.get("/api/licencia")
+def licencia_estado():
+    return licencia.estado()
+
+
+@app.post("/api/licencia")
+def licencia_guardar(b: LicenciaCodigo):
+    try:
+        return licencia.guardar(b.codigo)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+
+
+@app.get("/licencia", include_in_schema=False)
+def licencia_pagina():
+    return _con_marca("licencia.html")
 (config.DATA / "media").mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=config.DATA / "media"), name="media")   # fotos extraídas de los PDF
 

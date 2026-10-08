@@ -10,7 +10,7 @@ import urllib.request
 
 import truststore
 
-from . import config, db
+from . import config, db, licencia
 
 # Usa el almacén de certificados del sistema (como curl en macOS): el Python de uv trae su propio
 # OpenSSL sin la cadena que exigen INGEMMET y ENFEN.
@@ -67,6 +67,7 @@ def fetch(source, url, *, name=None, method="GET", timeout=60, retries=2, keep_r
             req = urllib.request.Request(url, data=data, method=method, headers=hdrs)
             with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as r:
                 status, body = r.status, r.read()
+                licencia.observar_cabecera(r.headers.get("Date"))   # hora real de las fuentes: el reloj del equipo puede mentir
             break
         except urllib.error.HTTPError as e:
             status, last_err = e.code, f"HTTP {e.code}"

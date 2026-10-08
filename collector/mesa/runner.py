@@ -7,7 +7,7 @@ import traceback
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from . import config, db
+from . import config, db, licencia
 from .sources import SOURCES
 
 log = logging.getLogger("mesa.runner")
@@ -23,6 +23,9 @@ def on_run(cb):
 
 def run_source(source, trigger="schedule"):
     """Corre una fuente si no está ya corriendo. Devuelve False si se omitió por estar en curso."""
+    if licencia.bloqueada():   # licencia vencida o ausente (solo en la app instalada): no se consulta nada
+        db.health_set(source, last_message="Licencia vencida o ausente: la fuente no se consulta.")
+        return False
     lock = _locks[source]
     if not lock.acquire(blocking=False):
         return False

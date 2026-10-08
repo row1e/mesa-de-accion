@@ -73,36 +73,41 @@ end;
 procedure InitializeWizard();
 begin
   ClavePage := CreateInputQueryPage(wpSelectTasks,
-    'Asistente de IA (opcional)',
-    'Clave de la API de Claude para redactar borradores',
-    'Pegue la clave que le entregaron (empieza con sk-ant-api). Si la deja vacía, el tablero funciona igual y solo ' +
-    'queda desactivado el asistente; se puede agregar después. La clave se guarda únicamente en esta computadora. ' +
-    'Si está actualizando y ya la había ingresado, déjela vacía para conservarla.');
-  ClavePage.Add('Clave:', True);
+    'Licencia y asistente de IA',
+    'Código de licencia y clave de la API de Claude',
+    'Pegue el código de licencia que le entregaron (empieza con MESA-). Sin él, la Mesa abre una página para ' +
+    'ingresarlo. La clave de Claude (empieza con sk-ant-api) es opcional: sin ella solo queda desactivado el asistente. ' +
+    'Ambos se guardan únicamente en esta computadora. Si está actualizando, deje vacío lo que ya había ingresado.');
+  ClavePage.Add('Código de licencia:', False);
+  ClavePage.Add('Clave de Claude (opcional):', True);
 end;
 
 { config.env: conserva lo que ya tenga y fija la marca IRTP; la clave solo se reemplaza si se ingresó una nueva }
 procedure GuardarConfig();
 var
-  F, Clave: String;
+  F, Clave, Licencia: String;
   S: TStringList;
   i: Integer;
 begin
   F := ExpandConstant('{localappdata}\MesaDeAccion\config.env');
   ForceDirectories(ExtractFileDir(F));
-  Clave := Trim(ClavePage.Values[0]);
+  Licencia := Trim(ClavePage.Values[0]);
+  Clave := Trim(ClavePage.Values[1]);
   S := TStringList.Create;
   try
     if FileExists(F) then
       S.LoadFromFile(F);
     { Se quitan los comentarios y se reescribe uno sin tildes: Inno guarda el archivo en ANSI y la Mesa lo lee como UTF-8 }
     for i := S.Count - 1 downto 0 do
-      if (Pos('#', Trim(S[i])) = 1) or (Pos('MESA_MARCA=', S[i]) = 1) or ((Clave <> '') and (Pos('ANTHROPIC_API_KEY=', S[i]) = 1)) then
+      if (Pos('#', Trim(S[i])) = 1) or (Pos('MESA_MARCA=', S[i]) = 1) or ((Clave <> '') and (Pos('ANTHROPIC_API_KEY=', S[i]) = 1))
+         or ((Licencia <> '') and (Pos('MESA_LICENCIA=', S[i]) = 1)) then
         S.Delete(i);
     S.Insert(0, '# Configuracion de Mesa de Accion. Una linea CLAVE=valor por ajuste; se aplica al reiniciar la Mesa.');
     S.Add('MESA_MARCA=irtp');
     if Clave <> '' then
       S.Add('ANTHROPIC_API_KEY=' + Clave);
+    if Licencia <> '' then
+      S.Add('MESA_LICENCIA=' + Licencia);
     S.SaveToFile(F);
   finally
     S.Free;
