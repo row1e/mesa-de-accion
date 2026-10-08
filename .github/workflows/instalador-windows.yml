@@ -1,0 +1,75 @@
+# Arma el instalador de Windows (MesaDeAccion-IRTP-Setup-<versión>.exe) y lo deja como artefacto del run.
+# Se dispara a mano (Actions → Instalador Windows → Run workflow), con una etiqueta v* o al empujar a una rama instalador/*.
+name: Instalador Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+    branches: ["instalador/**", "feat/instalador-windows"]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            collector/requirements.txt
+            collector/windows/requirements-build.txt
+
+      - name: Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r collector/requirements.txt -r collector/windows/requirements-build.txt
+
+      - name: Ícono
+        run: python -c "from PIL import Image; Image.open('collector/windows/icono.png').save('collector/windows/mesa.ico', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+
+      - name: Empaquetar (PyInstaller)
+        working-directory: collector
+        run: pyinstaller --noconfirm windows/mesa.spec
+
+      - name: Prueba de humo (la app arranca y responde)
+        run: |
+          $env:LOCALAPPDATA = "$env:RUNNER_TEMP\prueba"
+          $p = Start-Process collector\dist\MesaDeAccion\MesaDeAccion.exe -ArgumentList "--minimizado" -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 2
+            try { $r = Invoke-RestMethod http://127.0.0.1:8787/api/health -TimeoutSec 5; $ok = $true; break } catch {}
+          }
+          if ($ok) {
+            Invoke-WebRequest http://127.0.0.1:8787/ -UseBasicParsing | Out-Null
+            Invoke-WebRequest http://127.0.0.1:8787/fuentes/indeci.png -UseBasicParsing | Out-Null
+            Write-Host "La Mesa respondió: $($r.Count) fuentes"
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Get-Content "$env:RUNNER_TEMP\prueba\MesaDeAccion\logs\mesa.log" -Tail 40 -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "La app empaquetada no respondió en http://127.0.0.1:8787" }
+
+      - name: Instalador (Inno Setup)
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+            if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          } else { $iscc = "iscc" }
+          if (-not (Test-Path $iscc) -and -not (Get-Command $iscc -ErrorAction SilentlyContinue)) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          $ver = "1.0.${{ github.run_number }}"
+          & $iscc "/DAppVer=$ver" collector\windows\instalador.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup falló" }
+          Get-ChildItem collector\windows\Output
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MesaDeAccion-IRTP-Setup
+          path: collector/windows/Output/*.exe
+          if-no-files-found: error

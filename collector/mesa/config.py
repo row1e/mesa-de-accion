@@ -1,9 +1,31 @@
-"""Configuración del colector. Todo ajustable por variables de entorno MESA_*."""
+"""Configuración del colector. Todo ajustable por variables de entorno MESA_* o por un archivo de configuración."""
 import os
 import pathlib
+import sys
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent          # collector/
-PROJECT = ROOT.parent                                           # raíz del repositorio
+if getattr(sys, "frozen", False):        # app empaquetada para Windows (PyInstaller): recursos junto al ejecutable
+    ROOT = PROJECT = pathlib.Path(sys._MEIPASS)
+else:
+    ROOT = pathlib.Path(__file__).resolve().parent.parent      # collector/
+    PROJECT = ROOT.parent                                       # raíz del repositorio
+
+
+def _cargar_config(path):
+    """Archivo de configuración: una línea CLAVE=valor por ajuste (MESA_MARCA, ANTHROPIC_API_KEY, MESA_BACKUP…).
+    Las líneas con # son comentarios. Lo que ya está en el entorno tiene prioridad sobre el archivo."""
+    try:
+        lineas = pathlib.Path(path).read_text(encoding="utf-8-sig").splitlines()
+    except (FileNotFoundError, NotADirectoryError):
+        return
+    for ln in lineas:
+        ln = ln.strip()
+        if ln and not ln.startswith("#") and "=" in ln:
+            k, v = ln.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"'))
+
+
+CONFIG_FILE = pathlib.Path(os.environ.get("MESA_CONFIG", ROOT / "local.env"))   # en la app de Windows: %LOCALAPPDATA%\MesaDeAccion\config.env
+_cargar_config(CONFIG_FILE)
 DATA = pathlib.Path(os.environ.get("MESA_DATA", ROOT / "data"))
 RAW = DATA / "raw"
 DB_PATH = DATA / "mesa.sqlite3"

@@ -11,3 +11,12 @@ collector/data/
 # muestras descargadas por los probes y dashboard estático generado
 samples/
 dashboard/index.html
+
+# configuración local (MESA_MARCA, ANTHROPIC_API_KEY…): ver mesa/config.py
+collector/local.env
+
+# empaquetado de Windows (windows/): se genera en GitHub Actions
+collector/build/
+collector/dist/
+collector/windows/Output/
+collector/windows/mesa.ico

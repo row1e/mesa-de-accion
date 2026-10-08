@@ -1,0 +1,4 @@
+# Solo para empaquetar la app de Windows (además de requirements.txt)
+pyinstaller>=6.10
+pystray>=0.19
+pillow>=10.4

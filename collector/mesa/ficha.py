@@ -27,7 +27,11 @@ CHROME_CANDIDATES = [os.environ.get("MESA_CHROME", ""),
                      "/Applications/Chromium.app/Contents/MacOS/Chromium",
                      *[os.path.join(os.environ.get(v, ""), "Google", "Chrome", "Application", "chrome.exe")
                        for v in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA") if os.environ.get(v)],
+                     # Edge viene con todo Windows e imprime igual que Chrome: sin Chrome instalado, la ficha PDF sale igual
+                     *[os.path.join(os.environ.get(v, ""), "Microsoft", "Edge", "Application", "msedge.exe")
+                       for v in ("PROGRAMFILES(X86)", "PROGRAMFILES") if os.environ.get(v)],
                      shutil.which("google-chrome") or "", shutil.which("chromium") or ""]
+SIN_VENTANA = getattr(subprocess, "CREATE_NO_WINDOW", 0)   # Windows: que imprimir el PDF no abra una consola
 NEAR_KM = 50          # sismos "cercanos": epicentro a menos de esta distancia del límite provincial
 INDECI_DAYS = 7
 
@@ -213,7 +217,7 @@ def _cerrar(proc):
     if proc.poll() is not None:
         return
     if os.name == "nt":
-        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True, creationflags=SIN_VENTANA)
         return
     try:
         os.killpg(proc.pid, 15)
@@ -240,7 +244,7 @@ def pdf(ubigeo, base_url):
                "--virtual-time-budget=10000", f"--print-to-pdf={out}", f"{base_url}/ficha/{ubigeo}?print=1"]
         # En macOS, Chrome headless escribe el PDF y a veces no termina: se vigila el archivo y se cierra el proceso
         # cuando el PDF está completo (termina en %%EOF y su tamaño no cambia).
-        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, start_new_session=True)
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, start_new_session=True, creationflags=SIN_VENTANA)
         deadline, last_size, stable = time.time() + 60, -1, 0
         try:
             while time.time() < deadline:
