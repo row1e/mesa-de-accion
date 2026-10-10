@@ -18,7 +18,7 @@ GEOCATMIN = "https://geocatmin.ingemmet.gob.pe/arcgis/rest/services"
 TTL = {  # segundos que vale el enriquecimiento cacheado
     ("igp", "sismo"): 7 * 86400, ("serfor", "alerta"): 600, ("serfor", "foco"): 3600,
     ("ingemmet", "zona_alerta"): 3600, ("indeci", "item"): 3600, ("senamhi_avisos", "aviso"): 6 * 3600,
-    ("provias", "emergencia"): 1800,
+    ("provias", "emergencia"): 1800, ("bomberos", "parte"): 600,
     **{(sid, "noticia"): 6 * 3600 for sid in ("com_pnp", "com_provias", "com_mtc", "com_mininter")},
 }
 LEVEL_WORDS = {"AMARILLO": 2, "NARANJA": 3, "ROJO": 4}
@@ -150,6 +150,8 @@ def _sat_params(kind, it):
     lat, lon = it.get("lat"), it.get("lon")
     if lat is None or lon is None:
         return None
+    if kind == "parte" and not (it.get("detalle") or "").lower().startswith("forestal"):
+        return None   # bomberos: a esa escala el satélite solo sirve para incendios forestales, no para una vivienda o un choque
     date = {"sismo": it.get("fecha"), "alerta": it.get("fecha"), "foco": it.get("fecha"), "deteccion": it.get("fecha"),
             "aviso_estacion": (it.get("fecha_hora") or "")[:10]}.get(kind) or today
     km = {"sismo": 60, "aviso_estacion": 25, "zona_alerta": 10}.get(kind, 15)
@@ -233,6 +235,27 @@ def _f_provias(it, ex):
             "fields": f or {k: v for k, v in it.items() if not k.startswith("_")}}
 
 
+def _bomberos(it):
+    from .sources.bomberos import URL
+    res = fetch_json("bomberos", f"{URL}Home/GetResume?numeroparte={it['parte']}", keep_raw=False)
+    return {"unidades_tipo": [[x.get("TipoVehiculo"), x.get("Cantidad")] for x in res or []]}
+
+
+def _f_bomberos(it, ex):
+    from .sources.bomberos import URL
+    tipos = ex.get("unidades_tipo") or []
+    return {"title": f"{it.get('categoria')} · {it.get('detalle') or '—'}", "subtitle": f"{it.get('direccion') or '—'} · {it.get('distrito') or '—'}",
+            "level": None,
+            "facts": [["Parte", it.get("parte")], ["Fecha y hora", f"{it.get('fecha')} {it.get('hora')}"], ["Estado", it.get("estado")],
+                      ["Tipo (CGBVP)", it.get("tipo")], ["Dirección", it.get("direccion") or "—"], ["Distrito", it.get("distrito") or "—"],
+                      ["Unidades", ", ".join(it.get("unidades") or []) or "—"],
+                      ["Unidades por tipo", ", ".join(f"{n} {t.lower()}" for t, n in tipos) or "—"],
+                      ["Ubicación en el mapa", {"coordenadas": "coordenadas del parte", "distrito": "centro de la provincia (el parte no trae coordenadas)"}.get(it.get("ubicacion"), "sin ubicar")]],
+            "links": [{"label": "Mapa del parte (CGBVP)", "url": f"{URL}Home/Map?numparte={it['parte']}"},
+                      {"label": "Emergencias 24 horas (CGBVP)", "url": URL}],
+            "fields": {k: v for k, v in it.items() if not k.startswith("_")}}
+
+
 def _f_hidro(it, ex):
     raw = it.get("raw") or {}
     links = [{"label": "Mapa de avisos hidrológicos (SENAMHI)", "url": "https://www.senamhi.gob.pe/?p=aviso-hidrologico"}]
@@ -309,7 +332,7 @@ ENRICH = {
     ("serfor", "alerta"): _arc(f"{SERFOR}/2", lambda it: it["_key"]),
     ("serfor", "foco"): _arc(f"{SERFOR}/0", lambda it: it["_key"]),
     ("ingemmet", "zona_alerta"): _arc(f"{GEOCATMIN}/SERV_PERU_ALERTA/MapServer/0", lambda it: it["_key"].split("-")[-1]),
-    ("provias", "emergencia"): _provias,
+    ("provias", "emergencia"): _provias, ("bomberos", "parte"): _bomberos,
 }
 FORMAT = {
     ("enfen", "comunicado"): _f_enfen,
@@ -317,4 +340,5 @@ FORMAT = {
     ("igp", "sismo"): _f_sismo, ("serfor", "alerta"): _f_alerta, ("serfor", "foco"): _f_foco,
     ("ingemmet", "zona_alerta"): _f_zona, ("senamhi_hidro", "aviso_estacion"): _f_hidro, ("indeci", "item"): _f_indeci,
     ("senamhi_avisos", "aviso"): _f_aviso, ("firms", "deteccion"): _f_firms, ("provias", "emergencia"): _f_provias,
+    ("bomberos", "parte"): _f_bomberos,
 }

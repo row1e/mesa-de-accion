@@ -39,7 +39,7 @@ let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = 
 // Denuncias policiales (SIDPOL): fuera del tablero por ahora, no es información de emergencias. Para volver a mostrarlas:
 // true aquí y quitar `hidden` de #sidpol-sec y de su enlace en la barra (index.html).
 const MOSTRAR_DENUNCIAS = false;
-const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
+const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "bom-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
 function makeView() {
@@ -58,6 +58,8 @@ function makeView() {
     pronostico: D.pronostico.filter(p => p.reg === R), hidro: D.hidro.filter(h => h.reg === R),
     indeci: D.indeci.filter(i => i.reg === R), sismos: D.sismos.filter(s => s[9] === R),
     focos: D.focos.filter(f => f[5] === R), alertas: D.alertas.filter(a => a.reg === R), zonas: D.zonas.filter(z => z.reg === R), vias: (D.vias || []).filter(v => v.reg === R),
+    bomberos: (D.bomberos || []).filter(b => b.reg === R),
+    bomberosMedicas: {...(D.bomberosMedicas || {}), total: D.bomberosMedicas?.por_reg?.[R] || 0, atendiendo: null},
     comunicados: (D.comunicados || []).filter(c => c.regs?.includes(R)), sidpol,
     fotosDia: (D.fotosDia || []).filter(f => f.reg === R),
     danos: D.danos ? {...D.danos, ...(D.danos.por_reg[R] || {totales: {}, nuevos: {}, seguimiento: {}, n_eventos: 0, n_nuevos: 0}),
@@ -223,7 +225,7 @@ function initMap() {
   proj = d3.geoIdentity().reflectY(true).fitExtent([[16,16],[W-16,H_-16]], V.geo.deps);
   path = d3.geoPath(proj);
   gGeo = svg.append("g"); gProv = gGeo.append("g"); gDep = gGeo.append("g"); gPts = svg.append("g");
-  zoom = d3.zoom().scaleExtent([1, 14]).translateExtent([[-W * .15, -H_ * .15], [W * 1.15, H_ * 1.15]])
+  zoom = d3.zoom().scaleExtent([1, 60])   // hasta nivel de calle: los partes de bomberos en Lima están a cuadras.translateExtent([[-W * .15, -H_ * .15], [W * 1.15, H_ * 1.15]])
     .filter(e => e.type === "wheel" ? (e.ctrlKey || e.metaKey) : e.type === "touchstart" ? e.touches.length > 1 : !e.button)
     .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); svg.classed("zoom-ciudades", zt.k >= 1.5); placePoints(); hideTip(); });
   svg.call(zoom).on("dblclick.zoom", null);
@@ -240,7 +242,7 @@ function initMap() {
 }
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
-  layers: { ciudades: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
+  layers: { ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -261,6 +263,11 @@ const CIUDADES = [
   ["Abancay", -72.881, -13.634, 2], ["Juliaca", -70.133, -15.500, 2, true], ["Moquegua", -70.936, -17.196, 2], ["Ilo", -71.338, -17.639, 2, true],
   ["Yurimaguas", -76.092, -5.900, 2],
 ];
+// Bomberos: color por tipo de emergencia; más grande y con borde si sigue en atención
+const BOM_T = [["Incendio", "--fuego"], ["Materiales Peligrosos (Incidente)", "--n3"], ["Rescate", "--hidro"], ["Accidente Vehicular", "--ink-2"], ["Servicio Especial", "--ink-3"]];
+const bomColor = c => css((BOM_T.find(([t]) => t === c) || [, "--ink-3"])[1]);
+const bomCorto = c => c === "Materiales Peligrosos (Incidente)" ? "Materiales peligrosos" : c ? c[0] + c.slice(1).toLowerCase() : "—";
+const bomLL = b => b.lon != null ? [b.lon, b.lat] : V.provCentroids[b.prov];
 const layerDefs = [
   { id: "indeci", label: "Emergencias INDECI", sw: `<i class="sw sq" style="background:var(--indeci)"></i>`, n: () => new Set(V.indeci.filter(i => i.prov).map(i => i.prov)).size, unit: "prov." },
   { id: "alertas", label: "Incendios forestales (SERFOR)", sw: `<i class="sw" style="background:var(--fuego);outline:1px solid var(--ink)"></i>`, n: () => incendios().length },
@@ -270,6 +277,7 @@ const layerDefs = [
   { id: "sismos365", label: "Sismos · 12 meses", sw: `<i class="sw" style="border:1px solid var(--sismo);opacity:.6"></i>`, n: () => recentSismos(365).length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
   { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
+  { id: "bomberos", label: "Bomberos · 24 h (CGBVP)", sw: `<i class="sw" style="width:12px;height:12px;border-radius:0;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:var(--fuego)"></i>`, n: () => V.bomberos.length },
   { id: "ciudades", label: "Ciudades de referencia", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => CIUDADES.length },
   { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
@@ -462,7 +470,7 @@ function showProvince() {   // lleva el bloque de la provincia al tope del panel
 const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Monitoreo satelital", ingemmet: "INGEMMET · Perú Alerta",
   senamhi_hidro: "SENAMHI · Hidrología", senamhi_avisos: "SENAMHI · Avisos meteorológicos", indeci: "INDECI · COEN", firms: "NASA FIRMS",
   enfen: "ENFEN · Comisión Multisectorial", com_pnp: "PNP · Comunicados (gob.pe)", com_provias: "PROVIAS Nacional · Notas de prensa (gob.pe)",
-  provias: "PROVIAS Nacional · Emergencias viales", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
+  provias: "PROVIAS Nacional · Emergencias viales", bomberos: "CGBVP · Bomberos · Emergencias 24 horas", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
 const refId = r => r && `${r.source}|${r.kind}|${r.key}`;
 let detailReq = 0;
 function closeDetail() {
@@ -570,6 +578,13 @@ function renderPoints() {
   if (L.indeci) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
     .attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10).attr("fill", css("--indeci")).attr("stroke", css("--surface")).attr("stroke-width", 1.2)
     .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide)</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
+  if (L.bomberos) layer(V.bomberos.filter(bomLL), "path", bomLL)
+    .attr("d", d3.symbol(d3.symbolCross, d => d.estado === "Atendiendo" ? 95 : 48))
+    .attr("fill", d => bomColor(d.categoria)).attr("fill-opacity", d => d.ubicacion === "coordenadas" ? 1 : .55)
+    .attr("stroke", d => d.estado === "Atendiendo" ? css("--ink") : css("--surface")).attr("stroke-width", d => d.estado === "Atendiendo" ? 1.3 : .7)
+    .call(on, d => `<b>${esc(bomCorto(d.categoria))}${d.estado === "Atendiendo" ? " · en atención" : ""}</b><br>${esc(d.detalle || "")}<br>${esc(d.direccion || "")} — ${esc(d.distrito || "")}`
+      + `<br><span style="opacity:.7">${(d.unidades || []).length} unidad${(d.unidades || []).length === 1 ? "" : "es"}${d.ubicacion === "distrito" ? " · ubicado en el centro de la provincia" : ""}</span>`
+      + tipWhen(fmtWhen(d.fecha, d.hora), "parte CGBVP"), d => ({source: "bomberos", kind: "parte", key: d._key}));
   // Encima de todo y sin capturar el mouse: orientan pero no tapan los clics sobre los puntos
   if (L.ciudades) {
     const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(CIUDADES).join("g").attr("class", d => `pt ciudad t${d[3]}`).each(function (d) { this.__ll = [d[1], d[2]]; });
@@ -732,6 +747,33 @@ const VIA_T = [["03", "Interrumpido"], ["02", "Restringido"], ["04", "Por confir
 const viaColor = c => ({"03": css("--n4"), "02": css("--n2"), "04": css("--ink-3"), "01": css("--ok")})[c] || css("--ink-3");
 const cap = s => s ? s.charAt(0) + s.slice(1).toLowerCase() : "";
 let viaF = "";
+let bomF = "";
+function renderBomberos() {
+  const bs = V.bomberos, M = V.bomberosMedicas || {}, n = c => bs.filter(b => b.categoria === c).length;
+  const act = bs.filter(b => b.estado === "Atendiendo").length;
+  $("#bom-cnt").innerHTML = [[act, "en atención ahora", "--ink"], ...BOM_T.filter(([c]) => n(c)).map(([c, v]) => [n(c), bomCorto(c).toLowerCase(), v])]
+    .map(([k, t, v]) => `<div><div class="big num" style="color:var(${v})">${k}</div><p>${esc(t)}</p></div>`).join("")
+    + `<div><div class="big num" style="color:var(--ink-3)">${M.total ?? 0}</div><p>emergencias médicas <span class="muted">(solo el número)</span></p></div>`;
+  seg($("#bom-f"), [["", `Todas (${bs.length})`], ["act", `En atención (${act})`], ...BOM_T.filter(([c]) => n(c)).map(([c]) => [c, `${bomCorto(c)} (${n(c)})`])], bomF, v => { bomF = v; renderBomberos(); });
+  filterBomberos();
+}
+function filterBomberos() {
+  const q = ($("#bq").value || "").toLowerCase();
+  const rows = V.bomberos.filter(b => (!bomF || (bomF === "act" ? b.estado === "Atendiendo" : b.categoria === bomF))
+    && (!q || [b.categoria, b.detalle, b.direccion, b.distrito, ...(b.unidades || [])].join(" ").toLowerCase().includes(q)));
+  $("#bom").innerHTML = rows.map(b => `<tr class="clk" data-key="${esc(b._key)}" tabindex="0">
+    <td class="num" style="white-space:nowrap">${esc(b.hora || "")}<div class="muted" style="font-size:12px">${b.fecha ? fmtDay(b.fecha) : ""}</div></td>
+    <td><span class="tr" style="--c:${bomColor(b.categoria)}">${esc(bomCorto(b.categoria))}</span><div class="muted" style="font-size:12px">${esc(b.detalle || "")}</div></td>
+    <td>${esc(b.direccion || "—")}<div class="muted" style="font-size:12px">${esc(b.distrito || "")}</div></td>
+    <td>${b.estado === "Atendiendo" ? "<b>En atención</b>" : esc(b.estado)}</td>
+    <td class="muted" style="font-size:12px">${esc((b.unidades || []).join(", "))}</td></tr>`).join("")
+    || `<tr><td colspan="5" class="muted">${q || bomF ? "Ningún parte coincide." : state.region ? `Sin partes de bomberos en ${esc(regName(state.region))} en las últimas 24 horas. La página del CGBVP cubre Lima, Callao y parte de la costa sur.` : "Sin partes registrados."}</td></tr>`;
+  const M = V.bomberosMedicas || {};
+  $("#bom-note").textContent = `${rows.length} de ${V.bomberos.length} partes de las últimas 24 horas, sin contar ${M.total ?? 0} emergencias médicas, que se muestran solo como número porque su dirección suele ser la de una vivienda. La página del CGBVP cubre Lima, Callao y parte de la costa sur (Cañete, Chincha, Pisco, Ica), Huacho y algo de Ayacucho; no publica el resto del país. Clic en una fila para ver el parte.`;
+}
+$("#bq").addEventListener("input", () => D && filterBomberos());
+$("#bom").addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "bomberos", kind: "parte", key: tr.dataset.key}); });
+$("#bom").addEventListener("keydown", e => { const tr = e.target.closest("tr[data-key]"); if (tr && e.key === "Enter") openDetail({source: "bomberos", kind: "parte", key: tr.dataset.key}); });
 function renderVias() {
   const vs = V.vias, n = c => vs.filter(v => v.transito_cod === c).length;
   $("#vias-cnt").innerHTML = VIA_T.map(([c, t]) => `<div><div class="big num" style="color:${viaColor(c)}">${n(c)}</div><p>tránsito ${t.toLowerCase()}</p></div>`).join("");
@@ -812,7 +854,7 @@ $("#pq").addEventListener("input", () => D && filterPron());
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
   indeci: "INDECI", indeci_fotos: "INDECI fotos", igp: "IGP sismos", serfor: "SERFOR incendios", ingemmet: "INGEMMET", enfen: "ENFEN", firms: "NASA FIRMS",
   com_pnp: "PNP comunicados", com_provias: "PROVIAS notas", com_mtc: "MTC notas", com_mininter: "MININTER notas",
-  sidpol: "SIDPOL denuncias", provias: "PROVIAS vías"};
+  sidpol: "SIDPOL denuncias", provias: "PROVIAS vías", bomberos: "Bomberos"};
 const LAT = {rows: [], counts: {}, more: false, next: null, req: 0};
 function writeHash() {
   const p = [state.region && `r=${state.region}`, state.latSource && `f=${state.latSource}`].filter(Boolean).join("&");
@@ -1106,7 +1148,7 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderBomberos(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });

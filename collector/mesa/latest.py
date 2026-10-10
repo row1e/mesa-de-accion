@@ -32,7 +32,7 @@ def _ocurrencia(rec, it=None):
 FEED_KINDS = [("senamhi_avisos", "aviso"), ("senamhi_hidro", "aviso_estacion"), ("indeci", "item"), ("igp", "sismo"),
               ("serfor", "alerta"), ("serfor", "foco"), ("ingemmet", "zona_alerta"), ("enfen", "comunicado"),
               ("com_pnp", "noticia"), ("com_provias", "noticia"), ("com_mtc", "noticia"), ("com_mininter", "noticia"),
-              ("firms", "deteccion"), ("provias", "emergencia")]
+              ("firms", "deteccion"), ("provias", "emergencia"), ("bomberos", "parte")]
 # expresión SQL con la fecha propia de cada tipo: desempata registros recibidos en el mismo lote (p. ej. la carga inicial)
 EVENT_SQL = {"aviso": "json_extract(payload,'$.emision') || printf('%05d', json_extract(payload,'$.nro'))",
              "aviso_estacion": "json_extract(payload,'$.fecha_hora')", "item": "json_extract(payload,'$.ts')",
@@ -40,7 +40,8 @@ EVENT_SQL = {"aviso": "json_extract(payload,'$.emision') || printf('%05d', json_
              "alerta": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')",
              "foco": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')",
              "comunicado": "key", "noticia": "json_extract(payload,'$.fecha')",
-             "deteccion": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')", "zona_alerta": "key", "emergencia": "json_extract(payload,'$.fecha')"}
+             "deteccion": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')", "zona_alerta": "key", "emergencia": "json_extract(payload,'$.fecha')",
+             "parte": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')"}
 UPDATES = {"senamhi_uv": ("prono_ruv.json", "Índice UV actualizado"),
            "senamhi_pronostico": ("pronostico.html", "Pronóstico por ciudad actualizado"),
            "sidpol": ("denuncias.csv", "Nuevo mes de denuncias SIDPOL publicado")}
@@ -103,6 +104,11 @@ def summarize(source, kind, it):
                        "subtitle": f"{it.get('ruta')} · {it.get('tramo')}" + (f" · km {it['km_ini']}" if it.get("km_ini") else ""),
                        "event_time": it.get("fecha"),
                        "place": it.get("sector"), "reg": it.get("reg")}
+    if kind == "parte":
+        return base | {"title": f"{it.get('categoria')} · {it.get('detalle') or ''}".rstrip(" ·"),
+                       "subtitle": f"{it.get('direccion') or '—'} · {it.get('estado')}" + (f" · {', '.join(it['unidades'])}" if it.get("unidades") else ""),
+                       "event_time": f"{it.get('fecha')}T{it.get('hora')}" if it.get("fecha") else None,
+                       "place": it.get("distrito"), "reg": it.get("reg")}
     if kind == "comunicado":
         return base | {"title": f"Comunicado ENFEN N° {it['numero']}-{it['anio']}: {it.get('estado') or '—'}", "subtitle": "Estado del sistema de alerta ante El Niño",
                        "event_time": it.get("fecha"), "place": "Nacional"}

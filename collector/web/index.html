@@ -575,6 +575,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#enfen-sec">El Niño</a>
     <a href="#senamhi">SENAMHI</a>
     <a href="#vias-sec">Vías (PROVIAS)</a>
+    <a href="#bom-sec">Bomberos (CGBVP)</a>
     <a href="#ciud-sec">Nuestros corresponsales</a>
     <a href="#com-sec">Comunicados</a>
     <a href="#sidpol-sec" hidden>Denuncias</a>
@@ -677,6 +678,17 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
       <input type="search" id="vq" placeholder="Filtrar por ruta, tramo, sector, tipo o provincia">
       <div class="scroll"><table><thead><tr><th>Tránsito</th><th>Tipo de emergencia</th><th>Ruta · tramo · sector</th><th>Lugar</th><th class="num">Desde</th></tr></thead><tbody id="vias"></tbody></table></div>
       <p class="note" id="vias-note"></p>
+    </div>
+  </section>
+  <section id="bom-sec">
+    <div class="sec-head"><div><p class="eyebrow">CGBVP · Cuerpo General de Bomberos Voluntarios del Perú</p><h2>Emergencias atendidas por bomberos · 24 horas</h2></div><span class="src">sgonorte.bomberosperu.gob.pe/24horas</span></div>
+    <p class="srcline" data-srcline="bomberos"></p>
+    <div class="thesis vias-cnt" id="bom-cnt"></div>
+    <div class="panel" style="margin-top:16px">
+      <div class="filters" id="bom-f"></div>
+      <input type="search" id="bq" placeholder="Filtrar por tipo, dirección, distrito o unidad">
+      <div class="scroll"><table><thead><tr><th class="num">Hora</th><th>Tipo</th><th>Dirección · distrito</th><th>Estado</th><th>Unidades</th></tr></thead><tbody id="bom"></tbody></table></div>
+      <p class="note" id="bom-note"></p>
     </div>
   </section>
   <section id="ciud-sec">

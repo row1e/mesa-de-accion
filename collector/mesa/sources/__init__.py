@@ -1,5 +1,5 @@
 """Registro de fuentes: id → (función, etiqueta, institución, acceso, nivel geográfico, qué había en la hoja)."""
-from . import gobpe, midis, others, senamhi
+from . import bomberos, gobpe, midis, others, senamhi
 
 SOURCES = {
     "senamhi_avisos": dict(fn=senamhi.avisos, org="SENAMHI", name="Avisos meteorológicos", via="HTML + WFS GeoServer",
@@ -41,6 +41,8 @@ SOURCES = {
                      via="Carpeta de MESA_BACKUP", geo="—", sheet="—", internal=True),
     "provias_fotos": dict(fn=others.provias_fotos, org="PROVIAS Nacional", name="Fotos de emergencias viales",
                           via="JSON del visor SGCV (cronología)", geo="De la emergencia", sheet="No existía"),
+    "bomberos": dict(fn=bomberos.bomberos, org="CGBVP · Bomberos", name="Emergencias 24 horas", via="HTML (página pública 24 horas)",
+                     geo="Coordenadas o distrito", sheet="No existía"),
     "provias": dict(fn=others.provias, org="PROVIAS Nacional", name="Emergencias viales", via="JSON del visor SGCV", geo="Coordenadas → provincia",
                     sheet="MTC vivo; PROVIAS muerto desde 19-05-2026"),
 }
