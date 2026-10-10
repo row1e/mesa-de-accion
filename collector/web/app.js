@@ -747,8 +747,71 @@ const VIA_T = [["03", "Interrumpido"], ["02", "Restringido"], ["04", "Por confir
 const viaColor = c => ({"03": css("--n4"), "02": css("--n2"), "04": css("--ink-3"), "01": css("--ok")})[c] || css("--ink-3");
 const cap = s => s ? s.charAt(0) + s.slice(1).toLowerCase() : "";
 let viaF = "";
-let bomF = "";
+let bomF = "", bomPer = "24";
+const bomMin = m => m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
+const bomT0 = b => Date.parse(`${b.fecha}T${b.hora}:00-05:00`);
+function bomDur(b) {
+  if (b.duracion_min != null) return `duró ${bomMin(b.duracion_min)}`;
+  if (b.duracion_max_min != null) return `cerró en menos de ${bomMin(b.duracion_max_min)}`;
+  return b.estado === "Atendiendo" && b.fecha ? `hace ${bomMin(Math.max(0, Math.round((Date.now() - bomT0(b)) / 6e4)))}` : "";
+}
+// 7 / 30 días: se piden aparte (no van en el snapshot) y se guardan unos minutos
+const bomHist = {};
+async function bomHistorial(dias) {
+  const c = bomHist[dias];
+  if (c && Date.now() - c.t < 5 * 6e4) return c.data;
+  const data = await (await fetch(`/api/bomberos/historial?dias=${dias}`)).json();
+  bomHist[dias] = {t: Date.now(), data};
+  return data;
+}
+async function renderBomHist() {
+  const dias = +bomPer, h = await bomHistorial(dias);
+  if (String(dias) !== bomPer) return;
+  const I = Object.fromEntries(h.campos.map((c, i) => [c, i])), R = state.region;
+  const ps = h.partes.filter(r => !R || r[I.reg] === R), med = h.medicas.filter(m => !R || m[1] === R);
+  const n = c => ps.filter(r => r[I.categoria] === c).length;
+  const durs = ps.filter(r => r[I.categoria] === "Incendio" && r[I.duracion_min] != null).map(r => r[I.duracion_min]);
+  const esc_ = ps.filter(r => r[I.escalo]).length;
+  $("#bomh-cnt").innerHTML = [[ps.length, "partes (sin médicas)", "--ink"], ...BOM_T.filter(([c]) => n(c)).map(([c, v]) => [n(c), bomCorto(c).toLowerCase(), v]),
+    [med.length, "emergencias médicas", "--ink-3"], [esc_, "sumaron unidades en el camino", "--n3"],
+    [durs.length ? bomMin(Math.round(d3.median(durs))) : "—", `duración típica de un incendio (mediana de ${durs.length})`, "--fuego"]]
+    .map(([k, t, v]) => `<div><div class="big num" style="color:var(${v})">${typeof k === "number" ? nf.format(k) : k}</div><p>${esc(t)}</p></div>`).join("");
+  // partes por día, apilados por tipo
+  const diasLista = d3.timeDays(new Date(h.desde_fecha + "T12:00:00"), d3.timeDay.offset(new Date(V.snapshot + "T12:00:00"), 1)).map(d => d3.timeFormat("%Y-%m-%d")(d));
+  const tipos = BOM_T.map(([c]) => c), w = 640, hh = 190, m = {l: 30, r: 8, t: 8, b: 24};
+  const rows = diasLista.map(d => Object.fromEntries([["d", d], ...tipos.map(t => [t, ps.filter(r => r[I.fecha] === d && r[I.categoria] === t).length])]));
+  const st = d3.stack().keys(tipos)(rows), x = d3.scaleBand(diasLista, [m.l, w - m.r]).padding(.18);
+  const y = d3.scaleLinear([0, d3.max(rows, r => d3.sum(tipos, t => r[t])) || 1], [hh - m.b, m.t]).nice();
+  const svg = chart("#bomh-dias", w, hh);
+  svg.append("g").attr("class", "grid").selectAll("line").data(y.ticks(4)).join("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", d => y(d)).attr("y2", d => y(d));
+  svg.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSize(0).tickPadding(6)).select(".domain").remove();
+  const cada = Math.ceil(diasLista.length / 10);
+  svg.append("g").attr("class", "axis").attr("transform", `translate(0,${hh - m.b})`).call(d3.axisBottom(x).tickValues(diasLista.filter((_, i) => i % cada === 0)).tickFormat(d => fmtDay(d).replace(/^\S+ /, "")).tickSize(0).tickPadding(6)).select(".domain").remove();
+  svg.append("g").selectAll("g").data(st).join("g").attr("fill", s => bomColor(s.key)).selectAll("rect").data(s => s).join("rect")
+    .attr("x", d => x(d.data.d)).attr("width", x.bandwidth()).attr("y", d => y(d[1])).attr("height", d => y(d[0]) - y(d[1]))
+    .append("title").text(function (d) { return `${fmtDay(d.data.d)} · ${bomCorto(this.parentNode.parentNode.__data__.key)}: ${d[1] - d[0]}`; });
+  $("#bomh-leg").innerHTML = BOM_T.map(([c]) => `<span><i style="background:${bomColor(c)}"></i>${esc(bomCorto(c))}</span>`).join("");
+  // distritos
+  const md = d3.rollup(med, v => v.length, m => m[3]);
+  const dist = d3.rollups(ps, v => v, r => r[I.distrito] || "Sin distrito").map(([k, v]) => ({k, v})).sort((a, b) => b.v.length - a.v.length).slice(0, 12);
+  const cnt = (v, c) => v.filter(r => r[I.categoria] === c).length || "";
+  $("#bomh-dist").innerHTML = dist.map(({k, v}) => `<tr><td>${esc(k)}</td><td class="num"><b>${v.length}</b></td><td class="num">${cnt(v, "Incendio")}</td><td class="num">${cnt(v, "Accidente Vehicular")}</td><td class="num">${cnt(v, "Rescate")}</td><td class="num">${cnt(v, "Materiales Peligrosos (Incidente)")}</td><td class="num muted">${md.get(k) || ""}</td></tr>`).join("")
+    || `<tr><td colspan="7" class="muted">Sin partes en el periodo.</td></tr>`;
+  const fila = (r, val) => `<tr class="clk" data-key="${esc(r[I.key])}" tabindex="0"><td><span class="tr" style="--c:${bomColor(r[I.categoria])}">${esc(bomCorto(r[I.categoria]))}</span><div class="muted" style="font-size:12px">${esc(r[I.detalle] || "")}</div></td><td>${esc(r[I.distrito] || "—")}<div class="muted" style="font-size:12px">${r[I.fecha] ? fmtDay(r[I.fecha]) : ""} ${esc(r[I.hora] || "")}</div></td><td class="num"><b>${val}</b></td></tr>`;
+  $("#bomh-dur").innerHTML = ps.filter(r => r[I.duracion_min] != null).sort((a, b) => b[I.duracion_min] - a[I.duracion_min]).slice(0, 8).map(r => fila(r, bomMin(r[I.duracion_min]))).join("")
+    || `<tr><td colspan="3" class="muted">Aún no hay partes con duración medida.</td></tr>`;
+  $("#bomh-esc").innerHTML = ps.filter(r => r[I.unidades_total]).sort((a, b) => b[I.unidades_total] - a[I.unidades_total]).slice(0, 8).map(r => fila(r, `${r[I.unidades_total]}${r[I.escalo] ? ' <span class="bom-up">↑</span>' : ""}`)).join("")
+    || `<tr><td colspan="3" class="muted">Sin datos de unidades.</td></tr>`;
+  const corto = h.registro_desde && h.registro_desde > h.desde_fecha;
+  $("#bomh-note").textContent = `${dias === 7 ? "Últimos 7 días" : "Últimos 30 días"}${R ? ` · ${regName(R)}` : ""}. `
+    + (corto ? `Esta Mesa registra los partes desde el ${fmtDay(h.registro_desde)}: los días anteriores no tienen datos (el CGBVP no publica historial). ` : "")
+    + `La duración va desde la llamada hasta que la Mesa vio el parte cerrado (se consulta cada 10 min: hasta 10 min de más); los que ya llegaron cerrados no se cuentan. "Sumaron unidades" son los partes a los que se les agregaron unidades después de que la Mesa los vio. Las médicas solo se cuentan. Clic en un parte para ver su ficha.`;
+}
+["#bomh-dur", "#bomh-esc"].forEach(id => $(id).addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "bomberos", kind: "parte", key: tr.dataset.key}); }));
 function renderBomberos() {
+  seg($("#bom-per"), [["24", "Últimas 24 horas"], ["7", "7 días"], ["30", "30 días"]], bomPer, v => { bomPer = v; renderBomberos(); });
+  $("#bom-24").hidden = bomPer !== "24"; $("#bom-hist").hidden = bomPer === "24";
+  if (bomPer !== "24") { renderBomHist().catch(e => { $("#bomh-note").textContent = `No se pudo cargar el historial: ${e.message}`; }); return; }
   const bs = V.bomberos, M = V.bomberosMedicas || {}, n = c => bs.filter(b => b.categoria === c).length;
   const act = bs.filter(b => b.estado === "Atendiendo").length;
   $("#bom-cnt").innerHTML = [[act, "en atención ahora", "--ink"], ...BOM_T.filter(([c]) => n(c)).map(([c, v]) => [n(c), bomCorto(c).toLowerCase(), v])]
@@ -765,8 +828,8 @@ function filterBomberos() {
     <td class="num" style="white-space:nowrap">${esc(b.hora || "")}<div class="muted" style="font-size:12px">${b.fecha ? fmtDay(b.fecha) : ""}</div></td>
     <td><span class="tr" style="--c:${bomColor(b.categoria)}">${esc(bomCorto(b.categoria))}</span><div class="muted" style="font-size:12px">${esc(b.detalle || "")}</div></td>
     <td>${esc(b.direccion || "—")}<div class="muted" style="font-size:12px">${esc(b.distrito || "")}</div></td>
-    <td>${b.estado === "Atendiendo" ? "<b>En atención</b>" : esc(b.estado)}</td>
-    <td class="muted" style="font-size:12px">${esc((b.unidades || []).join(", "))}</td></tr>`).join("")
+    <td>${b.estado === "Atendiendo" ? "<b>En atención</b>" : esc(b.estado)}<div class="muted" style="font-size:12px">${bomDur(b)}</div></td>
+    <td class="muted" style="font-size:12px">${esc((b.unidades || []).join(", "))}${b.escalo ? ` <span class="bom-up" title="Unidades que se sumaron después de que la Mesa vio el parte">+${b.unidades_total - b.unidades_iniciales}</span>` : ""}</td></tr>`).join("")
     || `<tr><td colspan="5" class="muted">${q || bomF ? "Ningún parte coincide." : state.region ? `Sin partes de bomberos en ${esc(regName(state.region))} en las últimas 24 horas. La página del CGBVP cubre Lima, Callao y parte de la costa sur.` : "Sin partes registrados."}</td></tr>`;
   const M = V.bomberosMedicas || {};
   $("#bom-note").textContent = `${rows.length} de ${V.bomberos.length} partes de las últimas 24 horas, sin contar ${M.total ?? 0} emergencias médicas, que se muestran solo como número porque su dirección suele ser la de una vivienda. La página del CGBVP cubre Lima, Callao y parte de la costa sur (Cañete, Chincha, Pisco, Ica), Huacho y algo de Ayacucho; no publica el resto del país. Clic en una fila para ver el parte.`;

@@ -241,6 +241,28 @@ def _bomberos(it):
     return {"unidades_tipo": [[x.get("TipoVehiculo"), x.get("Cantidad")] for x in res or []]}
 
 
+def _bom_min(m):
+    return f"{m // 60} h {m % 60:02d} min" if m >= 60 else f"{m} min"
+
+
+def _bom_duracion(it):
+    if it.get("duracion_min") is not None:
+        return f"{_bom_min(it['duracion_min'])} (desde la llamada hasta que la Mesa lo vio cerrado; hasta 10 min de más)"
+    if it.get("duracion_max_min") is not None:
+        return f"como máximo {_bom_min(it['duracion_max_min'])} (la Mesa lo vio por primera vez ya cerrado)"
+    return "en atención" if it.get("estado") == "Atendiendo" else "—"
+
+
+def _bom_escalamiento(it):
+    llegada, ini = it.get("unidades_llegada") or [], it.get("unidades_iniciales")
+    if ini is None or not llegada:
+        return "—"
+    sumadas = llegada[ini:]
+    if not sumadas:
+        return f"no: {ini} unidad{'es' if ini != 1 else ''} desde que la Mesa lo vio"
+    return f"sí: de {ini} a {len(llegada)} unidades · " + ", ".join(f"{u} ({time.strftime('%H:%M', time.localtime(t))})" for u, t in sumadas)
+
+
 def _f_bomberos(it, ex):
     from .sources.bomberos import URL
     tipos = ex.get("unidades_tipo") or []
@@ -250,6 +272,8 @@ def _f_bomberos(it, ex):
                       ["Tipo (CGBVP)", it.get("tipo")], ["Dirección", it.get("direccion") or "—"], ["Distrito", it.get("distrito") or "—"],
                       ["Unidades", ", ".join(it.get("unidades") or []) or "—"],
                       ["Unidades por tipo", ", ".join(f"{n} {t.lower()}" for t, n in tipos) or "—"],
+                      ["Duración", _bom_duracion(it)],
+                      ["Escalamiento", _bom_escalamiento(it)],
                       ["Ubicación en el mapa", {"coordenadas": "coordenadas del parte", "distrito": "centro de la provincia (el parte no trae coordenadas)"}.get(it.get("ubicacion"), "sin ubicar")]],
             "links": [{"label": "Mapa del parte (CGBVP)", "url": f"{URL}Home/Map?numparte={it['parte']}"},
                       {"label": "Emergencias 24 horas (CGBVP)", "url": URL}],

@@ -380,8 +380,23 @@ def _bomberos(filtro=lambda p: True, limite=10):
             "total_sin_medicas": len(ps), "en_atencion": sum(1 for p in ps if p.get("estado") == "Atendiendo"),
             "por_tipo": dict(collections.Counter(p.get("categoria") for p in ps)), "emergencias_medicas": len(med),
             "principales": [{"tipo": p.get("categoria"), "detalle": p.get("detalle"), "distrito": p.get("distrito"), "direccion": p.get("direccion"),
-                             "estado": p.get("estado"), "fecha": p.get("fecha"), "hora": p.get("hora"), "unidades": len(p.get("unidades") or [])}
-                            for p in top][:limite]}
+                             "estado": p.get("estado"), "fecha": p.get("fecha"), "hora": p.get("hora"),
+                             "unidades": p.get("unidades_total") or len(p.get("unidades") or []),
+                             "se_sumaron_unidades": bool(p.get("escalo")) or None, "duracion_minutos": p.get("duracion_min")}
+                            for p in top][:limite],
+            "ultimos_7_dias": _bomberos_semana(filtro)}
+
+
+def _bomberos_semana(filtro):
+    """Totales de 7 días por tipo, para comparar con las últimas 24 h. Solo desde que esta Mesa registra."""
+    from .sources import bomberos as fb
+    h = fb.historial(7)
+    i = {c: n for n, c in enumerate(h["campos"])}
+    ps = [r for r in h["partes"] if filtro({"prov": r[i["prov"]], "reg": r[i["reg"]]})]
+    med = [m for m in h["medicas"] if filtro({"reg": m[1], "prov": m[2]})]
+    return {"registrado_desde": h["registro_desde"], "total_sin_medicas": len(ps), "emergencias_medicas": len(med),
+            "por_tipo": dict(collections.Counter(r[i["categoria"]] for r in ps)),
+            "escalaron": sum(1 for r in ps if r[i["escalo"]])}
 
 
 def _vias(filtro=lambda v: True, eventos=True, restringidas=False, limite=8):

@@ -6,10 +6,17 @@ Chincha, Pisco, Ica), Huacho y algo de Ayacucho: el CGBVP no publica algo equiva
 
 Las emergencias médicas se guardan solo para contarlas (fecha, distrito, estado): su dirección suele ser la de una
 vivienda y no se guarda ni se publica. Por lo mismo, la página cruda no se archiva (keep_raw=False).
+
+La página solo muestra el estado actual de cada parte. Como se consulta cada 10 min, aquí se registra lo que cambia:
+cuándo pasó a "Cerrado" (duración, con hasta 10 min de más) y qué unidades se fueron sumando (escalamiento). Los
+partes que salen de la ventana de 24 h quedan en la base (no vigentes): son el historial de 7 y 30 días.
 """
+import datetime
 import html
+import json
 import re
 import time
+from zoneinfo import ZoneInfo
 
 from .. import db, geo
 from ..http import fetch_text
@@ -20,6 +27,7 @@ MEDICA = "EMERGENCIA MEDICA"
 COBERTURA = ("15", "07", "11", "05")
 # Ante muchas consultas el sitio redirige a "Acceso Prohibido" (pide captcha). No se intenta sortear: se espera.
 PAUSA_BLOQUEO = 3600
+LIMA = ZoneInfo("America/Lima")
 _pausa = {"hasta": 0.0}
 
 
@@ -74,6 +82,42 @@ def _direccion(txt):
     return " ".join(calle.split()), distrito.strip(), (round(lon, 5), round(lat, 5)) if ok else None
 
 
+def _ts_llamada(p):
+    try:
+        return datetime.datetime.fromisoformat(f"{p['fecha']}T{p['hora']}").replace(tzinfo=LIMA).timestamp()
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _seguir(p, previo, ahora):
+    """Suma al parte leído ahora lo ya registrado: cambios de estado, unidades que se fueron sumando y duración.
+
+    Un parte que la Mesa vio por primera vez ya cerrado (al arrancar, o tras estar apagada) no tiene duración medida:
+    solo un máximo (duracion_max_min). Las unidades que ya estaban cuando lo vio por primera vez cuentan como iniciales.
+    """
+    ahora = round(ahora)
+    if previo is None:
+        estados, llegada = [[ahora, p["estado"]]], [[u, ahora] for u in p["unidades"]]
+        iniciales, visto_abierto = len(p["unidades"]), p["estado"] == "Atendiendo"
+    else:   # los registros anteriores a este seguimiento no traen estos campos: se reconstruyen con lo que hay
+        t0 = round(previo.get("_first_seen") or ahora)
+        estados = previo.get("estados") or [[t0, previo.get("estado")]]
+        llegada = previo.get("unidades_llegada") or [[u, t0] for u in previo.get("unidades") or []]
+        iniciales = previo.get("unidades_iniciales", len(llegada))
+        visto_abierto = previo.get("visto_abierto", previo.get("estado") == "Atendiendo")
+        if estados[-1][1] != p["estado"]:
+            estados.append([ahora, p["estado"]])
+        ya = {u for u, _ in llegada}
+        llegada += [[u, ahora] for u in p["unidades"] if u not in ya]
+        visto_abierto = visto_abierto or p["estado"] == "Atendiendo"
+    cierre = next((t for t, e in estados if e == "Cerrado"), None) if p["estado"] == "Cerrado" else None
+    t_llamada = _ts_llamada(p)
+    minutos = round((cierre - t_llamada) / 60) if cierre and t_llamada else None
+    return p | {"estados": estados, "unidades_llegada": llegada, "unidades_iniciales": iniciales, "unidades_total": len(llegada),
+                "escalo": len(llegada) > iniciales, "visto_abierto": visto_abierto, "cerrado_ts": cierre,
+                "duracion_min": minutos if visto_abierto else None, "duracion_max_min": None if visto_abierto else minutos}
+
+
 def _bloqueado(hasta):
     return RuntimeError("el sitio del CGBVP bloqueó temporalmente esta conexión por exceso de consultas (pide captcha); "
                         f"sin consultar hasta las {time.strftime('%H:%M', time.localtime(hasta))}")
@@ -111,8 +155,28 @@ def bomberos():
                                 "ubicacion": "coordenadas" if ll else ("distrito" if prov else None), "unidades": unidades}
     if not partes and not medicas:
         raise RuntimeError("la página no trajo partes (¿cambió su formato?)")
+    ahora = time.time()
+    partes = {k: _seguir(p, db.get_item("bomberos", "parte", k), ahora) for k, p in partes.items()}
     total, new = db.upsert_items("bomberos", "parte", partes, snapshot=True)
     db.upsert_items("bomberos", "medica", medicas, snapshot=True)
     activos = sum(1 for p in partes.values() if p["estado"] == "Atendiendo")
     return total + len(medicas), new, (f"{total} emergencias ({new} nuevas, {activos} en atención) y {len(medicas)} médicas"
                                        f" en 24 h" + (f" · la página indica {total_pagina[1]}" if total_pagina else ""))
+
+
+CAMPOS_HIST = ("fecha", "hora", "categoria", "detalle", "distrito", "prov", "reg", "estado", "duracion_min", "duracion_max_min",
+               "unidades_total", "escalo", "direccion")
+
+
+def historial(dias=7):
+    """Partes y médicas de los últimos `dias` días (por fecha del parte) en filas compactas para las estadísticas del tablero.
+
+    Las médicas van sin dirección: fecha, región, provincia y distrito. `desde` es el primer parte que registró esta Mesa:
+    antes de esa fecha no hay datos (la página del CGBVP no guarda historial)."""
+    lim = (datetime.datetime.now(LIMA).date() - datetime.timedelta(days=dias - 1)).isoformat()
+    filas = lambda kind: db.conn().execute(   # noqa: E731
+        "SELECT key, payload FROM items WHERE source='bomberos' AND kind=? AND json_extract(payload,'$.fecha') >= ?", (kind, lim))
+    partes = [[r["key"], *(json.loads(r["payload"]).get(c) for c in CAMPOS_HIST)] for r in filas("parte")]
+    medicas = [[(p := json.loads(r["payload"])).get("fecha"), p.get("reg"), p.get("prov"), p.get("distrito")] for r in filas("medica")]
+    desde = db.conn().execute("SELECT MIN(json_extract(payload,'$.fecha')) d FROM items WHERE source='bomberos' AND kind='parte'").fetchone()["d"]
+    return {"dias": dias, "desde_fecha": lim, "registro_desde": desde, "campos": ["key", *CAMPOS_HIST], "partes": partes, "medicas": medicas}

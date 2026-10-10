@@ -141,6 +141,13 @@ def get_latest(source: str | None = None, region: str | None = None, limit: int 
     return data
 
 
+@app.get("/api/bomberos/historial")
+def get_bomberos_historial(dias: int = Query(7, ge=1, le=90)):
+    """Partes del CGBVP de los últimos días (filas compactas) y médicas solo con fecha y lugar, para las estadísticas."""
+    from .sources import bomberos
+    return bomberos.historial(dias)
+
+
 @app.get("/api/sat")
 def get_sat(lat: float, lon: float, date: str, km: float = Query(25, ge=2, le=300), layer: str = "auto", fires: bool = True):
     """Vista satelital NASA GIBS centrada en un punto (mejor imagen disponible, cacheada)."""
