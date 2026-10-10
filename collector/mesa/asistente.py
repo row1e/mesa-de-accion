@@ -404,7 +404,7 @@ def _vias(filtro=lambda v: True, eventos=True, restringidas=False, limite=8):
     vs = [v for v in db.get_items("provias", "emergencia") if filtro(v)]
     orden = {"03": 0, "04": 1, "02": 2, "01": 3}
     top = sorted(vs, key=lambda v: (orden.get(v.get("transito_cod"), 9), -(int(v["fecha"].replace("-", "")) if v.get("fecha") else 0)))
-    eventos = [e.get("nombre") for e in db.get_items("provias", "evento")] if eventos else None   # sin ubicación: solo en el nacional
+    eventos = [e.get("nombre") for e in db.get_items("provias", "evento") if e.get("emergencias", 1)] if eventos else None   # sin ubicación: solo en el nacional
     return {"total": len(vs),
             "por_condicion": {t: sum(1 for v in vs if v.get("transito") == t) for t in ("Tránsito interrumpido", "Tránsito restringido", "Por confirmar")},
             **({"eventos_activos": eventos} if eventos is not None else {}),

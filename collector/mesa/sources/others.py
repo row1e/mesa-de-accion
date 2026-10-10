@@ -235,9 +235,16 @@ def provias():
                    "fecha": _dmy(e.get("Fecha")), "dias": m.get("CantDias"), "puente": m.get("EsPuente") == "1",
                    "en_mapa": bool(m), "prov": prov, "reg": prov[:2] if prov else (geo.region_of_point(lon, lat) if lon and lat else None)}
     total, new = db.upsert_items("provias", "emergencia", recs, snapshot=True)
+    # PROVIAS deja eventos en su lista aunque ya no tengan emergencias (el paro de pescadores del 06/10 siguió
+    # listado días después, con 0 emergencias). Se cuentan las suyas y solo se muestran los que tienen alguna.
     ev = fetch_json("provias", f"{PROVIAS}/GetEventos", name="eventos.json", headers=PROVIAS_XHR)
-    eventos = {str(x["IdEvento"]): {"id": x["IdEvento"], "nombre": x.get("Nombre")} for x in ev.get("data") or []}
+    eventos = {}
+    for x in ev.get("data") or []:
+        em = fetch_json("provias", f"{PROVIAS}/GetEmergenciaList?fecha=&idDepartamento=&idZonal=&idCondicionTransito=&idEvento={x['IdEvento']}&{adm}",
+                        name=f"evento_{x['IdEvento']}.json", headers=PROVIAS_XHR)
+        eventos[str(x["IdEvento"])] = {"id": x["IdEvento"], "nombre": x.get("Nombre"), "emergencias": len(em.get("data") or [])}
     db.upsert_items("provias", "evento", eventos, snapshot=True)
+    eventos = {k: e for k, e in eventos.items() if e["emergencias"]}
     n = {t: sum(1 for r in recs.values() if r["transito_cod"] == c) for c, t in TRANSITO.items()}
     return total, new, (f"{total} emergencias viales ({new} nuevas): {n['Tránsito interrumpido']} interrumpidas, "
                         f"{n['Tránsito restringido']} restringidas, {n['Por confirmar']} por confirmar"

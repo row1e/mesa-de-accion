@@ -244,7 +244,7 @@ def build():
         vias = [{k: v for k, v in e.items() if k in ("id", "lon", "lat", "transito_cod", "transito", "tipo", "ruta", "tramo", "sector",
                                                       "km_ini", "km_fin", "fecha", "dias", "puente", "prov", "reg", "_key", "_first_seen")}
                 for e in db.get_items("provias", "emergencia")]
-        vias_eventos = [e.get("nombre") for e in db.get_items("provias", "evento")]
+        vias_eventos = [e.get("nombre") for e in db.get_items("provias", "evento") if e.get("emergencias", 1)]   # sin emergencias: ya pasó
         # Fotos de emergencias viales: hasta 3 por emergencia vigente, de la más reciente a la más antigua
         vias_by, vias_fotos = {v["_key"]: v for v in vias}, []
         for ln in db.get_items("provias", "linea", current_only=False):
