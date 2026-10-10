@@ -9,6 +9,7 @@ vivienda y no se guarda ni se publica. Por lo mismo, la página cruda no se arch
 """
 import html
 import re
+import time
 
 from .. import db, geo
 from ..http import fetch_text
@@ -17,6 +18,9 @@ URL = "https://sgonorte.bomberosperu.gob.pe/24horas/"
 MEDICA = "EMERGENCIA MEDICA"
 # Departamentos que cubre la página: desempatan distritos homónimos (p. ej. San Andrés, Independencia)
 COBERTURA = ("15", "07", "11", "05")
+# Ante muchas consultas el sitio redirige a "Acceso Prohibido" (pide captcha). No se intenta sortear: se espera.
+PAUSA_BLOQUEO = 3600
+_pausa = {"hasta": 0.0}
 
 
 def _celdas(fila):
@@ -70,8 +74,18 @@ def _direccion(txt):
     return " ".join(calle.split()), distrito.strip(), (round(lon, 5), round(lat, 5)) if ok else None
 
 
+def _bloqueado(hasta):
+    return RuntimeError("el sitio del CGBVP bloqueó temporalmente esta conexión por exceso de consultas (pide captcha); "
+                        f"sin consultar hasta las {time.strftime('%H:%M', time.localtime(hasta))}")
+
+
 def bomberos():
+    if time.time() < _pausa["hasta"]:
+        raise _bloqueado(_pausa["hasta"])
     page = fetch_text("bomberos", URL, name="24horas.html", keep_raw=False, timeout=60)
+    if "Acceso Prohibido" in page or "no eres humano" in page:
+        _pausa["hasta"] = time.time() + PAUSA_BLOQUEO
+        raise _bloqueado(_pausa["hasta"])
     total_pagina = re.search(r"24 horas:\s*(\d+)\s*registro", html.unescape(page))
     partes, medicas = {}, {}
     for fila in re.findall(r"<tr[^>]*>(.*?)</tr>", page, re.S):
