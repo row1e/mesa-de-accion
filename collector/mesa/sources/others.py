@@ -84,8 +84,8 @@ def igp():
         return 0, 0, f"sin cambios · último {last['codigo']} M{last['magnitud']}"
     year = last["codigo"][:4]
     cat = fetch_json("igp", f"https://ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/{year}", name=f"sismos_{year}.json")
-    if all(x["fecha_local"][5:7] == "01" for x in cat) and not db.has_item("igp", "sismo", f"{int(year) - 1}-0001"):
-        # el catálogo del IGP es por año: en enero se suma el anterior para que "30 días" tenga diciembre
+    if not db.has_item("igp", "sismo", f"{int(year) - 1}-0001"):
+        # el catálogo del IGP es por año: el anterior se lee una vez, para la capa de 12 meses (y los 30 días de enero)
         prev = str(int(year) - 1)
         cat += fetch_json("igp", f"https://ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/{prev}", name=f"sismos_{prev}.json")
     recs = {s["codigo"]: {"codigo": s["codigo"], "fecha": s["fecha_local"][:10], "hora": s["hora_local"][11:16],

@@ -232,7 +232,7 @@ def build():
         indeci.sort(key=lambda i: i.get("ts") or 0, reverse=True)
 
         year = today[:4]
-        desde = (datetime.date.fromisoformat(today) - datetime.timedelta(days=31)).isoformat()   # ventanas de 7/30 días que cruzan el año
+        desde = (datetime.date.fromisoformat(today) - datetime.timedelta(days=366)).isoformat()   # capas de 7 días a 12 meses, aunque crucen el año
         sismos_raw = [s for s in db.get_items("igp", "sismo", current_only=False, order="key") if s["fecha"][:4] == year or s["fecha"] >= desde]
         sismos = [[s["fecha"], s["hora"], s["mag"], s["prof"], s["lat"], s["lon"], s["ref"], s["int"], s["codigo"]] for s in sismos_raw]
         focos = [[f["lon"], f["lat"], f["dep"], f["prov"], f["_key"],
