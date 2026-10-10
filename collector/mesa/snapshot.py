@@ -232,7 +232,8 @@ def build():
         indeci.sort(key=lambda i: i.get("ts") or 0, reverse=True)
 
         year = today[:4]
-        sismos_raw = [s for s in db.get_items("igp", "sismo", current_only=False, order="key") if s["fecha"][:4] == year]
+        desde = (datetime.date.fromisoformat(today) - datetime.timedelta(days=31)).isoformat()   # ventanas de 7/30 días que cruzan el año
+        sismos_raw = [s for s in db.get_items("igp", "sismo", current_only=False, order="key") if s["fecha"][:4] == year or s["fecha"] >= desde]
         sismos = [[s["fecha"], s["hora"], s["mag"], s["prof"], s["lat"], s["lon"], s["ref"], s["int"], s["codigo"]] for s in sismos_raw]
         focos = [[f["lon"], f["lat"], f["dep"], f["prov"], f["_key"],
                   str(f["ubigeo"]).zfill(6)[:2] if f.get("ubigeo") else geo.region_code(f["dep"]),   # índice 5: región

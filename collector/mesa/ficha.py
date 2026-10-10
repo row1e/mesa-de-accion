@@ -119,10 +119,10 @@ def build(code):
     hidro = [h for h in D["hidro"] if h.get("reg") == dep and (dept_level or geo.norm(h.get("nom_provincia")) == name)]
 
     # ── IGP: últimos 30 días, dentro del ámbito o a menos de NEAR_KM ──
-    lim = (now.date() - datetime.timedelta(days=30)).isoformat()
+    lim = (now - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M")
     sismos = []
     for s in D["sismos"]:
-        if s[0] < lim:
+        if f"{s[0]} {s[1]}" < lim:
             continue
         pt = Point(s[5], s[4])
         inside = pg.contains(pt)

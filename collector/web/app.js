@@ -240,16 +240,20 @@ function initMap() {
 }
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
-  layers: { indeci: true, alertas: true, sismos: true, hidro: true, vias: true, zonas: false, focos: false } };
+  layers: { indeci: true, alertas: true, sismos7: true, sismos: true, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
-function recentSismos() { const lim = d3.timeDay.offset(new Date(V.snapshot + "T12:00:00"), -30).toISOString().slice(0,10); return V.sismos.filter(s => s[0] >= lim); }
+// Ventana corrida en horas (7 días = 168 h) hasta la hora del snapshot, en hora de Lima; no fechas de calendario.
+const sismoT = s => Date.parse(`${s[0]}T${s[1]}:00-05:00`);
+function recentSismos(dias = 30) { const fin = Date.parse(V.built.replace(" ", "T") + ":00-05:00"); return V.sismos.filter(s => sismoT(s) > fin - dias * 864e5); }
+const sismosAnio = () => V.sismos.filter(s => s[0].startsWith(V.snapshot.slice(0, 4)));   // gráfico y tabla: año en curso
 const layerDefs = [
   { id: "indeci", label: "Emergencias INDECI", sw: `<i class="sw sq" style="background:var(--indeci)"></i>`, n: () => new Set(V.indeci.filter(i => i.prov).map(i => i.prov)).size, unit: "prov." },
   { id: "alertas", label: "Incendios forestales (SERFOR)", sw: `<i class="sw" style="background:var(--fuego);outline:1px solid var(--ink)"></i>`, n: () => incendios().length },
   { id: "focos", label: "Focos de calor 24 h", sw: `<i class="sw" style="background:var(--fuego);opacity:.45"></i>`, n: () => V.focos.length },
-  { id: "sismos", label: "Sismos · 30 días", sw: `<i class="sw" style="border:2px solid var(--sismo)"></i>`, n: () => recentSismos().length },
+  { id: "sismos7", label: "Sismos · 7 días", sw: `<i class="sw" style="background:var(--sismo);opacity:.55;border:2px solid var(--sismo)"></i>`, n: () => recentSismos(7).length },
+  { id: "sismos", label: "Sismos · 30 días", sw: `<i class="sw" style="border:2px solid var(--sismo)"></i>`, n: () => recentSismos(30).length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
   { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
   { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
@@ -529,8 +533,11 @@ function renderPoints() {
   if (L.zonas) layer(V.zonas, "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolTriangle, 34))
     .attr("fill", css("--geo")).attr("stroke", css("--surface")).attr("stroke-width", .6)
     .call(on, d => `<b>Zona crítica · ${esc(d.nivel)}</b><br>${esc(d.paraje)} — ${esc(d.distrito)}, ${esc(d.provincia)}<br>${esc(d.peligros_g)}<br><span style="opacity:.7">Expuesto: ${esc(d.elemento)}</span>` + tipWhen(fmtTs(d._first_seen), "en alerta en la Mesa desde"), d => ({source: "ingemmet", kind: "zona_alerta", key: d._key}));
-  if (L.sismos) layer(recentSismos(), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+  if (L.sismos) layer(recentSismos(30), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
     .attr("fill", "none").attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
+    .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
+  if (L.sismos7) layer(recentSismos(7), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+    .attr("fill", css("--sismo")).attr("fill-opacity", .35).attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
     .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
   if (L.alertas) layer(incendios(), "circle", d => [d.lon, d.lat]).attr("r", d => incR(d.n))
     .attr("fill", css("--fuego")).attr("fill-opacity", d => ({Extinguido: 0, Controlado: .35})[d.estado] ?? .85)
@@ -659,14 +666,14 @@ function renderSismos() {
   s.append("g").attr("class", "grid").selectAll("line").data(y.ticks(5)).join("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", d => y(d)).attr("y2", d => y(d));
   s.append("g").attr("class", "axis").attr("transform", `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(d3.timeMonth.every(1)).tickFormat(d => MON[d.getMonth()]).tickSize(0).tickPadding(8)).select(".domain").remove();
   s.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(0).tickPadding(6).tickFormat(d => "M" + d)).select(".domain").remove();
-  s.append("g").selectAll("circle").data(V.sismos).join("circle").attr("cx", d => x(new Date(d[0] + "T" + d[1]))).attr("cy", d => y(d[2]))
+  s.append("g").selectAll("circle").data(sismosAnio()).join("circle").attr("cx", d => x(new Date(d[0] + "T" + d[1]))).attr("cy", d => y(d[2]))
     .attr("r", d => Math.max(1.6, (d[2] - 2.5) * 1.8)).attr("fill", css("--sismo")).attr("fill-opacity", .28).attr("stroke", css("--sismo")).attr("stroke-width", .8)
     .style("cursor", "pointer")
     .on("mousemove", (e, d) => showTip(e, `<b>M${d[2]}</b> · ${fmtDay(d[0])} ${d[1]}<br>${esc(d[6])}<br><span style="opacity:.7">Clic para ver la ficha completa</span>`)).on("mouseleave", hideTip)
     .on("click", (e, d) => { hideTip(); openDetail({source: "igp", kind: "sismo", key: d[8]}); });
   // las etiquetas M6+ quedan encima de los puntos: que no se coman el clic
-  s.append("g").style("pointer-events", "none").selectAll("text").data(V.sismos.filter(d => d[2] >= 6)).join("text").attr("x", d => x(new Date(d[0] + "T" + d[1]))).attr("y", d => y(d[2]) - 12).attr("text-anchor", "middle").style("font-weight", 600).text(d => "M" + d[2]);
-  $("#sismos").innerHTML = V.sismos.filter(d => d[2] >= 5).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1])).map(d => `<tr class="clk" tabindex="0" data-sismo="${esc(d[8])}" title="Ver la ficha completa"><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num"><b>${d[2]}</b></td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("");
+  s.append("g").style("pointer-events", "none").selectAll("text").data(sismosAnio().filter(d => d[2] >= 6)).join("text").attr("x", d => x(new Date(d[0] + "T" + d[1]))).attr("y", d => y(d[2]) - 12).attr("text-anchor", "middle").style("font-weight", 600).text(d => "M" + d[2]);
+  $("#sismos").innerHTML = sismosAnio().filter(d => d[2] >= 5).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1])).map(d => `<tr class="clk" tabindex="0" data-sismo="${esc(d[8])}" title="Ver la ficha completa"><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num"><b>${d[2]}</b></td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("");
   $("#sismos").querySelectorAll("[data-sismo]").forEach(tr => {
     const go = () => openDetail({source: "igp", kind: "sismo", key: tr.dataset.sismo});
     tr.addEventListener("click", go);
