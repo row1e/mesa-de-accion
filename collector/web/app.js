@@ -247,15 +247,31 @@ const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","-
 function recentSismos() { const lim = d3.timeDay.offset(new Date(V.snapshot + "T12:00:00"), -30).toISOString().slice(0,10); return V.sismos.filter(s => s[0] >= lim); }
 const layerDefs = [
   { id: "indeci", label: "Emergencias INDECI", sw: `<i class="sw sq" style="background:var(--indeci)"></i>`, n: () => new Set(V.indeci.filter(i => i.prov).map(i => i.prov)).size, unit: "prov." },
-  { id: "alertas", label: "Alertas de incendio", sw: `<i class="sw" style="background:var(--fuego)"></i>`, n: () => V.alertas.length },
+  { id: "alertas", label: "Incendios forestales (SERFOR)", sw: `<i class="sw" style="background:var(--fuego);outline:1px solid var(--ink)"></i>`, n: () => incendios().length },
+  { id: "focos", label: "Focos de calor 24 h", sw: `<i class="sw" style="background:var(--fuego);opacity:.45"></i>`, n: () => V.focos.length },
   { id: "sismos", label: "Sismos · 30 días", sw: `<i class="sw" style="border:2px solid var(--sismo)"></i>`, n: () => recentSismos().length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
   { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
   { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
-  { id: "focos", label: "Focos de calor 24 h", sw: `<i class="sw" style="background:var(--fuego);opacity:.45"></i>`, n: () => V.focos.length },
 ];
+// Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
+// detecciones reúne y en cuántos días es la mejor medida de su tamaño que publica SERFOR (no informa hectáreas).
+let _inc = {src: null, list: []};
+function incendios() {
+  if (_inc.src === V.alertas) return _inc.list;
+  const list = d3.groups(V.alertas, a => a.cod || a._key).map(([cod, al]) => {
+    const fechas = al.map(a => a.fecha).filter(Boolean).sort(), ult = d3.greatest(al, a => `${a.fecha} ${a.hora}`);
+    return {cod, n: al.length, lon: d3.mean(al, a => a.lon), lat: d3.mean(al, a => a.lat), estado: ult.estado, ini: fechas[0], fin: fechas[fechas.length - 1],
+      dias: new Set(fechas).size, cob: d3.greatest(d3.rollups(al, v => v.length, a => a.cob || "—"), d => d[1])[0],
+      lugares: [...new Set(al.map(a => `${title(a.dist)}, ${title(a.prov)}`))], dep: title(ult.dep), ult};
+  }).sort((a, b) => b.n - a.n);   // los grandes primero: los chicos quedan encima y se pueden señalar
+  _inc = {src: V.alertas, list};
+  return list;
+}
+const incR = n => Math.min(18, 3 + Math.sqrt(n) * 1.15);
 function renderLayers() {
-  $("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span></label>`).join("");
+  $("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span></label>`).map((h, i) => layerDefs[i].id === "alertas"
+    ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>` : h).join("");
 }
 function provTip(p) {
   if (state.mode === "uv") { const u = V.uv[p.id]; return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${u ? `UV ${u.v[state.uvDay]} (pico ${u.h[state.uvDay]})` : "Sin zona UV"}`; }
@@ -516,9 +532,12 @@ function renderPoints() {
   if (L.sismos) layer(recentSismos(), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
     .attr("fill", "none").attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
     .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
-  if (L.alertas) layer(V.alertas, "circle", d => [d.lon, d.lat]).attr("r", 3.6)
-    .attr("fill", d => d.estado === "Extinguido" ? css("--surface") : css("--fuego")).attr("stroke", css("--fuego")).attr("stroke-width", 1.2)
-    .call(on, d => `<b>Incendio forestal · ${esc(d.estado)}</b><br>${title(d.dist)}, ${title(d.prov)} · ${title(d.dep)}${d.cod ? `<br><span style="opacity:.7">${esc(d.cod)}</span>` : ""}` + tipWhen(fmtWhen(d.fecha, d.hora), "alerta SERFOR", fmtTs(d._first_seen), "recibida"), d => ({source: "serfor", kind: "alerta", key: d._key}));
+  if (L.alertas) layer(incendios(), "circle", d => [d.lon, d.lat]).attr("r", d => incR(d.n))
+    .attr("fill", css("--fuego")).attr("fill-opacity", d => ({Extinguido: 0, Controlado: .35})[d.estado] ?? .85)
+    .attr("stroke", d => d.estado === "Extinguido" ? css("--fuego") : css("--ink")).attr("stroke-width", d => d.estado === "Extinguido" ? 1.4 : 1)
+    .call(on, d => `<b>Incendio forestal · ${esc(d.estado)}</b><br>${esc(d.lugares.slice(0, 2).join(" · "))}${d.lugares.length > 2 ? ` y ${d.lugares.length - 2} distritos más` : ""} · ${esc(d.dep)}`
+      + `<br><b>${nf.format(d.n)}</b> ${d.n > 1 ? "detecciones satelitales" : "detección satelital"} en ${d.dias} día${d.dias > 1 ? "s" : ""}${d.ini && d.ini !== d.fin ? ` (${fmtDay(d.ini)} → ${fmtDay(d.fin)})` : ""}`
+      + `<br><span style="opacity:.7">${esc(d.cob)}${d.cod.startsWith("PIF") ? ` · ${esc(d.cod)}` : ""}</span>` + tipWhen(fmtWhen(d.ult.fecha, d.ult.hora), "última alerta SERFOR"), d => ({source: "serfor", kind: "alerta", key: d.ult._key}));
   if (L.hidro) layer(V.hidro, "circle", d => [d.lon, d.lat]).attr("r", 6)
     .attr("fill", d => css("--n" + Math.min(4, lvlNum(d.color_text)))).attr("stroke", css("--hidro")).attr("stroke-width", 2.4)
     .call(on, d => `<b>${esc(d.titulo)}</b><br>${esc(d.color_text)}<br>${title(d.nom_distrito)}, ${title(d.nom_provincia)} · ${title(d.nom_departamento)}` + tipWhen(fmtUtc(d.fecha_hora), "aviso emitido", fmtTs(d._first_seen), "recibido"), d => ({source: "senamhi_hidro", kind: "aviso_estacion", key: d._key}));

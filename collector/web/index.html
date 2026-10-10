@@ -11,7 +11,7 @@
   --line:#DCDBD3; --line-2:#EAE9E3; --brand:#FFD100; --brand-ink:#15140F; --brand-on-ink:var(--brand);
   --land:#E6E5DE; --land-line:#FFFFFF; --dep-line:#8E8B80;
   --n1:#7DB46C; --n2:#E9BF1F; --n3:#EA7A1A; --n4:#D0302F;
-  --sismo:#3559D6; --fuego:#B0307E; --hidro:#0E8FA3; --geo:#7A5A2E; --indeci:#15140F;
+  --sismo:#3559D6; --fuego:#E3170A; --hidro:#0E8FA3; --geo:#7A5A2E; --indeci:#15140F;
   --ok:#2F7D4F; --ok-bg:#E3F1E7; --warn:#9A6A00; --warn-bg:#FBF0D2; --bad:#B42323; --bad-bg:#F8E0DE;
   --uv0:#EEEAF6; --uv1:#CFC3E8; --uv2:#A38BD2; --uv3:#7755B8; --uv4:#4B2A8C;
   --f-display:"Archivo","Helvetica Neue",Arial,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
@@ -21,7 +21,7 @@
     --ground:#121210; --surface:#1B1A17; --surface-2:#22211D; --ink:#F1F0EA; --ink-2:#C4C2B8; --ink-3:#8F8C81;
     --line:#35342E; --line-2:#2A2925; --land:#3A3833; --land-line:#1B1A17; --dep-line:#8C897E;
     --n1:#6E9F5F; --n2:#E3B81A; --n3:#E8791F; --n4:#E0443F;
-    --sismo:#7B98FF; --fuego:#E062AE; --hidro:#34B9CC; --geo:#C49A5C; --indeci:#F1F0EA;
+    --sismo:#7B98FF; --fuego:#FF3B2E; --hidro:#34B9CC; --geo:#C49A5C; --indeci:#F1F0EA;
     --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14; --bad:#F08A84; --bad-bg:#3A1C1A;
     --uv0:#2A2533; --uv1:#43365E; --uv2:#6A52A0; --uv3:#9579D6; --uv4:#C9B6FF;
   }
@@ -30,7 +30,7 @@
   --ground:#121210; --surface:#1B1A17; --surface-2:#22211D; --ink:#F1F0EA; --ink-2:#C4C2B8; --ink-3:#8F8C81;
   --line:#35342E; --line-2:#2A2925; --land:#3A3833; --land-line:#1B1A17; --dep-line:#8C897E;
   --n1:#6E9F5F; --n2:#E3B81A; --n3:#E8791F; --n4:#E0443F;
-  --sismo:#7B98FF; --fuego:#E062AE; --hidro:#34B9CC; --geo:#C49A5C; --indeci:#F1F0EA;
+  --sismo:#7B98FF; --fuego:#FF3B2E; --hidro:#34B9CC; --geo:#C49A5C; --indeci:#F1F0EA;
   --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14; --bad:#F08A84; --bad-bg:#3A1C1A;
   --uv0:#2A2533; --uv1:#43365E; --uv2:#6A52A0; --uv3:#9579D6; --uv4:#C9B6FF;
 }
@@ -129,6 +129,7 @@ tr:last-child td{border-bottom:0}
 .layers label{display:grid;grid-template-columns:auto 14px 1fr auto;gap:8px;align-items:center;font-size:13px;cursor:pointer;user-select:none}
 .layers label .muted{font-size:12px}
 .layers input{accent-color:var(--ink)}
+.layers .lnote{margin:-2px 0 3px 36px;font-size:11.5px;line-height:1.35;color:var(--ink-3)}
 .sw{width:10px;height:10px;display:inline-block;border-radius:50%}
 .sw.sq{border-radius:1px}
 .sw.tri{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid var(--geo);border-radius:0;background:none}
