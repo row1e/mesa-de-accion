@@ -160,13 +160,16 @@ def enfen():
     new = 0
     for url, n, a in sorted(set(links), key=lambda c: (int(c[2]), int(c[1]))):
         key = f"{a}-{int(n):02d}"
-        if db.has_item("enfen", "comunicado", key):
-            continue
+        if (db.get_item("enfen", "comunicado", key) or {}).get("estado"):
+            continue   # ya leído (los que quedaron sin estado se vuelven a leer)
         pdf = fetch("enfen", url, name=f"comunicado_{n}_{a}.pdf", timeout=120)
         import pymupdf
         text = pymupdf.open(stream=pdf, filetype="pdf")[0].get_text()
-        m = re.search(r"Estado del sistema de alerta:\s*(.+)", text)
-        fecha = re.search(r"COMUNICADO OFICIAL ENFEN N° ?\d+-\d{4}\s*\n\s*(.+)", text)
+        # Hasta el N° 16 el PDF decía "Estado del sistema de alerta: …"; desde el N° 17 el estado va solo, en su línea,
+        # bajo la fecha y con una llamada a nota al pie ("Alerta de El Niño Costero1").
+        m = (re.search(r"Estado del sistema de alerta:\s*(.+)", text)
+             or re.search(r"^\s*((?:Alerta|Vigilancia)\s+de\s+(?:El\s+Niño|La\s+Niña)[^\n]*?|(?:Sistema de alerta\s+)?No\s+activo)\s*\d*\s*$", text, re.M | re.I))
+        fecha = re.search(r"COMUNICADO OFICIAL ENFEN N° ?\d+ ?- ?\d{4}\s*\n\s*(.+)", text)
         db.upsert_items("enfen", "comunicado", {key: {
             "numero": int(n), "anio": int(a), "url": url, "fecha": fecha.group(1).strip() if fecha else None,
             "estado": re.sub(r"\d+$", "", m.group(1).strip()) if m else None,

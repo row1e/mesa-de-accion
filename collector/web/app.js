@@ -643,15 +643,28 @@ function renderMapAll() { renderControls(); renderMap(); renderPoints(); renderR
 
 /* ── secciones ──────────────────────────────────────────────────── */
 const chart = (sel, w, h) => { const el = $(sel); el.innerHTML = ""; return d3.select(el).append("svg").attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%"); };
+// Franja "Ahora": lo que hoy pide atención, cada cosa con enlace a su sección. Sigue el filtro de región.
 function renderThesis() {
-  const today = V.levelsByDay[V.snapshot] || {}, vals = Object.values(today);
-  const reps = V.indeci.filter(i => i.clase === "reporte").length;
-  $("#thesis").innerHTML = [
-    [`${vals.length}`, `provincias${state.region ? ` de ${esc(regName(state.region))}` : ""} bajo aviso SENAMHI (nivel 2 o más) hoy, ${vals.filter(c => c.m === 4).length} en nivel 4 rojo.`],
-    [`${reps}`, `reportes de emergencia INDECI en las últimas ${V.indeciWindowH} h, con distrito y provincia.`],
-    [nf.format(V.focos.length), `focos de calor en 24 h y ${V.alertas.length} alertas de incendio forestal con estado y ubigeo distrital (SERFOR).`],
-    [V.enfen?.ultimo_comunicado?.estado ? "Alerta" : "—", `ENFEN: ${esc(V.enfen?.ultimo_comunicado?.estado || "sin dato")} (comunicado N° ${V.enfen?.ultimo_comunicado?.numero ?? "—"}).`],
-  ].map(([b,p]) => `<div><div class="big num">${b}</div><p>${p}</p></div>`).join("");
+  const R = state.region, en = R ? ` en ${esc(regName(R))}` : "";
+  const lv = Object.values(V.levelsByDay[V.snapshot] || {}), n4 = lv.filter(c => c.m === 4).length, n3 = lv.filter(c => c.m === 3).length;
+  const rep = V.indeci.filter(i => i.clase === "reporte"), nuevos = rep.filter(i => !i.seguimiento);
+  const topEv = d3.rollups(nuevos, v => v.length, i => title(i.evento)).sort((a, b) => b[1] - a[1]).slice(0, 2);
+  const vi = V.vias.filter(v => v.transito_cod === "03").length, vc = V.vias.filter(v => v.transito_cod === "04").length;
+  const bAct = V.bomberos.filter(b => b.estado === "Atendiendo"), bInc = bAct.filter(b => b.categoria === "Incendio").length;
+  const fuegos = incendios().filter(f => f.estado !== "Extinguido"), grande = fuegos[0];
+  const desde = Date.parse(V.built.replace(" ", "T") + ":00-05:00") - 864e5;
+  const s24 = V.sismos.filter(s => sismoT(s) > desde).sort((a, b) => b[2] - a[2]), sm = s24[0];
+  const enf = V.enfen?.ultimo_comunicado || {};
+  const tiles = [
+    ["#mapa", n4 + n3, `provincias${en} en aviso <b>naranja o rojo</b> hoy`, n4 ? `${n4} en rojo · ${lv.length} con algún aviso` : `${lv.length} con algún aviso SENAMHI`, n4 ? "--n4" : n3 ? "--n3" : null],
+    ["#indeci-sec", nuevos.length, `emergencias nuevas${en} reportadas por INDECI en ${V.indeciWindowH} h`, topEv.length ? topEv.map(([e, k]) => `${esc(e)} (${k})`).join(" · ") : "sin reportes nuevos", null],
+    ["#vias-sec", vi, `vías <b>interrumpidas</b>${en} (PROVIAS)`, `${vc} por confirmar · ${plural(V.vias.length, "emergencia vial", "emergencias viales")} en total`, vi ? "--n4" : null],
+    ["#bom-sec", bAct.length, `emergencias que los bomberos atienden <b>ahora</b>${en}`, V.bomberos.length || !R ? `${bInc} incendio${bInc === 1 ? "" : "s"} · ${nf.format(V.bomberos.length)} partes en 24 h (Lima, Callao y costa sur)` : "la página del CGBVP no cubre esta región", bInc ? "--fuego" : null],
+    ["#serfor-sec", fuegos.length, `incendios forestales <b>activos</b>${en} (SERFOR)`, grande ? `el mayor: ${esc(grande.lugares[0])} · ${nf.format(grande.n)} detecciones` : "ninguno sin extinguir", fuegos.length ? "--fuego" : null],
+    ["#igp-sec", sm ? `M${sm[2]}` : "—", `sismo más fuerte${en} en 24 h`, sm ? `${esc(sm[6])} · ${fmtWhen(sm[0], sm[1])}` : "ninguno registrado", sm && sm[2] >= 5 ? "--sismo" : null],
+    ["#enfen-sec", enf.estado ? enf.estado.split(/\s+de\s+/i)[0] : "—", enf.estado ? esc(enf.estado.split(/\s+de\s+/i).slice(1).join(" de ") || enf.estado) + " (ENFEN)" : "estado de ENFEN sin leer", `comunicado N° ${enf.numero ?? "—"}${enf.fecha ? ` (${esc(enf.fecha)})` : ""} · nacional`, /alerta/i.test(enf.estado || "") ? "--n3" : null],
+  ];
+  $("#thesis").innerHTML = tiles.map(([href, big, txt, sub, col]) => `<a href="${href}"><div class="big num"${col ? ` style="color:var(${col})"` : ""}>${typeof big === "number" ? nf.format(big) : big}</div><p>${txt}</p><p class="sub">${sub}</p></a>`).join("");
   $("#m-snap").textContent = fmtDay(V.snapshot) + " " + V.snapshot.slice(0,4);
 }
 function renderEnfen() {
