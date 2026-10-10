@@ -16,6 +16,13 @@ MARCA = os.environ.get("MESA_MARCA", "").strip().lower()   # identidad visual de
 USER_AGENT = os.environ.get(
     "MESA_UA", "MesaDeAccion-Collector/0.1 (+monitoreo de fuentes oficiales; contacto: r@manya.pe)")
 
+# Relé por una conexión peruana: SENAMHI, MIDIS y PROVIAS no responden a IPs de nubes (AWS, aunque sea Lima).
+# Con MESA_PROXY (p. ej. http://127.0.0.1:8888, un túnel a rele.py en una PC en Perú) solo esos dominios salen
+# por ahí; el resto va directo. Vacío = todo directo.
+PROXY = os.environ.get("MESA_PROXY", "").strip()
+PROXY_HOSTS = tuple(h.strip().lower() for h in os.environ.get(
+    "MESA_PROXY_HOSTS", "senamhi.gob.pe,midis.gob.pe,proviasnac.gob.pe").split(",") if h.strip())
+
 # Segundos entre ejecuciones por fuente (ver 04-live-service.md para la justificación).
 INTERVALS = {
     "indeci": 5 * 60,

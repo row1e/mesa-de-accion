@@ -38,6 +38,22 @@ def _ssl_context():
 SSL_CONTEXT = _ssl_context()
 
 
+def _por_rele(url):
+    """Dominio que sale por el relé peruano (config.PROXY_HOSTS, incluye subdominios)."""
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    return bool(config.PROXY) and any(host == h or host.endswith("." + h) for h in config.PROXY_HOSTS)
+
+
+_DIRECTO = urllib.request.build_opener(urllib.request.HTTPSHandler(context=SSL_CONTEXT))
+_RELE = urllib.request.build_opener(urllib.request.ProxyHandler({"http": config.PROXY, "https": config.PROXY}),
+                                    urllib.request.HTTPSHandler(context=SSL_CONTEXT)) if config.PROXY else None
+
+
+def abrir(req, timeout):
+    """urlopen que manda por el relé los dominios bloqueados para nubes. HTTPS va cifrado de punta a punta (CONNECT)."""
+    return (_RELE if _por_rele(req.full_url) else _DIRECTO).open(req, timeout=timeout)
+
+
 TEXTY = {"html", "json", "geojson", "xml", "csv", "txt"}
 
 
@@ -65,7 +81,7 @@ def fetch(source, url, *, name=None, method="GET", timeout=60, retries=2, keep_r
     for attempt in range(retries + 1):
         try:
             req = urllib.request.Request(url, data=data, method=method, headers=hdrs)
-            with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as r:
+            with abrir(req, timeout) as r:
                 status, body = r.status, r.read()
             break
         except urllib.error.HTTPError as e:
