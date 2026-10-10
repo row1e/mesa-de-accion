@@ -225,7 +225,7 @@ function initMap() {
   gGeo = svg.append("g"); gProv = gGeo.append("g"); gDep = gGeo.append("g"); gPts = svg.append("g");
   zoom = d3.zoom().scaleExtent([1, 14]).translateExtent([[-W * .15, -H_ * .15], [W * 1.15, H_ * 1.15]])
     .filter(e => e.type === "wheel" ? (e.ctrlKey || e.metaKey) : e.type === "touchstart" ? e.touches.length > 1 : !e.button)
-    .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); placePoints(); hideTip(); });
+    .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); svg.classed("zoom-ciudades", zt.k >= 1.5); placePoints(); hideTip(); });
   svg.call(zoom).on("dblclick.zoom", null);
   document.querySelector(".zoom").addEventListener("click", e => {
     const z = e.target.closest("button")?.dataset.z; if (!z) return;
@@ -240,7 +240,7 @@ function initMap() {
 }
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
-  layers: { indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
+  layers: { ciudades: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -248,6 +248,19 @@ const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","-
 const sismoT = s => Date.parse(`${s[0]}T${s[1]}:00-05:00`);
 function recentSismos(dias = 30) { const fin = Date.parse(V.built.replace(" ", "T") + ":00-05:00"); return V.sismos.filter(s => sismoT(s) > fin - dias * 864e5); }
 const sismosAnio = () => V.sismos.filter(s => s[0].startsWith(V.snapshot.slice(0, 4)));   // gráfico y tabla: año en curso
+// Ciudades de referencia para orientarse. Nivel 1 siempre; nivel 2 (otras capitales y ciudades grandes) al acercar.
+// [nombre, lon, lat, nivel, etiqueta a la izquierda]
+const CIUDADES = [
+  ["Lima", -77.043, -12.046, 1], ["Arequipa", -71.537, -16.409, 1], ["Trujillo", -79.029, -8.112, 1], ["Chiclayo", -79.841, -6.771, 1],
+  ["Piura", -80.633, -5.195, 1], ["Iquitos", -73.247, -3.744, 1], ["Cusco", -71.968, -13.532, 1], ["Huancayo", -75.205, -12.065, 1],
+  ["Pucallpa", -74.554, -8.379, 1], ["Tacna", -70.254, -18.007, 1], ["Puno", -70.020, -15.840, 1], ["Puerto Maldonado", -69.189, -12.593, 1, true],
+  ["Tumbes", -80.452, -3.567, 2], ["Sullana", -80.685, -4.904, 2], ["Cajamarca", -78.500, -7.162, 2], ["Chachapoyas", -77.869, -6.232, 2],
+  ["Moyobamba", -76.972, -6.034, 2, true], ["Tarapoto", -76.373, -6.483, 2], ["Jaén", -78.809, -5.708, 2], ["Chimbote", -78.578, -9.075, 2],
+  ["Huaraz", -77.528, -9.528, 2], ["Huánuco", -76.242, -9.931, 2], ["Tingo María", -75.999, -9.295, 2], ["Cerro de Pasco", -76.256, -10.686, 2],
+  ["Ica", -75.729, -14.068, 2], ["Pisco", -76.203, -13.710, 2, true], ["Ayacucho", -74.224, -13.159, 2], ["Huancavelica", -74.975, -12.786, 2, true],
+  ["Abancay", -72.881, -13.634, 2], ["Juliaca", -70.133, -15.500, 2, true], ["Moquegua", -70.936, -17.196, 2], ["Ilo", -71.338, -17.639, 2, true],
+  ["Yurimaguas", -76.092, -5.900, 2],
+];
 const layerDefs = [
   { id: "indeci", label: "Emergencias INDECI", sw: `<i class="sw sq" style="background:var(--indeci)"></i>`, n: () => new Set(V.indeci.filter(i => i.prov).map(i => i.prov)).size, unit: "prov." },
   { id: "alertas", label: "Incendios forestales (SERFOR)", sw: `<i class="sw" style="background:var(--fuego);outline:1px solid var(--ink)"></i>`, n: () => incendios().length },
@@ -257,6 +270,7 @@ const layerDefs = [
   { id: "sismos365", label: "Sismos · 12 meses", sw: `<i class="sw" style="border:1px solid var(--sismo);opacity:.6"></i>`, n: () => recentSismos(365).length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
   { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
+  { id: "ciudades", label: "Ciudades de referencia", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => CIUDADES.length },
   { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
 // Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
@@ -556,6 +570,12 @@ function renderPoints() {
   if (L.indeci) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
     .attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10).attr("fill", css("--indeci")).attr("stroke", css("--surface")).attr("stroke-width", 1.2)
     .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide)</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
+  // Encima de todo y sin capturar el mouse: orientan pero no tapan los clics sobre los puntos
+  if (L.ciudades) {
+    const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(CIUDADES).join("g").attr("class", d => `pt ciudad t${d[3]}`).each(function (d) { this.__ll = [d[1], d[2]]; });
+    c.append("circle").attr("r", 3.4);
+    c.append("text").attr("x", d => d[4] ? -7 : 7).attr("dy", ".35em").attr("text-anchor", d => d[4] ? "end" : "start").text(d => d[0]);
+  }
   placePoints(); markPicked();
 }
 function renderRail() {
