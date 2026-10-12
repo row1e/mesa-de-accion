@@ -19,6 +19,7 @@ Cuatro garantías, cada una aplicada en código y no confiada al modelo:
 
 Mientras no haya cuentas de usuario, quien actúa se identifica con su nombre en cada acción.
 """
+import collections
 import datetime
 import hashlib
 import json
@@ -180,10 +181,11 @@ def dossier_briefing(lugar=None):
         "incendios": {"alertas_no_extinguidas": alertas_activas, "focos_calor_24h": len(D["focos"])},
         "enfen": {k: enfen.get(k) for k in ("titulo", "estado", "fecha") if enfen.get(k)},
         "vias_provias": _vias(),
+        "bomberos_24h": _bomberos(),
     }
     salud = {h["id"]: h for h in snapshot.health()}   # build() no incluye la salud; la API la agrega aparte
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
-             "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen", "provias") if s in SOURCES]
+             "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen", "provias", "bomberos") if s in SOURCES]
     return dossier, cita, f"Briefing {now.strftime('%d/%m %H:%M')}"
 
 
@@ -237,10 +239,11 @@ def _dossier_briefing_lugar(code):
                                                   "nivel": z.get("nivel")} for z in F["zonas"]][:6]},
         "vias_provias": _vias(lambda v: v.get("prov") in sc["provs"] or (not v.get("prov") and sc["tipo"] == "departamental" and v.get("reg") == code),
                               eventos=False, restringidas=True, limite=12),
+        "bomberos_24h": _bomberos(lambda p: p.get("prov") in sc["provs"] or (not p.get("prov") and sc["tipo"] == "departamental" and p.get("reg") == code)),
         "enfen_nacional": {k: F["enfen"].get(k) for k in ("numero", "estado", "fecha") if F["enfen"].get(k)},
     }
     salud = {h["id"]: h for h in snapshot.health()}
-    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias")
+    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias", "bomberos")
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
              "url": None} for s in fuentes if s in SOURCES]
     return dossier, cita, f"Briefing {nombre} {now.strftime('%d/%m %H:%M')}"
@@ -364,12 +367,44 @@ def _llamar(tipo, dossier, correccion=None):
     return r.parsed_output, uso
 
 
+def _bomberos(filtro=lambda p: True, limite=10):
+    """Partes del CGBVP de las últimas 24 h para el dossier. Las médicas van solo como número, sin direcciones."""
+    ps = [p for p in db.get_items("bomberos", "parte") if filtro(p)]
+    med = [m for m in db.get_items("bomberos", "medica") if filtro(m)]
+    if not ps and not med:
+        return {"total": 0, "cobertura": "La página del CGBVP cubre Lima, Callao y parte de la costa sur; no es nacional."}
+    orden = {"Incendio": 0, "Materiales Peligrosos (Incidente)": 1, "Rescate": 2, "Accidente Vehicular": 3}
+    recientes = sorted(ps, key=lambda p: f"{p.get('fecha')} {p.get('hora')}", reverse=True)
+    top = sorted(recientes, key=lambda p: (p.get("estado") != "Atendiendo", orden.get(p.get("categoria"), 9)))   # estable: dentro, lo más reciente
+    return {"ventana_horas": 24, "cobertura": "Lima, Callao y parte de la costa sur; no es nacional.",
+            "total_sin_medicas": len(ps), "en_atencion": sum(1 for p in ps if p.get("estado") == "Atendiendo"),
+            "por_tipo": dict(collections.Counter(p.get("categoria") for p in ps)), "emergencias_medicas": len(med),
+            "principales": [{"tipo": p.get("categoria"), "detalle": p.get("detalle"), "distrito": p.get("distrito"), "direccion": p.get("direccion"),
+                             "estado": p.get("estado"), "fecha": p.get("fecha"), "hora": p.get("hora"),
+                             "unidades": p.get("unidades_total") or len(p.get("unidades") or []),
+                             "se_sumaron_unidades": bool(p.get("escalo")) or None, "duracion_minutos": p.get("duracion_min")}
+                            for p in top][:limite],
+            "ultimos_7_dias": _bomberos_semana(filtro)}
+
+
+def _bomberos_semana(filtro):
+    """Totales de 7 días por tipo, para comparar con las últimas 24 h. Solo desde que esta Mesa registra."""
+    from .sources import bomberos as fb
+    h = fb.historial(7)
+    i = {c: n for n, c in enumerate(h["campos"])}
+    ps = [r for r in h["partes"] if filtro({"prov": r[i["prov"]], "reg": r[i["reg"]]})]
+    med = [m for m in h["medicas"] if filtro({"reg": m[1], "prov": m[2]})]
+    return {"registrado_desde": h["registro_desde"], "total_sin_medicas": len(ps), "emergencias_medicas": len(med),
+            "por_tipo": dict(collections.Counter(r[i["categoria"]] for r in ps)),
+            "escalaron": sum(1 for r in ps if r[i["escalo"]])}
+
+
 def _vias(filtro=lambda v: True, eventos=True, restringidas=False, limite=8):
     """Emergencias viales de PROVIAS para el dossier: conteo por condición de tránsito y las que más importan."""
     vs = [v for v in db.get_items("provias", "emergencia") if filtro(v)]
     orden = {"03": 0, "04": 1, "02": 2, "01": 3}
     top = sorted(vs, key=lambda v: (orden.get(v.get("transito_cod"), 9), -(int(v["fecha"].replace("-", "")) if v.get("fecha") else 0)))
-    eventos = [e.get("nombre") for e in db.get_items("provias", "evento")] if eventos else None   # sin ubicación: solo en el nacional
+    eventos = [e.get("nombre") for e in db.get_items("provias", "evento") if e.get("emergencias", 1)] if eventos else None   # sin ubicación: solo en el nacional
     return {"total": len(vs),
             "por_condicion": {t: sum(1 for v in vs if v.get("transito") == t) for t in ("Tránsito interrumpido", "Tránsito restringido", "Por confirmar")},
             **({"eventos_activos": eventos} if eventos is not None else {}),

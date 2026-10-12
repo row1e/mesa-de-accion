@@ -232,7 +232,8 @@ def build():
         indeci.sort(key=lambda i: i.get("ts") or 0, reverse=True)
 
         year = today[:4]
-        sismos_raw = [s for s in db.get_items("igp", "sismo", current_only=False, order="key") if s["fecha"][:4] == year]
+        desde = (datetime.date.fromisoformat(today) - datetime.timedelta(days=366)).isoformat()   # capas de 7 días a 12 meses, aunque crucen el año
+        sismos_raw = [s for s in db.get_items("igp", "sismo", current_only=False, order="key") if s["fecha"][:4] == year or s["fecha"] >= desde]
         sismos = [[s["fecha"], s["hora"], s["mag"], s["prof"], s["lat"], s["lon"], s["ref"], s["int"], s["codigo"]] for s in sismos_raw]
         focos = [[f["lon"], f["lat"], f["dep"], f["prov"], f["_key"],
                   str(f["ubigeo"]).zfill(6)[:2] if f.get("ubigeo") else geo.region_code(f["dep"]),   # índice 5: región
@@ -243,7 +244,7 @@ def build():
         vias = [{k: v for k, v in e.items() if k in ("id", "lon", "lat", "transito_cod", "transito", "tipo", "ruta", "tramo", "sector",
                                                       "km_ini", "km_fin", "fecha", "dias", "puente", "prov", "reg", "_key", "_first_seen")}
                 for e in db.get_items("provias", "emergencia")]
-        vias_eventos = [e.get("nombre") for e in db.get_items("provias", "evento")]
+        vias_eventos = [e.get("nombre") for e in db.get_items("provias", "evento") if e.get("emergencias", 1)]   # sin emergencias: ya pasó
         # Fotos de emergencias viales: hasta 3 por emergencia vigente, de la más reciente a la más antigua
         vias_by, vias_fotos = {v["_key"]: v for v in vias}, []
         for ln in db.get_items("provias", "linea", current_only=False):
@@ -252,6 +253,13 @@ def build():
                 vias_fotos.append({**f, "key": v["_key"], "transito": v.get("transito"), "transito_cod": v.get("transito_cod"),
                                    "tipo": v.get("tipo"), "ruta": v.get("ruta"), "sector": v.get("sector"), "prov": v.get("prov"), "reg": v.get("reg")})
         vias_fotos.sort(key=lambda f: f.get("fecha") or "", reverse=True)
+        # Bomberos (CGBVP): partes de las últimas 24 h; las médicas solo como conteo (sin dirección)
+        bomberos = sorted(({k: v for k, v in p.items() if not k.startswith("_") or k in ("_key", "_first_seen")}
+                           for p in db.get_items("bomberos", "parte")), key=lambda p: f"{p.get('fecha')} {p.get('hora')}", reverse=True)
+        med = db.get_items("bomberos", "medica")
+        bomberos_med = {"total": len(med), "atendiendo": sum(1 for m in med if m.get("estado") == "Atendiendo"),
+                        "por_reg": dict(collections.Counter(m["reg"] for m in med if m.get("reg"))),
+                        "por_prov": dict(collections.Counter(m["prov"] for m in med if m.get("prov")))}
         com = db.get_items("enfen", "comunicado", current_only=False, order="key DESC", limit=1)
         firms_n = len(db.get_items("firms", "deteccion"))
 
@@ -344,7 +352,8 @@ def build():
             "uv": uv, "uvUnmatched": uv_unmatched, "pronostico": pron, "hidro": hidro,
             "indeci": indeci, "indeciWindowH": INDECI_WINDOW_H,
             "indeciUnlocated": sum(1 for i in indeci if i.get("clase") == "reporte" and not i.get("prov")),
-            "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos, "viasFotos": vias_fotos[:80],
+            "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,
+            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "viasFotos": vias_fotos[:80],
             "enfen": {"ultimo_comunicado": com[0] if com else {}}, "firmsCount": firms_n,
             "comunicados": comunicados, "sidpol": sidpol, "regions": sorted(regions, key=lambda r: r["n"]),
             "fotosDia": fotos_dia[:80], "danos": danos,

@@ -84,6 +84,10 @@ def igp():
         return 0, 0, f"sin cambios · último {last['codigo']} M{last['magnitud']}"
     year = last["codigo"][:4]
     cat = fetch_json("igp", f"https://ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/{year}", name=f"sismos_{year}.json")
+    if not db.has_item("igp", "sismo", f"{int(year) - 1}-0001"):
+        # el catálogo del IGP es por año: el anterior se lee una vez, para la capa de 12 meses (y los 30 días de enero)
+        prev = str(int(year) - 1)
+        cat += fetch_json("igp", f"https://ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/{prev}", name=f"sismos_{prev}.json")
     recs = {s["codigo"]: {"codigo": s["codigo"], "fecha": s["fecha_local"][:10], "hora": s["hora_local"][11:16],
                           "mag": float(s["magnitud"]), "prof": int(float(s["profundidad"])), "lat": float(s["latitud"]),
                           "lon": float(s["longitud"]), "ref": s["referencia"], "int": s.get("intensidad") or ""}
@@ -156,13 +160,16 @@ def enfen():
     new = 0
     for url, n, a in sorted(set(links), key=lambda c: (int(c[2]), int(c[1]))):
         key = f"{a}-{int(n):02d}"
-        if db.has_item("enfen", "comunicado", key):
-            continue
+        if (db.get_item("enfen", "comunicado", key) or {}).get("estado"):
+            continue   # ya leído (los que quedaron sin estado se vuelven a leer)
         pdf = fetch("enfen", url, name=f"comunicado_{n}_{a}.pdf", timeout=120)
         import pymupdf
         text = pymupdf.open(stream=pdf, filetype="pdf")[0].get_text()
-        m = re.search(r"Estado del sistema de alerta:\s*(.+)", text)
-        fecha = re.search(r"COMUNICADO OFICIAL ENFEN N° ?\d+-\d{4}\s*\n\s*(.+)", text)
+        # Hasta el N° 16 el PDF decía "Estado del sistema de alerta: …"; desde el N° 17 el estado va solo, en su línea,
+        # bajo la fecha y con una llamada a nota al pie ("Alerta de El Niño Costero1").
+        m = (re.search(r"Estado del sistema de alerta:\s*(.+)", text)
+             or re.search(r"^\s*((?:Alerta|Vigilancia)\s+de\s+(?:El\s+Niño|La\s+Niña)[^\n]*?|(?:Sistema de alerta\s+)?No\s+activo)\s*\d*\s*$", text, re.M | re.I))
+        fecha = re.search(r"COMUNICADO OFICIAL ENFEN N° ?\d+ ?- ?\d{4}\s*\n\s*(.+)", text)
         db.upsert_items("enfen", "comunicado", {key: {
             "numero": int(n), "anio": int(a), "url": url, "fecha": fecha.group(1).strip() if fecha else None,
             "estado": re.sub(r"\d+$", "", m.group(1).strip()) if m else None,
@@ -228,9 +235,16 @@ def provias():
                    "fecha": _dmy(e.get("Fecha")), "dias": m.get("CantDias"), "puente": m.get("EsPuente") == "1",
                    "en_mapa": bool(m), "prov": prov, "reg": prov[:2] if prov else (geo.region_of_point(lon, lat) if lon and lat else None)}
     total, new = db.upsert_items("provias", "emergencia", recs, snapshot=True)
+    # PROVIAS deja eventos en su lista aunque ya no tengan emergencias (el paro de pescadores del 06/10 siguió
+    # listado días después, con 0 emergencias). Se cuentan las suyas y solo se muestran los que tienen alguna.
     ev = fetch_json("provias", f"{PROVIAS}/GetEventos", name="eventos.json", headers=PROVIAS_XHR)
-    eventos = {str(x["IdEvento"]): {"id": x["IdEvento"], "nombre": x.get("Nombre")} for x in ev.get("data") or []}
+    eventos = {}
+    for x in ev.get("data") or []:
+        em = fetch_json("provias", f"{PROVIAS}/GetEmergenciaList?fecha=&idDepartamento=&idZonal=&idCondicionTransito=&idEvento={x['IdEvento']}&{adm}",
+                        name=f"evento_{x['IdEvento']}.json", headers=PROVIAS_XHR)
+        eventos[str(x["IdEvento"])] = {"id": x["IdEvento"], "nombre": x.get("Nombre"), "emergencias": len(em.get("data") or [])}
     db.upsert_items("provias", "evento", eventos, snapshot=True)
+    eventos = {k: e for k, e in eventos.items() if e["emergencias"]}
     n = {t: sum(1 for r in recs.values() if r["transito_cod"] == c) for c, t in TRANSITO.items()}
     return total, new, (f"{total} emergencias viales ({new} nuevas): {n['Tránsito interrumpido']} interrumpidas, "
                         f"{n['Tránsito restringido']} restringidas, {n['Por confirmar']} por confirmar"

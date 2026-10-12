@@ -39,7 +39,7 @@ let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = 
 // Denuncias policiales (SIDPOL): fuera del tablero por ahora, no es información de emergencias. Para volver a mostrarlas:
 // true aquí y quitar `hidden` de #sidpol-sec y de su enlace en la barra (index.html).
 const MOSTRAR_DENUNCIAS = false;
-const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
+const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "bom-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
 function makeView() {
@@ -58,6 +58,8 @@ function makeView() {
     pronostico: D.pronostico.filter(p => p.reg === R), hidro: D.hidro.filter(h => h.reg === R),
     indeci: D.indeci.filter(i => i.reg === R), sismos: D.sismos.filter(s => s[9] === R),
     focos: D.focos.filter(f => f[5] === R), alertas: D.alertas.filter(a => a.reg === R), zonas: D.zonas.filter(z => z.reg === R), vias: (D.vias || []).filter(v => v.reg === R),
+    bomberos: (D.bomberos || []).filter(b => b.reg === R),
+    bomberosMedicas: {...(D.bomberosMedicas || {}), total: D.bomberosMedicas?.por_reg?.[R] || 0, atendiendo: null},
     comunicados: (D.comunicados || []).filter(c => c.regs?.includes(R)), sidpol,
     fotosDia: (D.fotosDia || []).filter(f => f.reg === R),
     danos: D.danos ? {...D.danos, ...(D.danos.por_reg[R] || {totales: {}, nuevos: {}, seguimiento: {}, n_eventos: 0, n_nuevos: 0}),
@@ -224,9 +226,9 @@ function initMap() {
   proj = d3.geoIdentity().reflectY(true).fitExtent([[16,16],[W-16,H_-16]], V.geo.deps);
   path = d3.geoPath(proj);
   gGeo = svg.append("g"); gProv = gGeo.append("g"); gDep = gGeo.append("g"); gPts = svg.append("g");
-  zoom = d3.zoom().scaleExtent([1, 14]).translateExtent([[-W * .15, -H_ * .15], [W * 1.15, H_ * 1.15]])
+  zoom = d3.zoom().scaleExtent([1, 60])   // hasta nivel de calle: los partes de bomberos en Lima están a cuadras.translateExtent([[-W * .15, -H_ * .15], [W * 1.15, H_ * 1.15]])
     .filter(e => e.type === "wheel" ? (e.ctrlKey || e.metaKey) : e.type === "touchstart" ? e.touches.length > 1 : !e.button)
-    .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); placePoints(); hideTip(); });
+    .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); svg.classed("zoom-ciudades", zt.k >= 1.5); placePoints(); hideTip(); });
   svg.call(zoom).on("dblclick.zoom", null);
   document.querySelector(".zoom").addEventListener("click", e => {
     const z = e.target.closest("button")?.dataset.z; if (!z) return;
@@ -241,22 +243,63 @@ function initMap() {
 }
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
-  layers: { indeci: true, alertas: true, sismos: true, hidro: true, vias: true, zonas: false, focos: false } };
+  layers: { ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
-function recentSismos() { const lim = d3.timeDay.offset(new Date(V.snapshot + "T12:00:00"), -30).toISOString().slice(0,10); return V.sismos.filter(s => s[0] >= lim); }
+// Ventana corrida en horas (7 días = 168 h) hasta la hora del snapshot, en hora de Lima; no fechas de calendario.
+const sismoT = s => Date.parse(`${s[0]}T${s[1]}:00-05:00`);
+function recentSismos(dias = 30) { const fin = Date.parse(V.built.replace(" ", "T") + ":00-05:00"); return V.sismos.filter(s => sismoT(s) > fin - dias * 864e5); }
+const sismosAnio = () => V.sismos.filter(s => s[0].startsWith(V.snapshot.slice(0, 4)));   // gráfico y tabla: año en curso
+// Ciudades de referencia para orientarse. Nivel 1 siempre; nivel 2 (otras capitales y ciudades grandes) al acercar.
+// [nombre, lon, lat, nivel, etiqueta a la izquierda]
+const CIUDADES = [
+  ["Lima", -77.043, -12.046, 1], ["Arequipa", -71.537, -16.409, 1], ["Trujillo", -79.029, -8.112, 1], ["Chiclayo", -79.841, -6.771, 1],
+  ["Piura", -80.633, -5.195, 1], ["Iquitos", -73.247, -3.744, 1], ["Cusco", -71.968, -13.532, 1], ["Huancayo", -75.205, -12.065, 1],
+  ["Pucallpa", -74.554, -8.379, 1], ["Tacna", -70.254, -18.007, 1], ["Puno", -70.020, -15.840, 1], ["Puerto Maldonado", -69.189, -12.593, 1, true],
+  ["Tumbes", -80.452, -3.567, 2], ["Sullana", -80.685, -4.904, 2], ["Cajamarca", -78.500, -7.162, 2], ["Chachapoyas", -77.869, -6.232, 2],
+  ["Moyobamba", -76.972, -6.034, 2, true], ["Tarapoto", -76.373, -6.483, 2], ["Jaén", -78.809, -5.708, 2], ["Chimbote", -78.578, -9.075, 2],
+  ["Huaraz", -77.528, -9.528, 2], ["Huánuco", -76.242, -9.931, 2], ["Tingo María", -75.999, -9.295, 2], ["Cerro de Pasco", -76.256, -10.686, 2],
+  ["Ica", -75.729, -14.068, 2], ["Pisco", -76.203, -13.710, 2, true], ["Ayacucho", -74.224, -13.159, 2], ["Huancavelica", -74.975, -12.786, 2, true],
+  ["Abancay", -72.881, -13.634, 2], ["Juliaca", -70.133, -15.500, 2, true], ["Moquegua", -70.936, -17.196, 2], ["Ilo", -71.338, -17.639, 2, true],
+  ["Yurimaguas", -76.092, -5.900, 2],
+];
+// Bomberos: color por tipo de emergencia; más grande y con borde si sigue en atención
+const BOM_T = [["Incendio", "--fuego"], ["Materiales Peligrosos (Incidente)", "--n3"], ["Rescate", "--hidro"], ["Accidente Vehicular", "--ink-2"], ["Servicio Especial", "--ink-3"]];
+const bomColor = c => css((BOM_T.find(([t]) => t === c) || [, "--ink-3"])[1]);
+const bomCorto = c => c === "Materiales Peligrosos (Incidente)" ? "Materiales peligrosos" : c ? c[0] + c.slice(1).toLowerCase() : "—";
+const bomLL = b => b.lon != null ? [b.lon, b.lat] : V.provCentroids[b.prov];
 const layerDefs = [
   { id: "indeci", label: "Emergencias INDECI", sw: `<i class="sw sq" style="background:var(--indeci)"></i>`, n: () => new Set(V.indeci.filter(i => i.prov).map(i => i.prov)).size, unit: "prov." },
-  { id: "alertas", label: "Alertas de incendio", sw: `<i class="sw" style="background:var(--fuego)"></i>`, n: () => V.alertas.length },
-  { id: "sismos", label: "Sismos · 30 días", sw: `<i class="sw" style="border:2px solid var(--sismo)"></i>`, n: () => recentSismos().length },
+  { id: "alertas", label: "Incendios forestales (SERFOR)", sw: `<i class="sw" style="background:var(--fuego);outline:1px solid var(--ink)"></i>`, n: () => incendios().length },
+  { id: "focos", label: "Focos de calor 24 h", sw: `<i class="sw" style="background:var(--fuego);opacity:.45"></i>`, n: () => V.focos.length },
+  { id: "sismos7", label: "Sismos · 7 días", sw: `<i class="sw" style="background:var(--sismo);opacity:.55;border:2px solid var(--sismo)"></i>`, n: () => recentSismos(7).length },
+  { id: "sismos", label: "Sismos · 30 días", sw: `<i class="sw" style="border:2px solid var(--sismo)"></i>`, n: () => recentSismos(30).length },
+  { id: "sismos365", label: "Sismos · 12 meses", sw: `<i class="sw" style="border:1px solid var(--sismo);opacity:.6"></i>`, n: () => recentSismos(365).length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
   { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
+  { id: "bomberos", label: "Bomberos · 24 h (CGBVP)", sw: `<i class="sw" style="width:12px;height:12px;border-radius:0;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:var(--fuego)"></i>`, n: () => V.bomberos.length },
+  { id: "ciudades", label: "Ciudades de referencia", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => CIUDADES.length },
   { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
-  { id: "focos", label: "Focos de calor 24 h", sw: `<i class="sw" style="background:var(--fuego);opacity:.45"></i>`, n: () => V.focos.length },
 ];
+// Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
+// detecciones reúne y en cuántos días es la mejor medida de su tamaño que publica SERFOR (no informa hectáreas).
+let _inc = {src: null, list: []};
+function incendios() {
+  if (_inc.src === V.alertas) return _inc.list;
+  const list = d3.groups(V.alertas, a => a.cod || a._key).map(([cod, al]) => {
+    const fechas = al.map(a => a.fecha).filter(Boolean).sort(), ult = d3.greatest(al, a => `${a.fecha} ${a.hora}`);
+    return {cod, n: al.length, lon: d3.mean(al, a => a.lon), lat: d3.mean(al, a => a.lat), estado: ult.estado, ini: fechas[0], fin: fechas[fechas.length - 1],
+      dias: new Set(fechas).size, cob: d3.greatest(d3.rollups(al, v => v.length, a => a.cob || "—"), d => d[1])[0],
+      lugares: [...new Set(al.map(a => `${title(a.dist)}, ${title(a.prov)}`))], dep: title(ult.dep), ult};
+  }).sort((a, b) => b.n - a.n);   // los grandes primero: los chicos quedan encima y se pueden señalar
+  _inc = {src: V.alertas, list};
+  return list;
+}
+const incR = n => Math.min(18, 3 + Math.sqrt(n) * 1.15);
 function renderLayers() {
-  $("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span></label>`).join("");
+  $("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span></label>`).map((h, i) => layerDefs[i].id === "alertas"
+    ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>` : h).join("");
 }
 function provTip(p) {
   if (state.mode === "uv") { const u = V.uv[p.id]; return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${u ? `UV ${u.v[state.uvDay]} (pico ${u.h[state.uvDay]})` : "Sin zona UV"}`; }
@@ -428,7 +471,7 @@ function showProvince() {   // lleva el bloque de la provincia al tope del panel
 const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Monitoreo satelital", ingemmet: "INGEMMET · Perú Alerta",
   senamhi_hidro: "SENAMHI · Hidrología", senamhi_avisos: "SENAMHI · Avisos meteorológicos", indeci: "INDECI · COEN", firms: "NASA FIRMS",
   enfen: "ENFEN · Comisión Multisectorial", com_pnp: "PNP · Comunicados (gob.pe)", com_provias: "PROVIAS Nacional · Notas de prensa (gob.pe)",
-  provias: "PROVIAS Nacional · Emergencias viales", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
+  provias: "PROVIAS Nacional · Emergencias viales", bomberos: "CGBVP · Bomberos · Emergencias 24 horas", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
 const refId = r => r && `${r.source}|${r.kind}|${r.key}`;
 let detailReq = 0;
 function closeDetail() {
@@ -514,18 +557,41 @@ function renderPoints() {
   if (L.zonas) layer(V.zonas, "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolTriangle, 34))
     .attr("fill", css("--geo")).attr("stroke", css("--surface")).attr("stroke-width", .6)
     .call(on, d => `<b>Zona crítica · ${esc(d.nivel)}</b><br>${esc(d.paraje)} — ${esc(d.distrito)}, ${esc(d.provincia)}<br>${esc(d.peligros_g)}<br><span style="opacity:.7">Expuesto: ${esc(d.elemento)}</span>` + tipWhen(fmtTs(d._first_seen), "en alerta en la Mesa desde"), d => ({source: "ingemmet", kind: "zona_alerta", key: d._key}));
-  if (L.sismos) layer(recentSismos(), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+  // 12 meses debajo: anillos finos y tenues, para ver dónde se acumulan; encima los de 30 y 7 días
+  if (L.sismos365) layer(recentSismos(365), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+    .attr("fill", "none").attr("stroke", css("--sismo")).attr("stroke-width", .8).attr("stroke-opacity", .55)
+    .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
+  if (L.sismos) layer(recentSismos(30), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
     .attr("fill", "none").attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
     .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
-  if (L.alertas) layer(V.alertas, "circle", d => [d.lon, d.lat]).attr("r", 3.6)
-    .attr("fill", d => d.estado === "Extinguido" ? css("--surface") : css("--fuego")).attr("stroke", css("--fuego")).attr("stroke-width", 1.2)
-    .call(on, d => `<b>Incendio forestal · ${esc(d.estado)}</b><br>${title(d.dist)}, ${title(d.prov)} · ${title(d.dep)}${d.cod ? `<br><span style="opacity:.7">${esc(d.cod)}</span>` : ""}` + tipWhen(fmtWhen(d.fecha, d.hora), "alerta SERFOR", fmtTs(d._first_seen), "recibida"), d => ({source: "serfor", kind: "alerta", key: d._key}));
+  if (L.sismos7) layer(recentSismos(7), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+    .attr("fill", css("--sismo")).attr("fill-opacity", .35).attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
+    .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
+  if (L.alertas) layer(incendios(), "circle", d => [d.lon, d.lat]).attr("r", d => incR(d.n))
+    .attr("fill", css("--fuego")).attr("fill-opacity", d => ({Extinguido: 0, Controlado: .35})[d.estado] ?? .85)
+    .attr("stroke", d => d.estado === "Extinguido" ? css("--fuego") : css("--ink")).attr("stroke-width", d => d.estado === "Extinguido" ? 1.4 : 1)
+    .call(on, d => `<b>Incendio forestal · ${esc(d.estado)}</b><br>${esc(d.lugares.slice(0, 2).join(" · "))}${d.lugares.length > 2 ? ` y ${d.lugares.length - 2} distritos más` : ""} · ${esc(d.dep)}`
+      + `<br><b>${nf.format(d.n)}</b> ${d.n > 1 ? "detecciones satelitales" : "detección satelital"} en ${d.dias} día${d.dias > 1 ? "s" : ""}${d.ini && d.ini !== d.fin ? ` (${fmtDay(d.ini)} → ${fmtDay(d.fin)})` : ""}`
+      + `<br><span style="opacity:.7">${esc(d.cob)}${d.cod.startsWith("PIF") ? ` · ${esc(d.cod)}` : ""}</span>` + tipWhen(fmtWhen(d.ult.fecha, d.ult.hora), "última alerta SERFOR"), d => ({source: "serfor", kind: "alerta", key: d.ult._key}));
   if (L.hidro) layer(V.hidro, "circle", d => [d.lon, d.lat]).attr("r", 6)
     .attr("fill", d => css("--n" + Math.min(4, lvlNum(d.color_text)))).attr("stroke", css("--hidro")).attr("stroke-width", 2.4)
     .call(on, d => `<b>${esc(d.titulo)}</b><br>${esc(d.color_text)}<br>${title(d.nom_distrito)}, ${title(d.nom_provincia)} · ${title(d.nom_departamento)}` + tipWhen(fmtUtc(d.fecha_hora), "aviso emitido", fmtTs(d._first_seen), "recibido"), d => ({source: "senamhi_hidro", kind: "aviso_estacion", key: d._key}));
   if (L.indeci) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
     .attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10).attr("fill", css("--indeci")).attr("stroke", css("--surface")).attr("stroke-width", 1.2)
     .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide)</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
+  if (L.bomberos) layer(V.bomberos.filter(bomLL), "path", bomLL)
+    .attr("d", d3.symbol(d3.symbolCross, d => d.estado === "Atendiendo" ? 95 : 48))
+    .attr("fill", d => bomColor(d.categoria)).attr("fill-opacity", d => d.ubicacion === "coordenadas" ? 1 : .55)
+    .attr("stroke", d => d.estado === "Atendiendo" ? css("--ink") : css("--surface")).attr("stroke-width", d => d.estado === "Atendiendo" ? 1.3 : .7)
+    .call(on, d => `<b>${esc(bomCorto(d.categoria))}${d.estado === "Atendiendo" ? " · en atención" : ""}</b><br>${esc(d.detalle || "")}<br>${esc(d.direccion || "")} — ${esc(d.distrito || "")}`
+      + `<br><span style="opacity:.7">${(d.unidades || []).length} unidad${(d.unidades || []).length === 1 ? "" : "es"}${d.ubicacion === "distrito" ? " · ubicado en el centro de la provincia" : ""}</span>`
+      + tipWhen(fmtWhen(d.fecha, d.hora), "parte CGBVP"), d => ({source: "bomberos", kind: "parte", key: d._key}));
+  // Encima de todo y sin capturar el mouse: orientan pero no tapan los clics sobre los puntos
+  if (L.ciudades) {
+    const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(CIUDADES).join("g").attr("class", d => `pt ciudad t${d[3]}`).each(function (d) { this.__ll = [d[1], d[2]]; });
+    c.append("circle").attr("r", 3.4);
+    c.append("text").attr("x", d => d[4] ? -7 : 7).attr("dy", ".35em").attr("text-anchor", d => d[4] ? "end" : "start").text(d => d[0]);
+  }
   placePoints(); markPicked();
 }
 function renderRail() {
@@ -578,15 +644,28 @@ function renderMapAll() { renderControls(); renderMap(); renderPoints(); renderR
 
 /* ── secciones ──────────────────────────────────────────────────── */
 const chart = (sel, w, h) => { const el = $(sel); el.innerHTML = ""; return d3.select(el).append("svg").attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%"); };
+// Franja "Ahora": lo que hoy pide atención, cada cosa con enlace a su sección. Sigue el filtro de región.
 function renderThesis() {
-  const today = V.levelsByDay[V.snapshot] || {}, vals = Object.values(today);
-  const reps = V.indeci.filter(i => i.clase === "reporte").length;
-  $("#thesis").innerHTML = [
-    [`${vals.length}`, `provincias${state.region ? ` de ${esc(regName(state.region))}` : ""} bajo aviso SENAMHI (nivel 2 o más) hoy, ${vals.filter(c => c.m === 4).length} en nivel 4 rojo.`],
-    [`${reps}`, `reportes de emergencia INDECI en las últimas ${V.indeciWindowH} h, con distrito y provincia.`],
-    [nf.format(V.focos.length), `focos de calor en 24 h y ${V.alertas.length} alertas de incendio forestal con estado y ubigeo distrital (SERFOR).`],
-    [V.enfen?.ultimo_comunicado?.estado ? "Alerta" : "—", `ENFEN: ${esc(V.enfen?.ultimo_comunicado?.estado || "sin dato")} (comunicado N° ${V.enfen?.ultimo_comunicado?.numero ?? "—"}).`],
-  ].map(([b,p]) => `<div><div class="big num">${b}</div><p>${p}</p></div>`).join("");
+  const R = state.region, en = R ? ` en ${esc(regName(R))}` : "";
+  const lv = Object.values(V.levelsByDay[V.snapshot] || {}), n4 = lv.filter(c => c.m === 4).length, n3 = lv.filter(c => c.m === 3).length;
+  const rep = V.indeci.filter(i => i.clase === "reporte"), nuevos = rep.filter(i => !i.seguimiento);
+  const topEv = d3.rollups(nuevos, v => v.length, i => title(i.evento)).sort((a, b) => b[1] - a[1]).slice(0, 2);
+  const vi = V.vias.filter(v => v.transito_cod === "03").length, vc = V.vias.filter(v => v.transito_cod === "04").length;
+  const bAct = V.bomberos.filter(b => b.estado === "Atendiendo"), bInc = bAct.filter(b => b.categoria === "Incendio").length;
+  const fuegos = incendios().filter(f => f.estado !== "Extinguido"), grande = fuegos[0];
+  const desde = Date.parse(V.built.replace(" ", "T") + ":00-05:00") - 864e5;
+  const s24 = V.sismos.filter(s => sismoT(s) > desde).sort((a, b) => b[2] - a[2]), sm = s24[0];
+  const enf = V.enfen?.ultimo_comunicado || {};
+  const tiles = [
+    ["#mapa", n4 + n3, `provincias${en} en aviso <b>naranja o rojo</b> hoy`, n4 ? `${n4} en rojo · ${lv.length} con algún aviso` : `${lv.length} con algún aviso SENAMHI`, n4 ? "--n4" : n3 ? "--n3" : null],
+    ["#indeci-sec", nuevos.length, `emergencias nuevas${en} reportadas por INDECI en ${V.indeciWindowH} h`, topEv.length ? topEv.map(([e, k]) => `${esc(e)} (${k})`).join(" · ") : "sin reportes nuevos", null],
+    ["#vias-sec", vi, `vías <b>interrumpidas</b>${en} (PROVIAS)`, `${vc} por confirmar · ${plural(V.vias.length, "emergencia vial", "emergencias viales")} en total`, vi ? "--n4" : null],
+    ["#bom-sec", bAct.length, `emergencias que los bomberos atienden <b>ahora</b>${en}`, V.bomberos.length || !R ? `${bInc} incendio${bInc === 1 ? "" : "s"} · ${nf.format(V.bomberos.length)} partes en 24 h (Lima, Callao y costa sur)` : "la página del CGBVP no cubre esta región", bInc ? "--fuego" : null],
+    ["#serfor-sec", fuegos.length, `incendios forestales <b>activos</b>${en} (SERFOR)`, grande ? `el mayor: ${esc(grande.lugares[0])} · ${nf.format(grande.n)} detecciones` : "ninguno sin extinguir", fuegos.length ? "--fuego" : null],
+    ["#igp-sec", sm ? `M${sm[2]}` : "—", `sismo más fuerte${en} en 24 h`, sm ? `${esc(sm[6])} · ${fmtWhen(sm[0], sm[1])}` : "ninguno registrado", sm && sm[2] >= 5 ? "--sismo" : null],
+    ["#enfen-sec", enf.estado ? enf.estado.split(/\s+de\s+/i)[0] : "—", enf.estado ? esc(enf.estado.split(/\s+de\s+/i).slice(1).join(" de ") || enf.estado) + " (ENFEN)" : "estado de ENFEN sin leer", `comunicado N° ${enf.numero ?? "—"}${enf.fecha ? ` (${esc(enf.fecha)})` : ""} · nacional`, /alerta/i.test(enf.estado || "") ? "--n3" : null],
+  ];
+  $("#thesis").innerHTML = tiles.map(([href, big, txt, sub, col]) => `<a href="${href}"><div class="big num"${col ? ` style="color:var(${col})"` : ""}>${typeof big === "number" ? nf.format(big) : big}</div><p>${txt}</p><p class="sub">${sub}</p></a>`).join("");
   $("#m-snap").textContent = fmtDay(V.snapshot) + " " + V.snapshot.slice(0,4);
 }
 function renderEnfen() {
@@ -641,14 +720,14 @@ function renderSismos() {
   s.append("g").attr("class", "grid").selectAll("line").data(y.ticks(5)).join("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", d => y(d)).attr("y2", d => y(d));
   s.append("g").attr("class", "axis").attr("transform", `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(d3.timeMonth.every(1)).tickFormat(d => MON[d.getMonth()]).tickSize(0).tickPadding(8)).select(".domain").remove();
   s.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(0).tickPadding(6).tickFormat(d => "M" + d)).select(".domain").remove();
-  s.append("g").selectAll("circle").data(V.sismos).join("circle").attr("cx", d => x(new Date(d[0] + "T" + d[1]))).attr("cy", d => y(d[2]))
+  s.append("g").selectAll("circle").data(sismosAnio()).join("circle").attr("cx", d => x(new Date(d[0] + "T" + d[1]))).attr("cy", d => y(d[2]))
     .attr("r", d => Math.max(1.6, (d[2] - 2.5) * 1.8)).attr("fill", css("--sismo")).attr("fill-opacity", .28).attr("stroke", css("--sismo")).attr("stroke-width", .8)
     .style("cursor", "pointer")
     .on("mousemove", (e, d) => showTip(e, `<b>M${d[2]}</b> · ${fmtDay(d[0])} ${d[1]}<br>${esc(d[6])}<br><span style="opacity:.7">Clic para ver la ficha completa</span>`)).on("mouseleave", hideTip)
     .on("click", (e, d) => { hideTip(); openDetail({source: "igp", kind: "sismo", key: d[8]}); });
   // las etiquetas M6+ quedan encima de los puntos: que no se coman el clic
-  s.append("g").style("pointer-events", "none").selectAll("text").data(V.sismos.filter(d => d[2] >= 6)).join("text").attr("x", d => x(new Date(d[0] + "T" + d[1]))).attr("y", d => y(d[2]) - 12).attr("text-anchor", "middle").style("font-weight", 600).text(d => "M" + d[2]);
-  $("#sismos").innerHTML = V.sismos.filter(d => d[2] >= 5).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1])).map(d => `<tr class="clk" tabindex="0" data-sismo="${esc(d[8])}" title="Ver la ficha completa"><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num"><b>${d[2]}</b></td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("");
+  s.append("g").style("pointer-events", "none").selectAll("text").data(sismosAnio().filter(d => d[2] >= 6)).join("text").attr("x", d => x(new Date(d[0] + "T" + d[1]))).attr("y", d => y(d[2]) - 12).attr("text-anchor", "middle").style("font-weight", 600).text(d => "M" + d[2]);
+  $("#sismos").innerHTML = sismosAnio().filter(d => d[2] >= 5).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1])).map(d => `<tr class="clk" tabindex="0" data-sismo="${esc(d[8])}" title="Ver la ficha completa"><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num"><b>${d[2]}</b></td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("");
   $("#sismos").querySelectorAll("[data-sismo]").forEach(tr => {
     const go = () => openDetail({source: "igp", kind: "sismo", key: tr.dataset.sismo});
     tr.addEventListener("click", go);
@@ -682,6 +761,96 @@ const VIA_T = [["03", "Interrumpido"], ["02", "Restringido"], ["04", "Por confir
 const viaColor = c => ({"03": css("--n4"), "02": css("--n2"), "04": css("--ink-3"), "01": css("--ok")})[c] || css("--ink-3");
 const cap = s => s ? s.charAt(0) + s.slice(1).toLowerCase() : "";
 let viaF = "";
+let bomF = "", bomPer = "24";
+const bomMin = m => m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
+const bomT0 = b => Date.parse(`${b.fecha}T${b.hora}:00-05:00`);
+function bomDur(b) {
+  if (b.duracion_min != null) return `duró ${bomMin(b.duracion_min)}`;
+  if (b.duracion_max_min != null) return `cerró en menos de ${bomMin(b.duracion_max_min)}`;
+  return b.estado === "Atendiendo" && b.fecha ? `hace ${bomMin(Math.max(0, Math.round((Date.now() - bomT0(b)) / 6e4)))}` : "";
+}
+// 7 / 30 días: se piden aparte (no van en el snapshot) y se guardan unos minutos
+const bomHist = {};
+async function bomHistorial(dias) {
+  const c = bomHist[dias];
+  if (c && Date.now() - c.t < 5 * 6e4) return c.data;
+  const data = await (await fetch(`/api/bomberos/historial?dias=${dias}`)).json();
+  bomHist[dias] = {t: Date.now(), data};
+  return data;
+}
+async function renderBomHist() {
+  const dias = +bomPer, h = await bomHistorial(dias);
+  if (String(dias) !== bomPer) return;
+  const I = Object.fromEntries(h.campos.map((c, i) => [c, i])), R = state.region;
+  const ps = h.partes.filter(r => !R || r[I.reg] === R), med = h.medicas.filter(m => !R || m[1] === R);
+  const n = c => ps.filter(r => r[I.categoria] === c).length;
+  const durs = ps.filter(r => r[I.categoria] === "Incendio" && r[I.duracion_min] != null).map(r => r[I.duracion_min]);
+  const esc_ = ps.filter(r => r[I.escalo]).length;
+  $("#bomh-cnt").innerHTML = [[ps.length, "partes (sin médicas)", "--ink"], ...BOM_T.filter(([c]) => n(c)).map(([c, v]) => [n(c), bomCorto(c).toLowerCase(), v]),
+    [med.length, "emergencias médicas", "--ink-3"], [esc_, "sumaron unidades en el camino", "--n3"],
+    [durs.length ? bomMin(Math.round(d3.median(durs))) : "—", `duración típica de un incendio (mediana de ${durs.length})`, "--fuego"]]
+    .map(([k, t, v]) => `<div><div class="big num" style="color:var(${v})">${typeof k === "number" ? nf.format(k) : k}</div><p>${esc(t)}</p></div>`).join("");
+  // partes por día, apilados por tipo
+  const diasLista = d3.timeDays(new Date(h.desde_fecha + "T12:00:00"), d3.timeDay.offset(new Date(V.snapshot + "T12:00:00"), 1)).map(d => d3.timeFormat("%Y-%m-%d")(d));
+  const tipos = BOM_T.map(([c]) => c), w = 640, hh = 190, m = {l: 30, r: 8, t: 8, b: 24};
+  const rows = diasLista.map(d => Object.fromEntries([["d", d], ...tipos.map(t => [t, ps.filter(r => r[I.fecha] === d && r[I.categoria] === t).length])]));
+  const st = d3.stack().keys(tipos)(rows), x = d3.scaleBand(diasLista, [m.l, w - m.r]).padding(.18);
+  const y = d3.scaleLinear([0, d3.max(rows, r => d3.sum(tipos, t => r[t])) || 1], [hh - m.b, m.t]).nice();
+  const svg = chart("#bomh-dias", w, hh);
+  svg.append("g").attr("class", "grid").selectAll("line").data(y.ticks(4)).join("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", d => y(d)).attr("y2", d => y(d));
+  svg.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSize(0).tickPadding(6)).select(".domain").remove();
+  const cada = Math.ceil(diasLista.length / 10);
+  svg.append("g").attr("class", "axis").attr("transform", `translate(0,${hh - m.b})`).call(d3.axisBottom(x).tickValues(diasLista.filter((_, i) => i % cada === 0)).tickFormat(d => fmtDay(d).replace(/^\S+ /, "")).tickSize(0).tickPadding(6)).select(".domain").remove();
+  svg.append("g").selectAll("g").data(st).join("g").attr("fill", s => bomColor(s.key)).selectAll("rect").data(s => s).join("rect")
+    .attr("x", d => x(d.data.d)).attr("width", x.bandwidth()).attr("y", d => y(d[1])).attr("height", d => y(d[0]) - y(d[1]))
+    .append("title").text(function (d) { return `${fmtDay(d.data.d)} · ${bomCorto(this.parentNode.parentNode.__data__.key)}: ${d[1] - d[0]}`; });
+  $("#bomh-leg").innerHTML = BOM_T.map(([c]) => `<span><i style="background:${bomColor(c)}"></i>${esc(bomCorto(c))}</span>`).join("");
+  // distritos
+  const md = d3.rollup(med, v => v.length, m => m[3]);
+  const dist = d3.rollups(ps, v => v, r => r[I.distrito] || "Sin distrito").map(([k, v]) => ({k, v})).sort((a, b) => b.v.length - a.v.length).slice(0, 12);
+  const cnt = (v, c) => v.filter(r => r[I.categoria] === c).length || "";
+  $("#bomh-dist").innerHTML = dist.map(({k, v}) => `<tr><td>${esc(k)}</td><td class="num"><b>${v.length}</b></td><td class="num">${cnt(v, "Incendio")}</td><td class="num">${cnt(v, "Accidente Vehicular")}</td><td class="num">${cnt(v, "Rescate")}</td><td class="num">${cnt(v, "Materiales Peligrosos (Incidente)")}</td><td class="num muted">${md.get(k) || ""}</td></tr>`).join("")
+    || `<tr><td colspan="7" class="muted">Sin partes en el periodo.</td></tr>`;
+  const fila = (r, val) => `<tr class="clk" data-key="${esc(r[I.key])}" tabindex="0"><td><span class="tr" style="--c:${bomColor(r[I.categoria])}">${esc(bomCorto(r[I.categoria]))}</span><div class="muted" style="font-size:12px">${esc(r[I.detalle] || "")}</div></td><td>${esc(r[I.distrito] || "—")}<div class="muted" style="font-size:12px">${r[I.fecha] ? fmtDay(r[I.fecha]) : ""} ${esc(r[I.hora] || "")}</div></td><td class="num"><b>${val}</b></td></tr>`;
+  $("#bomh-dur").innerHTML = ps.filter(r => r[I.duracion_min] != null).sort((a, b) => b[I.duracion_min] - a[I.duracion_min]).slice(0, 8).map(r => fila(r, bomMin(r[I.duracion_min]))).join("")
+    || `<tr><td colspan="3" class="muted">Aún no hay partes con duración medida.</td></tr>`;
+  $("#bomh-esc").innerHTML = ps.filter(r => r[I.unidades_total]).sort((a, b) => b[I.unidades_total] - a[I.unidades_total]).slice(0, 8).map(r => fila(r, `${r[I.unidades_total]}${r[I.escalo] ? ' <span class="bom-up">↑</span>' : ""}`)).join("")
+    || `<tr><td colspan="3" class="muted">Sin datos de unidades.</td></tr>`;
+  const corto = h.registro_desde && h.registro_desde > h.desde_fecha;
+  $("#bomh-note").textContent = `${dias === 7 ? "Últimos 7 días" : "Últimos 30 días"}${R ? ` · ${regName(R)}` : ""}. `
+    + (corto ? `Esta Mesa registra los partes desde el ${fmtDay(h.registro_desde)}: los días anteriores no tienen datos (el CGBVP no publica historial). ` : "")
+    + `La duración va desde la llamada hasta que la Mesa vio el parte cerrado (se consulta cada 10 min: hasta 10 min de más); los que ya llegaron cerrados no se cuentan. "Sumaron unidades" son los partes a los que se les agregaron unidades después de que la Mesa los vio. Las médicas solo se cuentan. Clic en un parte para ver su ficha.`;
+}
+["#bomh-dur", "#bomh-esc"].forEach(id => $(id).addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "bomberos", kind: "parte", key: tr.dataset.key}); }));
+function renderBomberos() {
+  seg($("#bom-per"), [["24", "Últimas 24 horas"], ["7", "7 días"], ["30", "30 días"]], bomPer, v => { bomPer = v; renderBomberos(); });
+  $("#bom-24").hidden = bomPer !== "24"; $("#bom-hist").hidden = bomPer === "24";
+  if (bomPer !== "24") { renderBomHist().catch(e => { $("#bomh-note").textContent = `No se pudo cargar el historial: ${e.message}`; }); return; }
+  const bs = V.bomberos, M = V.bomberosMedicas || {}, n = c => bs.filter(b => b.categoria === c).length;
+  const act = bs.filter(b => b.estado === "Atendiendo").length;
+  $("#bom-cnt").innerHTML = [[act, "en atención ahora", "--ink"], ...BOM_T.filter(([c]) => n(c)).map(([c, v]) => [n(c), bomCorto(c).toLowerCase(), v])]
+    .map(([k, t, v]) => `<div><div class="big num" style="color:var(${v})">${k}</div><p>${esc(t)}</p></div>`).join("")
+    + `<div><div class="big num" style="color:var(--ink-3)">${M.total ?? 0}</div><p>emergencias médicas <span class="muted">(solo el número)</span></p></div>`;
+  seg($("#bom-f"), [["", `Todas (${bs.length})`], ["act", `En atención (${act})`], ...BOM_T.filter(([c]) => n(c)).map(([c]) => [c, `${bomCorto(c)} (${n(c)})`])], bomF, v => { bomF = v; renderBomberos(); });
+  filterBomberos();
+}
+function filterBomberos() {
+  const q = ($("#bq").value || "").toLowerCase();
+  const rows = V.bomberos.filter(b => (!bomF || (bomF === "act" ? b.estado === "Atendiendo" : b.categoria === bomF))
+    && (!q || [b.categoria, b.detalle, b.direccion, b.distrito, ...(b.unidades || [])].join(" ").toLowerCase().includes(q)));
+  $("#bom").innerHTML = rows.map(b => `<tr class="clk" data-key="${esc(b._key)}" tabindex="0">
+    <td class="num" style="white-space:nowrap">${esc(b.hora || "")}<div class="muted" style="font-size:12px">${b.fecha ? fmtDay(b.fecha) : ""}</div></td>
+    <td><span class="tr" style="--c:${bomColor(b.categoria)}">${esc(bomCorto(b.categoria))}</span><div class="muted" style="font-size:12px">${esc(b.detalle || "")}</div></td>
+    <td>${esc(b.direccion || "—")}<div class="muted" style="font-size:12px">${esc(b.distrito || "")}</div></td>
+    <td>${b.estado === "Atendiendo" ? "<b>En atención</b>" : esc(b.estado)}<div class="muted" style="font-size:12px">${bomDur(b)}</div></td>
+    <td class="muted" style="font-size:12px">${esc((b.unidades || []).join(", "))}${b.escalo ? ` <span class="bom-up" title="Unidades que se sumaron después de que la Mesa vio el parte">+${b.unidades_total - b.unidades_iniciales}</span>` : ""}</td></tr>`).join("")
+    || `<tr><td colspan="5" class="muted">${q || bomF ? "Ningún parte coincide." : state.region ? `Sin partes de bomberos en ${esc(regName(state.region))} en las últimas 24 horas. La página del CGBVP cubre Lima, Callao y parte de la costa sur.` : "Sin partes registrados."}</td></tr>`;
+  const M = V.bomberosMedicas || {};
+  $("#bom-note").textContent = `${rows.length} de ${V.bomberos.length} partes de las últimas 24 horas, sin contar ${M.total ?? 0} emergencias médicas, que se muestran solo como número porque su dirección suele ser la de una vivienda. La página del CGBVP cubre Lima, Callao y parte de la costa sur (Cañete, Chincha, Pisco, Ica), Huacho y algo de Ayacucho; no publica el resto del país. Clic en una fila para ver el parte.`;
+}
+$("#bq").addEventListener("input", () => D && filterBomberos());
+$("#bom").addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "bomberos", kind: "parte", key: tr.dataset.key}); });
+$("#bom").addEventListener("keydown", e => { const tr = e.target.closest("tr[data-key]"); if (tr && e.key === "Enter") openDetail({source: "bomberos", kind: "parte", key: tr.dataset.key}); });
 function renderVias() {
   const vs = V.vias, n = c => vs.filter(v => v.transito_cod === c).length;
   $("#vias-cnt").innerHTML = VIA_T.map(([c, t]) => `<div><div class="big num" style="color:${viaColor(c)}">${n(c)}</div><p>tránsito ${t.toLowerCase()}</p></div>`).join("");
@@ -762,7 +931,7 @@ $("#pq").addEventListener("input", () => D && filterPron());
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
   indeci: "INDECI", indeci_fotos: "INDECI fotos", igp: "IGP sismos", serfor: "SERFOR incendios", ingemmet: "INGEMMET", enfen: "ENFEN", firms: "NASA FIRMS",
   com_pnp: "PNP comunicados", com_provias: "PROVIAS notas", com_mtc: "MTC notas", com_mininter: "MININTER notas",
-  sidpol: "SIDPOL denuncias", provias: "PROVIAS vías"};
+  sidpol: "SIDPOL denuncias", provias: "PROVIAS vías", bomberos: "Bomberos"};
 const LAT = {rows: [], counts: {}, more: false, next: null, req: 0};
 function writeHash() {
   const p = [state.region && `r=${state.region}`, state.latSource && `f=${state.latSource}`].filter(Boolean).join("&");
@@ -1056,7 +1225,7 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderBomberos(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });
