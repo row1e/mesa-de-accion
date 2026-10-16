@@ -21,7 +21,7 @@ USER_AGENT = os.environ.get(
 # por ahí; el resto va directo. Vacío = todo directo.
 PROXY = os.environ.get("MESA_PROXY", "").strip()
 PROXY_HOSTS = tuple(h.strip().lower() for h in os.environ.get(
-    "MESA_PROXY_HOSTS", "senamhi.gob.pe,midis.gob.pe,proviasnac.gob.pe").split(",") if h.strip())
+    "MESA_PROXY_HOSTS", "senamhi.gob.pe,midis.gob.pe,proviasnac.gob.pe,ana.gob.pe").split(",") if h.strip())
 
 # Segundos entre ejecuciones por fuente (ver 04-live-service.md para la justificación).
 INTERVALS = {
@@ -39,6 +39,7 @@ INTERVALS = {
     "dhn_avisos": 30 * 60,      # avisos especiales de oleaje y viento (la DHN emite unos pocos por semana)
     "dhn_pronosticos": 6 * 3600, # mapas del modelo de olas: corre una vez al día (00Z)
     "olas_openmeteo": 3 * 3600,  # modelo global de olas, referencial
+    "ana_obras": 60 * 60,        # obras de prevención de la ANA (la ANA actualiza avances a diario)
     "bomberos": 10 * 60,      # página pública de las últimas 24 horas del CGBVP (lista 24 h: no se pierde nada; bloquea si se consulta seguido)
     "provias_fotos": 10 * 60, # cronología y fotos, hasta 40 emergencias por turno
     "com_pnp": 15 * 60, "com_provias": 15 * 60, "com_mtc": 15 * 60, "com_mininter": 15 * 60,   # gob.pe, una fuente por institución

@@ -39,7 +39,7 @@ let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = 
 // Denuncias policiales (SIDPOL): fuera del tablero por ahora, no es información de emergencias. Para volver a mostrarlas:
 // true aquí y quitar `hidden` de #sidpol-sec y de su enlace en la barra (index.html).
 const MOSTRAR_DENUNCIAS = false;
-const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "bom-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
+const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "obras-sec", "bom-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
 function makeView() {
@@ -59,6 +59,7 @@ function makeView() {
     indeci: D.indeci.filter(i => i.reg === R), sismos: D.sismos.filter(s => s[9] === R),
     focos: D.focos.filter(f => f[5] === R), alertas: D.alertas.filter(a => a.reg === R), zonas: D.zonas.filter(z => z.reg === R), vias: (D.vias || []).filter(v => v.reg === R),
     bomberos: (D.bomberos || []).filter(b => b.reg === R),
+    obras: (D.obras || []).filter(o => o.reg === R),
     mar: {...(D.mar || {}), avisos: (D.mar?.avisos || []).filter(a => (a.regs || []).includes(R)), puntos: (D.mar?.puntos || []).filter(p => p.reg === R)},
     bomberosMedicas: {...(D.bomberosMedicas || {}), total: D.bomberosMedicas?.por_reg?.[R] || 0, atendiendo: null},
     comunicados: (D.comunicados || []).filter(c => c.regs?.includes(R)), sidpol,
@@ -251,7 +252,7 @@ function initMap() {
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
   olaH: 0, marZona: null, marH: "24",
-  layers: { oleaje: true, viento: false, olas: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
+  layers: { obras: true, oleaje: true, viento: false, olas: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -287,6 +288,10 @@ function marProvs(tipo, dia = marDia()) {
     for (const [p, n] of Object.entries(a.provs_por_dia?.[dia] || {})) if (!out[p] || n > out[p].n) out[p] = {n, a};
   return out;
 }
+// Obras de prevención de la ANA: color por estado; las barreras contra huaicos, en estrella
+const OBRA_E = [["Vencida", "--n4"], ["En Ejecución", "--sismo"], ["Por Ejecutar", "--ink-3"], ["Concluida", "--ok"]];
+const obraColor = e => css((OBRA_E.find(([t]) => t === e) || [, "--ink-3"])[1]);
+const obraNombre = e => ({"En Ejecución": "en ejecución", "Por Ejecutar": "por ejecutar", Vencida: "vencida", Concluida: "concluida"})[e] || e;
 const layerDefs = [
   { id: "indeci", label: "Emergencias INDECI", sw: `<i class="sw sq" style="background:var(--indeci)"></i>`, n: () => new Set(V.indeci.filter(i => i.prov).map(i => i.prov)).size, unit: "prov." },
   { id: "alertas", label: "Incendios forestales (SERFOR)", sw: `<i class="sw" style="background:var(--fuego);outline:1px solid var(--ink)"></i>`, n: () => incendios().length },
@@ -296,6 +301,7 @@ const layerDefs = [
   { id: "sismos365", label: "Sismos · 12 meses", sw: `<i class="sw" style="border:1px solid var(--sismo);opacity:.6"></i>`, n: () => recentSismos(365).length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
   { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
+  { id: "obras", label: "Obras de prevención · ANA", sw: `<i class="sw" style="background:var(--sismo);border:1.5px solid var(--ink)"></i>`, n: () => (V.obras || []).length },
   { id: "oleaje", label: "Oleaje · avisos DHN", sw: `<i class="sw sq" style="background:repeating-linear-gradient(45deg,var(--n3) 0 2px,transparent 2px 4px)"></i>`, n: () => Object.keys(marProvs("oleaje")).filter(p => !state.region || p.startsWith(state.region)).length, unit: "prov." },
   { id: "viento", label: "Viento · avisos DHN", sw: `<i class="sw sq" style="background:repeating-linear-gradient(-45deg,var(--n2) 0 2px,transparent 2px 4px)"></i>`, n: () => Object.keys(marProvs("viento")).filter(p => !state.region || p.startsWith(state.region)).length, unit: "prov." },
   { id: "olas", label: "Altura de ola · Open-Meteo", sw: `<i class="sw" style="background:var(--hidro);opacity:.75"></i>`, n: () => (V.mar?.puntos || []).length, unit: "puntos" },
@@ -321,6 +327,7 @@ const incR = n => Math.min(18, 3 + Math.sqrt(n) * 1.15);
 function renderLayers() {
   $("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span></label>`).map((h, i) => layerDefs[i].id === "alertas"
     ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>`
+    : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
     : layerDefs[i].id === "oleaje" ? h + `<p class="lnote">Trama sobre las provincias costeras con aviso el día elegido: amarillo ligero, naranja moderado, rojo fuerte.</p>`
     : layerDefs[i].id === "olas" ? h + `<div class="lnote olah" id="ola-h">${OLA_V.map((t, k) => `<button type="button" data-h="${k}" aria-pressed="${state.olaH === k}">${k === 0 ? "0–24 h" : k === 1 ? "24–48 h" : "48–72 h"}</button>`).join("")}<span>Modelo global, referencial: no es la DHN.</span></div>` : h).join("");
   const oh = $("#ola-h"); if (oh) oh.onclick = e => { const b = e.target.closest("button"); if (!b) return; state.olaH = +b.dataset.h; renderLayers(); renderPoints(); renderMar(); };
@@ -498,7 +505,7 @@ const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Mon
   senamhi_hidro: "SENAMHI · Hidrología", senamhi_avisos: "SENAMHI · Avisos meteorológicos", indeci: "INDECI · COEN", firms: "NASA FIRMS",
   enfen: "ENFEN · Comisión Multisectorial", com_pnp: "PNP · Comunicados (gob.pe)", com_provias: "PROVIAS Nacional · Notas de prensa (gob.pe)",
   provias: "PROVIAS Nacional · Emergencias viales", bomberos: "CGBVP · Bomberos · Emergencias 24 horas", dhn_avisos: "DHN · Avisos especiales de oleaje y viento",
-  olas_openmeteo: "Open-Meteo Marine · modelo referencial", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
+  olas_openmeteo: "Open-Meteo Marine · modelo referencial", ana_obras: "ANA · Obras de prevención (puntos críticos 2026)", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
 const refId = r => r && `${r.source}|${r.kind}|${r.key}`;
 let detailReq = 0;
 function closeDetail() {
@@ -632,6 +639,14 @@ function renderPoints() {
     g.call(on, p => { const v = p.ventanas[k]; return `<b>${esc(p.nombre)} · ${v.ola_max_m} m</b><br>ola máxima ${OLA_V[k]} (a las ${v.hora_max.slice(11)} del ${v.hora_max.slice(8, 10)}/${v.hora_max.slice(5, 7)})<br>de ${v.direccion}° · período ${v.periodo_s} s${v.mar_de_fondo_max_m != null ? ` · mar de fondo ${v.mar_de_fondo_max_m} m` : ""}<br><span style="opacity:.7">Open-Meteo Marine · modelo referencial, no es la DHN</span>`; },
       p => ({source: "olas_openmeteo", kind: "punto", key: p._key}));
   }
+  if (L.obras) layer([...(V.obras || [])].sort((a, b) => (a.estado === "Por Ejecutar") - (b.estado === "Por Ejecutar")).reverse(), "path", o => [o.lon, o.lat])
+    .attr("d", d3.symbol().type(o => o.tipo === "barrera" ? d3.symbolStar : d3.symbolCircle).size(o => o.tipo === "barrera" ? 120 : o.nivel_peligro === "MUY ALTO" ? 46 : 30))
+    .attr("fill", o => o.estado === "Por Ejecutar" ? css("--surface") : obraColor(o.estado)).attr("stroke", o => o.estado === "Por Ejecutar" ? css("--ink-3") : css("--ink"))
+    .attr("stroke-width", o => o.estado === "Por Ejecutar" ? 1.3 : .8)
+    .call(on, o => `<b>${o.tipo === "barrera" ? "Barrera contra huaicos" : "Limpieza de cauce"} · ${esc(o.rio)}</b><br>${esc(o.sector)} — ${esc(title(o.dist))}`
+      + `<br>${obraNombre(o.estado)} · avance ${o.avance_km_pct ?? 0} %${o.tipo === "barrera" ? " de la barrera" : " del tramo"}${o.fin ? ` · fin ${fmtDM(o.fin)}` : ""}`
+      + `<br><span style="opacity:.7">peligro ${esc((o.nivel_peligro || "").toLowerCase())} · ${esc(o.responsable || "")}</span>` + tipWhen(o.fec_avance ? fmtDay(o.fec_avance) : "—", "último avance ANA"),
+      o => ({source: "ana_obras", kind: "obra", key: o._key}));
   // Encima de todo y sin capturar el mouse: orientan pero no tapan los clics sobre los puntos
   if (L.ciudades) {
     const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(CIUDADES).join("g").attr("class", d => `pt ciudad t${d[3]}`).each(function (d) { this.__ll = [d[1], d[2]]; });
@@ -668,6 +683,7 @@ function renderRail() {
       <dt>INDECI 24 h</dt><dd>${ind.length ? ind.map(i => `${esc(title(i.evento))} — ${esc(title(i.distrito))}`).join("<br>") : "—"}</dd>
       <dt>Incendios</dt><dd>${al.length ? d3.rollups(al, v => v.length, a => a.estado).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") : "—"}</dd>
       <dt>Zonas críticas</dt><dd>${zn.length || "—"}</dd>
+      <dt>Obras ANA</dt><dd>${(() => { const os = (V.obras || []).filter(o => o.prov === p.id); return os.length ? d3.rollups(os, v => v.length, o => o.estado).map(([e, k]) => `${k} ${obraNombre(e)}${k > 1 && e !== "En Ejecución" && e !== "Por Ejecutar" ? "s" : ""}`).join(", ") : "—"; })()}</dd>
       <dt>Mar (DHN)</dt><dd>${(() => { const r = ["oleaje", "viento"].map(t => [t, marProvs(t)[p.id]]).filter(([, v]) => v); return r.length ? r.map(([t, v]) => `${t} ${MAR_PAL[t][v.n]} <a href="#" data-mar="${esc(v.a._key)}">N° ${esc(v.a.numero)}</a>`).join(" · ") : "—"; })()}</dd>
       <dt>Vías (PROVIAS)</dt><dd>${(() => { const vs = V.vias.filter(v => v.prov === p.id); return vs.length ? `${vs.length}: ${[["03", "interrumpida"], ["02", "restringida"], ["04", "por confirmar"]].map(([c, t]) => [vs.filter(v => v.transito_cod === c).length, t]).filter(([n]) => n).map(([n, t]) => `${n} ${t}${n > 1 ? "s" : ""}`).join(", ")}` : "—"; })()}</dd>
       <dt>Daños ${D.danos?.dias || 7} días</dt><dd>${D.danos?.por_prov?.[p.id] ? `${danosChips(D.danos.por_prov[p.id].totales, 4)} <span class="muted">(${D.danos.por_prov[p.id].n_eventos} eventos)</span>` : "—"}</dd></dl>
@@ -851,6 +867,38 @@ function renderMar() {
 $("#mar-zona").addEventListener("change", e => { state.marZona = e.target.value; renderMar(); });
 ["#mar-vig", "#mar-prev"].forEach(id => $(id).addEventListener("click", e => { const b = e.target.closest("[data-mar]"); if (b) { e.preventDefault(); openDetail({source: "dhn_avisos", kind: "aviso_dhn", key: b.dataset.mar}); } }));
 $("#mar-om").addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "olas_openmeteo", kind: "punto", key: tr.dataset.key}); });
+// ── Obras de prevención (ANA) ────────────────────────────────────────────
+let obraF = "";
+function renderObras() {
+  const os = V.obras || [], n = f => os.filter(f).length, sol = v => `S/ ${nf.format(Math.round((v || 0) / 1e6))} millones`;
+  const sinRep = o => o.estado === "En Ejecución" && o.dias_sin_reporte != null && o.dias_sin_reporte >= 7;
+  $("#obras-cnt").innerHTML = [[n(o => o.estado === "En Ejecución"), "en ejecución", "--sismo"], [n(o => o.estado === "Vencida"), "con el plazo vencido", "--n4"],
+    [n(o => o.estado === "Por Ejecutar"), "por ejecutar", "--ink-3"], [n(o => o.estado === "Concluida"), "concluidas", "--ok"],
+    [n(sinRep), "en ejecución sin reportar avance hace 7 días o más", "--n3"], [n(o => o.tipo === "barrera"), "barreras contra huaicos", "--ink"],
+    [sol(d3.sum(os, o => o.costo)), "de presupuesto", "--ink"]]
+    .map(([k, t, v]) => `<div><div class="big num" style="color:var(${v})">${typeof k === "number" ? nf.format(k) : k}</div><p>${esc(t)}</p></div>`).join("");
+  const filtros = [["", `Todas (${os.length})`], ["En Ejecución", `En ejecución (${n(o => o.estado === "En Ejecución")})`], ["Vencida", `Vencidas (${n(o => o.estado === "Vencida")})`],
+    ["sinrep", `Sin reporte ≥ 7 días (${n(sinRep)})`], ["Por Ejecutar", `Por ejecutar (${n(o => o.estado === "Por Ejecutar")})`], ["Concluida", `Concluidas (${n(o => o.estado === "Concluida")})`],
+    ["barrera", `Barreras (${n(o => o.tipo === "barrera")})`]];
+  seg($("#obras-f"), filtros, obraF, v => { obraF = v; renderObras(); });
+  const q = ($("#oq").value || "").toLowerCase();
+  const orden = {Vencida: 0, "En Ejecución": 1, "Por Ejecutar": 2, Concluida: 3};
+  const rows = os.filter(o => (!obraF || (obraF === "sinrep" ? sinRep(o) : obraF === "barrera" ? o.tipo === "barrera" : o.estado === obraF))
+      && (!q || [o.rio, o.sector, o.dist, o.responsable, provName(o.prov)].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => (orden[a.estado] ?? 9) - (orden[b.estado] ?? 9) || (a.dias_para_fin ?? 9e9) - (b.dias_para_fin ?? 9e9));
+  const barra = v => `<span class="obar"><i style="width:${Math.min(100, v || 0)}%"></i></span>`;
+  $("#obras").innerHTML = rows.slice(0, 300).map(o => `<tr class="clk" data-key="${esc(o._key)}" tabindex="0">
+    <td><b>${esc(o.rio)}</b> · ${esc(o.sector)}${o.tipo === "barrera" ? ' <span class="muted">· barrera ★</span>' : ""}<div class="muted" style="font-size:12px">${esc(title(o.dist))}, ${esc(provName(o.prov) || "")} · peligro ${esc((o.nivel_peligro || "").toLowerCase())}</div></td>
+    <td><span class="tr" style="--c:${obraColor(o.estado)}">${obraNombre(o.estado)}</span></td>
+    <td class="num" style="white-space:nowrap">${barra(o.avance_km_pct)} ${o.avance_km_pct ?? 0} %${o.avance_7d ? `<div class="muted" style="font-size:12px">+${o.avance_7d} en 7 días</div>` : ""}</td>
+    <td class="num" style="white-space:nowrap">${o.fin ? fmtDay(o.fin) : "—"}${o.dias_para_fin != null && o.estado !== "Concluida" ? `<div class="muted" style="font-size:12px${o.dias_para_fin < 0 ? ";color:var(--n4)" : ""}">${o.dias_para_fin < 0 ? `vencida hace ${-o.dias_para_fin} d` : `faltan ${o.dias_para_fin} d`}</div>` : ""}</td>
+    <td class="num" style="white-space:nowrap">${o.fec_avance ? fmtDay(o.fec_avance) : "—"}${o.dias_sin_reporte != null ? `<div class="muted" style="font-size:12px${sinRep(o) ? ";color:var(--n3)" : ""}">hace ${o.dias_sin_reporte} d</div>` : ""}</td>
+    <td class="muted" style="font-size:12px">${esc(o.responsable || "")}</td></tr>`).join("")
+    || `<tr><td colspan="6" class="muted">${q || obraF ? "Ninguna obra coincide." : state.region ? `La ANA no tiene obras priorizadas en ${esc(regName(state.region))}.` : "Sin datos."}</td></tr>`;
+  $("#obras-note").textContent = `${Math.min(rows.length, 300)} de ${rows.length} obras${rows.length > 300 ? " (afine con el filtro o la búsqueda)" : ""}. El avance es el físico del tramo (km) o de la barrera instalada (m²). "Vencida": pasó su fecha de fin sin llegar al 100 % (solo para las obras con fecha de fin publicada). "+X en 7 días": lo que avanzó desde hace una semana, según los reportes que la Mesa va guardando desde su activación. Clic en una obra para ver su ficha técnica y sus fotos.`;
+}
+$("#oq").addEventListener("input", () => D && renderObras());
+$("#obras").addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "ana_obras", kind: "obra", key: tr.dataset.key}); });
 let bomF = "", bomPer = "24";
 const bomMin = m => m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
 const bomT0 = b => Date.parse(`${b.fecha}T${b.hora}:00-05:00`);
@@ -1021,7 +1069,7 @@ $("#pq").addEventListener("input", () => D && filterPron());
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
   indeci: "INDECI", indeci_fotos: "INDECI fotos", igp: "IGP sismos", serfor: "SERFOR incendios", ingemmet: "INGEMMET", enfen: "ENFEN", firms: "NASA FIRMS",
   com_pnp: "PNP comunicados", com_provias: "PROVIAS notas", com_mtc: "MTC notas", com_mininter: "MININTER notas",
-  sidpol: "SIDPOL denuncias", provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas"};
+  sidpol: "SIDPOL denuncias", provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras"};
 const LAT = {rows: [], counts: {}, more: false, next: null, req: 0};
 function writeHash() {
   const p = [state.region && `r=${state.region}`, state.latSource && `f=${state.latSource}`].filter(Boolean).join("&");
@@ -1315,7 +1363,7 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderBomberos(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderBomberos(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });

@@ -183,10 +183,11 @@ def dossier_briefing(lugar=None):
         "vias_provias": _vias(),
         "bomberos_24h": _bomberos(),
         "mar_dhn": _mar(),
+        "obras_prevencion_ana": _obras_ana(),
     }
     salud = {h["id"]: h for h in snapshot.health()}   # build() no incluye la salud; la API la agrega aparte
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
-             "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen", "provias", "bomberos", "dhn_avisos") if s in SOURCES]
+             "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen", "provias", "bomberos", "dhn_avisos", "ana_obras") if s in SOURCES]
     return dossier, cita, f"Briefing {now.strftime('%d/%m %H:%M')}"
 
 
@@ -242,10 +243,11 @@ def _dossier_briefing_lugar(code):
                               eventos=False, restringidas=True, limite=12),
         "bomberos_24h": _bomberos(lambda p: p.get("prov") in sc["provs"] or (not p.get("prov") and sc["tipo"] == "departamental" and p.get("reg") == code)),
         "mar_dhn": _mar(set(sc["provs"])),
+        "obras_prevencion_ana": _obras_ana(set(sc["provs"])),
         "enfen_nacional": {k: F["enfen"].get(k) for k in ("numero", "estado", "fecha") if F["enfen"].get(k)},
     }
     salud = {h["id"]: h for h in snapshot.health()}
-    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias", "bomberos", "dhn_avisos")
+    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias", "bomberos", "dhn_avisos", "ana_obras")
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
              "url": None} for s in fuentes if s in SOURCES]
     return dossier, cita, f"Briefing {nombre} {now.strftime('%d/%m %H:%M')}"
@@ -367,6 +369,23 @@ def _llamar(tipo, dossier, correccion=None):
         raise IAError("El modelo no devolvió una redacción completa. Intente de nuevo.", 502)
     uso = {"modelo": r.model, "entrada": r.usage.input_tokens, "salida": r.usage.output_tokens}
     return r.parsed_output, uso
+
+
+def _obras_ana(provs=None, limite=8):
+    """Obras de prevención de la ANA (limpieza de cauces y barreras contra huaicos): conteo por estado y las que más
+    importan para la nota: vencidas, luego las de peligro muy alto en ejecución."""
+    os_ = [o for o in db.get_items("ana_obras", "obra") if provs is None or o.get("prov") in provs]
+    if not os_:
+        return {"aplica": False, "nota": "La ANA no tiene obras de prevención priorizadas en este lugar."}
+    orden = {"Vencida": 0, "En Ejecución": 1, "Por Ejecutar": 2, "Concluida": 3}
+    top = sorted(os_, key=lambda o: (orden.get(o.get("estado"), 9), o.get("nivel_peligro") != "MUY ALTO", -(o.get("poblacion") or 0)))
+    return {"fuente": "ANA, puntos críticos priorizados 2026 y barreras dinámicas", "total": len(os_),
+            "por_estado": dict(collections.Counter(o.get("estado") for o in os_)),
+            "presupuesto_soles": round(sum(o.get("costo") or 0 for o in os_)),
+            "principales": [{"tipo": "barrera contra huaicos" if o["tipo"] == "barrera" else "limpieza y descolmatación de cauce", "rio_o_quebrada": o.get("rio"),
+                             "sector": o.get("sector"), "distrito": o.get("dist"), "estado": o.get("estado"),
+                             "avance_fisico_pct": o.get("avance_km_pct"), "fin_programado": o.get("fin"), "ultimo_avance": o.get("fec_avance"),
+                             "peligro": o.get("nivel_peligro"), "responsable": o.get("responsable")} for o in top[:limite]]}
 
 
 def _mar(provs=None):

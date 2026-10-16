@@ -137,6 +137,8 @@ tr:last-child td{border-bottom:0}
 .layers label .muted{font-size:12px}
 .layers input{accent-color:var(--ink)}
 .bom-per{margin:4px 0 14px}
+.obar{display:inline-block;width:44px;height:6px;background:var(--line);border-radius:3px;vertical-align:middle;overflow:hidden}
+.obar i{display:block;height:100%;background:var(--sismo)}
 .mar-av{margin-bottom:16px}
 .mar-h{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px}
 .mar-h h3{margin:2px 0}
@@ -600,6 +602,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#senamhi">SENAMHI</a>
     <a href="#vias-sec">Vías (PROVIAS)</a>
     <a href="#mar-sec">Mar (DHN)</a>
+    <a href="#obras-sec">Obras (ANA)</a>
     <a href="#bom-sec">Bomberos (CGBVP)</a>
     <a href="#ciud-sec">Nuestros corresponsales</a>
     <a href="#com-sec">Comunicados</a>
@@ -718,6 +721,18 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
         <div class="scroll"><table><thead><tr><th>Punto</th><th class="num">Próx. 24 h</th><th class="num">24–48 h</th><th class="num">48–72 h</th></tr></thead><tbody id="mar-om"></tbody></table></div></div>
     </div>
     <div class="panel" style="margin-top:22px"><h3>Avisos de los últimos 30 días</h3><ul class="alist" id="mar-prev"></ul></div>
+  </section>
+  <section id="obras-sec">
+    <div class="sec-head"><div><p class="eyebrow">ANA · Autoridad Nacional del Agua</p><h2>Obras de prevención: ríos, quebradas y huaicos</h2></div><span class="src">snirhgeo.ana.gob.pe · puntos críticos priorizados 2026</span></div>
+    <p class="srcline" data-srcline="ana_obras"></p>
+    <p class="lede">Limpieza, descolmatación y bordos en ríos y quebradas, y barreras dinámicas contra huaicos, financiadas por decreto de urgencia ante El Niño. Avance, plazo, presupuesto y responsable de cada obra, según la ANA.</p>
+    <div class="thesis vias-cnt" id="obras-cnt"></div>
+    <div class="panel" style="margin-top:16px">
+      <div class="filters" id="obras-f"></div>
+      <input type="search" id="oq" placeholder="Filtrar por río, sector, distrito, provincia o responsable">
+      <div class="scroll"><table><thead><tr><th>Obra</th><th>Estado</th><th class="num">Avance</th><th class="num">Fin programado</th><th class="num">Último avance</th><th>Responsable</th></tr></thead><tbody id="obras"></tbody></table></div>
+      <p class="note" id="obras-note"></p>
+    </div>
   </section>
   <section id="bom-sec">
     <div class="sec-head"><div><p class="eyebrow">CGBVP · Cuerpo General de Bomberos Voluntarios del Perú</p><h2>Emergencias atendidas por bomberos</h2></div><span class="src">sgonorte.bomberosperu.gob.pe/24horas</span></div>
