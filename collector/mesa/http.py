@@ -38,10 +38,14 @@ def _ssl_context():
 SSL_CONTEXT = _ssl_context()
 
 
-def _por_rele(url):
-    """Dominio que sale por el relé peruano (config.PROXY_HOSTS, incluye subdominios)."""
+def _bloqueado(url):
+    """Dominio que no responde a IPs de nubes (config.PROXY_HOSTS, incluye subdominios)."""
     host = (urllib.parse.urlsplit(url).hostname or "").lower()
-    return bool(config.PROXY) and any(host == h or host.endswith("." + h) for h in config.PROXY_HOSTS)
+    return any(host == h or host.endswith("." + h) for h in config.PROXY_HOSTS)
+
+
+def _por_rele(url):
+    return bool(config.PROXY) and _bloqueado(url)
 
 
 _DIRECTO = urllib.request.build_opener(urllib.request.HTTPSHandler(context=SSL_CONTEXT))
@@ -50,7 +54,18 @@ _RELE = urllib.request.build_opener(urllib.request.ProxyHandler({"http": config.
 
 
 def abrir(req, timeout):
-    """urlopen que manda por el relé los dominios bloqueados para nubes. HTTPS va cifrado de punta a punta (CONNECT)."""
+    """urlopen para los dominios bloqueados para nubes: primero una Mesa del relé web conectada (servidor con
+    MESA_RELE_HUB), si no el relé SSH (MESA_PROXY; HTTPS cifrado de punta a punta con CONNECT), si no directo."""
+    if config.RELE_HUB and _bloqueado(req.full_url):
+        from . import rele_hub
+        if rele_hub.disponible():
+            try:
+                return rele_hub.abrir(req, timeout)
+            except urllib.error.HTTPError:
+                raise
+            except urllib.error.URLError:
+                if not config.PROXY:
+                    raise            # sin relé SSH de respaldo, el error del relé web es el que vale
     return (_RELE if _por_rele(req.full_url) else _DIRECTO).open(req, timeout=timeout)
 
 

@@ -7,6 +7,9 @@
 #ifndef AppVer
   #define AppVer "0.0.0"
 #endif
+#ifndef RELE
+  #define RELE "https://mesa.ondaai.com"
+#endif
 
 [Setup]
 AppId={{6E3C2B1A-4F7D-4C1E-9B8A-2D5F0A7C3E91}
@@ -99,11 +102,13 @@ begin
       S.LoadFromFile(F);
     { Se quitan los comentarios y se reescribe uno sin tildes: Inno guarda el archivo en ANSI y la Mesa lo lee como UTF-8 }
     for i := S.Count - 1 downto 0 do
-      if (Pos('#', Trim(S[i])) = 1) or (Pos('MESA_MARCA=', S[i]) = 1) or ((Clave <> '') and (Pos('ANTHROPIC_API_KEY=', S[i]) = 1))
+      if (Pos('#', Trim(S[i])) = 1) or (Pos('MESA_MARCA=', S[i]) = 1) or (Pos('MESA_RELE_SERVIDOR=', S[i]) = 1) or ((Clave <> '') and (Pos('ANTHROPIC_API_KEY=', S[i]) = 1))
          or ((Licencia <> '') and (Pos('MESA_LICENCIA=', S[i]) = 1)) then
         S.Delete(i);
     S.Insert(0, '# Configuracion de Mesa de Accion. Una linea CLAVE=valor por ajuste; se aplica al reiniciar la Mesa.');
     S.Add('MESA_MARCA=irtp');
+    { Relé web: esta Mesa hace, desde su conexión en el Perú, las consultas que la versión en línea no puede }
+    S.Add('MESA_RELE_SERVIDOR={#RELE}');
     if Clave <> '' then
       S.Add('ANTHROPIC_API_KEY=' + Clave);
     if Licencia <> '' then

@@ -188,6 +188,47 @@ def get_bomberos_historial(dias: int = Query(7, ge=1, le=90)):
     return bomberos.historial(dias)
 
 
+# ── Relé web (ver rele_hub.py): las Mesas instaladas en el Perú hacen las consultas que el servidor no puede ─────
+def _cliente_rele(request):
+    from . import rele_hub
+    if not rele_hub.activo():
+        raise HTTPException(404, "este servidor no tiene el relé web activo")
+    auth = request.headers.get("authorization", "")
+    cliente = rele_hub.cliente_de(auth[len("Licencia "):]) if auth.startswith("Licencia ") else None
+    if not cliente:
+        raise HTTPException(401, "licencia inválida o vencida")
+    return cliente
+
+
+@app.post("/api/relay/poll", include_in_schema=False)
+def relay_poll(request: Request):
+    from . import rele_hub
+    t = rele_hub.tomar(_cliente_rele(request))
+    return t if t else Response(status_code=204)
+
+
+class RelayResultado(BaseModel):
+    id: int
+    status: int | None = None
+    headers: dict | None = None
+    body_b64: str | None = None
+    error: str | None = None
+
+
+@app.post("/api/relay/result", include_in_schema=False)
+def relay_result(request: Request, b: RelayResultado):
+    from . import rele_hub
+    ok = rele_hub.entregar(_cliente_rele(request), b.id, b.status, b.headers, b.body_b64, b.error)
+    return {"ok": ok}
+
+
+@app.get("/api/relay/estado")
+def relay_estado():
+    """En el servidor: las Mesas conectadas al relé web. En una Mesa instalada: si está atendiendo al servidor."""
+    from . import rele_cliente, rele_hub
+    return rele_hub.estado() if rele_hub.activo() else rele_cliente.estado()
+
+
 @app.get("/api/sat")
 def get_sat(lat: float, lon: float, date: str, km: float = Query(25, ge=2, le=300), layer: str = "auto", fires: bool = True):
     """Vista satelital NASA GIBS centrada en un punto (mejor imagen disponible, cacheada)."""

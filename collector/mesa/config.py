@@ -46,6 +46,10 @@ USER_AGENT = os.environ.get(
 # Con MESA_PROXY (p. ej. http://127.0.0.1:8888, un túnel a rele.py en una PC en Perú) solo esos dominios salen
 # por ahí; el resto va directo. Vacío = todo directo.
 PROXY = os.environ.get("MESA_PROXY", "").strip()
+# Relé web: en el servidor (MESA_RELE_HUB=1) las Mesas instaladas en el Perú le hacen esas consultas; en cada Mesa
+# instalada, MESA_RELE_SERVIDOR es la dirección de ese servidor (ver rele_hub.py y rele_cliente.py).
+RELE_HUB = os.environ.get("MESA_RELE_HUB", "") == "1"
+RELE_SERVIDOR = os.environ.get("MESA_RELE_SERVIDOR", "").strip()
 PROXY_HOSTS = tuple(h.strip().lower() for h in os.environ.get(
     "MESA_PROXY_HOSTS", "senamhi.gob.pe,midis.gob.pe,proviasnac.gob.pe,ana.gob.pe").split(",") if h.strip())
 

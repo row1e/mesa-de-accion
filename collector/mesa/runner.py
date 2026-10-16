@@ -77,6 +77,8 @@ def start():
         scheduler.add_job(run_source, IntervalTrigger(seconds=interval), args=(source,), id=source,
                           next_run_time=__import__("datetime").datetime.fromtimestamp(first), replace_existing=True)
     scheduler.start()
+    from . import rele_cliente
+    rele_cliente.start()       # Mesa instalada con MESA_RELE_SERVIDOR: atiende las consultas que le encarga el servidor
 
 
 def next_runs():
