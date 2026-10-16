@@ -1,6 +1,6 @@
 """Relé peruano: deja que una Mesa en la nube consulte SENAMHI, MIDIS y PROVIAS por la conexión de esta computadora.
 
-Esos sitios no responden a IPs de nubes (AWS, aunque esté en Lima). Este relé corre en una PC con internet peruano,
+Esos sitios (y la ANA) no responden a IPs de nubes (AWS, aunque esté en Lima). Este relé corre en una PC con internet peruano,
 escucha solo en 127.0.0.1 y acepta únicamente túneles HTTPS (CONNECT) al puerto 443 de los dominios permitidos: no
 ve el contenido (va cifrado de punta a punta) ni sirve de proxy para otra cosa. El servidor llega a él por SSH:
 
@@ -14,7 +14,7 @@ import argparse
 import asyncio
 import time
 
-DOMINIOS = ("senamhi.gob.pe", "midis.gob.pe", "proviasnac.gob.pe")
+DOMINIOS = ("senamhi.gob.pe", "midis.gob.pe", "proviasnac.gob.pe", "ana.gob.pe")
 
 
 def permitido(host, dominios):

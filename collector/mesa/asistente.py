@@ -182,10 +182,12 @@ def dossier_briefing(lugar=None):
         "enfen": {k: enfen.get(k) for k in ("titulo", "estado", "fecha") if enfen.get(k)},
         "vias_provias": _vias(),
         "bomberos_24h": _bomberos(),
+        "mar_dhn": _mar(),
+        "obras_prevencion_ana": _obras_ana(),
     }
     salud = {h["id"]: h for h in snapshot.health()}   # build() no incluye la salud; la API la agrega aparte
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
-             "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen", "provias", "bomberos") if s in SOURCES]
+             "url": None} for s in ("senamhi_avisos", "indeci", "igp", "serfor", "enfen", "provias", "bomberos", "dhn_avisos", "ana_obras") if s in SOURCES]
     return dossier, cita, f"Briefing {now.strftime('%d/%m %H:%M')}"
 
 
@@ -240,10 +242,12 @@ def _dossier_briefing_lugar(code):
         "vias_provias": _vias(lambda v: v.get("prov") in sc["provs"] or (not v.get("prov") and sc["tipo"] == "departamental" and v.get("reg") == code),
                               eventos=False, restringidas=True, limite=12),
         "bomberos_24h": _bomberos(lambda p: p.get("prov") in sc["provs"] or (not p.get("prov") and sc["tipo"] == "departamental" and p.get("reg") == code)),
+        "mar_dhn": _mar(set(sc["provs"])),
+        "obras_prevencion_ana": _obras_ana(set(sc["provs"])),
         "enfen_nacional": {k: F["enfen"].get(k) for k in ("numero", "estado", "fecha") if F["enfen"].get(k)},
     }
     salud = {h["id"]: h for h in snapshot.health()}
-    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias", "bomberos")
+    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias", "bomberos", "dhn_avisos", "ana_obras")
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
              "url": None} for s in fuentes if s in SOURCES]
     return dossier, cita, f"Briefing {nombre} {now.strftime('%d/%m %H:%M')}"
@@ -365,6 +369,53 @@ def _llamar(tipo, dossier, correccion=None):
         raise IAError("El modelo no devolvió una redacción completa. Intente de nuevo.", 502)
     uso = {"modelo": r.model, "entrada": r.usage.input_tokens, "salida": r.usage.output_tokens}
     return r.parsed_output, uso
+
+
+def _obras_ana(provs=None, limite=8):
+    """Obras de prevención de la ANA (limpieza de cauces y barreras contra huaicos): conteo por estado y las que más
+    importan para la nota: vencidas, luego las de peligro muy alto en ejecución."""
+    os_ = [o for o in db.get_items("ana_obras", "obra") if provs is None or o.get("prov") in provs]
+    if not os_:
+        return {"aplica": False, "nota": "La ANA no tiene obras de prevención priorizadas en este lugar."}
+    orden = {"Vencida": 0, "En Ejecución": 1, "Por Ejecutar": 2, "Concluida": 3}
+    top = sorted(os_, key=lambda o: (orden.get(o.get("estado"), 9), o.get("nivel_peligro") != "MUY ALTO", -(o.get("poblacion") or 0)))
+    return {"fuente": "ANA, puntos críticos priorizados 2026 y barreras dinámicas", "total": len(os_),
+            "por_estado": dict(collections.Counter(o.get("estado") for o in os_)),
+            "presupuesto_soles": round(sum(o.get("costo") or 0 for o in os_)),
+            "principales": [{"tipo": "barrera contra huaicos" if o["tipo"] == "barrera" else "limpieza y descolmatación de cauce", "rio_o_quebrada": o.get("rio"),
+                             "sector": o.get("sector"), "distrito": o.get("dist"), "estado": o.get("estado"),
+                             "avance_fisico_pct": o.get("avance_km_pct"), "fin_programado": o.get("fin"), "ultimo_avance": o.get("fec_avance"),
+                             "peligro": o.get("nivel_peligro"), "responsable": o.get("responsable")} for o in top[:limite]]}
+
+
+def _mar(provs=None):
+    """Avisos de oleaje y viento de la DHN vigentes (de las provincias dadas, si las hay) y, aparte y rotulada como
+    referencial, la altura de ola del modelo Open-Meteo en los puntos de esa costa."""
+    from .sources.dhn import COSTA, ZONA_NOMBRE
+    palabras = {"oleaje": {2: "ligero", 3: "moderado", 4: "fuerte"}, "viento": {2: "brisa fresca", 3: "brisa fuerte", 4: "viento fuerte"}}
+    hoy = datetime.datetime.now(LIMA).date().isoformat()
+    avisos = []
+    for a in db.get_items("dhn_avisos", "aviso_dhn", current_only=False):
+        if not (a.get("inicio") and a.get("fin") and a["inicio"] <= (datetime.date.fromisoformat(hoy) + datetime.timedelta(days=2)).isoformat() and a["fin"] >= hoy):
+            continue
+        dias = {d: {p: n for p, n in pp.items() if provs is None or p in provs} for d, pp in (a.get("provs_por_dia") or {}).items()}
+        if provs is not None and not any(dias.values()):
+            continue
+        r = {"tipo": a["tipo"], "numero": a["numero"], "vigencia": a.get("validez")}
+        if a["tipo"] == "oleaje":
+            r["por_tramo"] = {ZONA_NOMBRE[z]: {"intensidad_por_dia": {d: palabras["oleaje"][n] for d, n in sorted(v["por_dia"].items())}, "texto": v["texto"]}
+                              for z, v in (a.get("zonas") or {}).items() if v.get("por_dia") and (provs is None or provs & set(COSTA[z]))}
+        else:
+            r |= {"intensidad": palabras["viento"].get(a.get("nivel")), "nudos": a.get("nudos"),
+                  "texto": re.split(r"Se recomienda", a.get("texto") or "")[0].strip()}
+        avisos.append(r)
+    puntos = [p for p in db.get_items("olas_openmeteo", "punto") if provs is None or p.get("prov") in provs]
+    modelo = [{"lugar": p["nombre"], **{k: (v or {}).get("ola_max_m") for k, v in zip(("ola_max_m_0_24h", "ola_max_m_24_48h", "ola_max_m_48_72h"), p.get("ventanas") or [])}}
+              for p in puntos]
+    if provs is not None and not avisos and not puntos:
+        return {"aplica": False, "nota": "El lugar no tiene costa."}
+    return {"avisos_especiales_dhn": avisos or "Sin avisos especiales de oleaje ni de viento vigentes.",
+            "altura_de_ola_modelo_referencial": {"fuente": "Open-Meteo Marine (modelo global, no es dato oficial de la DHN)", "puntos": modelo}}
 
 
 def _bomberos(filtro=lambda p: True, limite=10):

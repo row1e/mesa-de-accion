@@ -11,6 +11,9 @@ from . import asistente, config, db, detail, ficha, geo, latest, licencia, runne
 from .sources import SOURCES, midis
 
 app = FastAPI(title="Mesa de Acción · Colector", version="0.1")
+# El snapshot pasa de 3 MB en JSON; comprimido baja a una fracción (detrás de Caddy, este ya no recomprime)
+from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
+app.add_middleware(GZipMiddleware, minimum_size=2000)
 
 
 # Licencia (solo en la app instalada): vencida o ausente, el tablero muestra la página de licencia y la API no

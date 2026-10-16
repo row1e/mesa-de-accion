@@ -71,7 +71,8 @@ h3{margin:0 0 10px;font-size:17px;font-weight:700;font-variation-settings:"wdth"
 /* thesis strip */
 .thesis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));background:var(--surface);border:1px solid var(--line);margin-top:28px;overflow:hidden}
 .thesis>div,.thesis>a{background:var(--surface);padding:16px 18px;box-shadow:1px 0 0 var(--line),0 1px 0 var(--line)}
-@media (min-width:1000px){#thesis{grid-template-columns:repeat(7,1fr)}#thesis>a{padding:14px 14px}}
+@media (min-width:1000px){#thesis{grid-template-columns:repeat(4,1fr)}}
+@media (min-width:1280px){#thesis{grid-template-columns:repeat(8,1fr)}#thesis>a{padding:14px 12px}}
 #thesis .big{font-size:30px}
 .thesis>a{color:inherit;text-decoration:none;display:block}
 .thesis>a:hover{background:var(--ground)}
@@ -130,12 +131,33 @@ tr:last-child td{border-bottom:0}
 .seg button:last-child{border-right:0}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
 .seg button:hover:not([aria-pressed="true"]){background:var(--surface-2)}
+.layers-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.layers-all{display:flex;gap:4px}
+.layers-all button{font:inherit;font-size:11.5px;padding:2px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:3px;cursor:pointer}
+.layers-all button:hover{border-color:var(--ink);color:var(--ink)}
 .ctl-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:650}
 .layers{display:grid;grid-template-columns:1fr;gap:5px}
 .layers label{display:grid;grid-template-columns:auto 14px 1fr auto;gap:8px;align-items:center;font-size:13px;cursor:pointer;user-select:none}
 .layers label .muted{font-size:12px}
 .layers input{accent-color:var(--ink)}
 .bom-per{margin:4px 0 14px}
+.obar{display:inline-block;width:44px;height:6px;background:var(--line);border-radius:3px;vertical-align:middle;overflow:hidden}
+.obar i{display:block;height:100%;background:var(--sismo)}
+.mar-av{margin-bottom:16px}
+.mar-h{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px}
+.mar-h h3{margin:2px 0}
+.mar-h p{margin:0}
+.mar-t td,.mar-t th{vertical-align:top}
+.mar-ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.mar-ctl select{font:inherit;padding:6px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:4px}
+.mar-img img{display:block;width:100%;height:auto;border:1px solid var(--line);background:#fff}
+.olabar{display:inline-block;width:calc(var(--w) * .4);max-width:40px;height:6px;background:var(--hidro);opacity:.7;margin-right:6px;vertical-align:middle;border-radius:2px}
+.layers .olah{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.layers .olah button{font:inherit;font-size:11.5px;padding:2px 7px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:3px;cursor:pointer}
+.layers .olah button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.layers .olah span{flex-basis:100%}
+#map .olatxt{font:600 10px/1 var(--f-body,inherit);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;pointer-events:none}
+#map .mar .out{opacity:.25}
 .bom-up{color:var(--n3);font-weight:700;font-size:12px}
 .layers .lnote{margin:-2px 0 3px 36px;font-size:11.5px;line-height:1.35;color:var(--ink-3)}
 .sw{width:10px;height:10px;display:inline-block;border-radius:50%}
@@ -586,6 +608,8 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#enfen-sec">El Niño</a>
     <a href="#senamhi">SENAMHI</a>
     <a href="#vias-sec">Vías (PROVIAS)</a>
+    <a href="#mar-sec">Mar (DHN)</a>
+    <a href="#obras-sec">Obras (ANA)</a>
     <a href="#bom-sec">Bomberos (CGBVP)</a>
     <a href="#ciud-sec">Nuestros corresponsales</a>
     <a href="#com-sec">Comunicados</a>
@@ -622,7 +646,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
         <div class="controls">
           <div><span class="ctl-label">Capa base</span><div class="seg" id="mode"></div></div>
           <div><span class="ctl-label">Día</span><div class="pills" id="days"></div></div>
-          <div><span class="ctl-label">Capas</span><div class="layers" id="layers"></div></div>
+          <div><div class="layers-head"><span class="ctl-label">Capas</span><span class="layers-all" role="group" aria-label="Todas las capas"><button type="button" data-all="1">Todas</button><button type="button" data-all="0">Ninguna</button></span></div><div class="layers" id="layers"></div></div>
           <div class="legend" id="legend"></div>
         </div>
         <div class="rail" id="rail"></div>
@@ -689,6 +713,32 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
       <input type="search" id="vq" placeholder="Filtrar por ruta, tramo, sector, tipo o provincia">
       <div class="scroll"><table><thead><tr><th>Tránsito</th><th>Tipo de emergencia</th><th>Ruta · tramo · sector</th><th>Lugar</th><th class="num">Desde</th></tr></thead><tbody id="vias"></tbody></table></div>
       <p class="note" id="vias-note"></p>
+    </div>
+  </section>
+  <section id="mar-sec">
+    <div class="sec-head"><div><p class="eyebrow">DHN · Dirección de Hidrografía y Navegación (Marina de Guerra)</p><h2>Mar: oleaje y viento</h2></div><span class="src">dhn.mil.pe · avisos especiales y pronóstico de olas</span></div>
+    <p class="srcline" data-srcline="dhn_avisos"></p>
+    <div id="mar-vig"></div>
+    <div class="grid2" style="margin-top:22px">
+      <div class="panel"><h3>Pronóstico de olas de la DHN</h3><p class="srcline" data-srcline="dhn_pronosticos"></p>
+        <div class="mar-ctl"><select id="mar-zona" aria-label="Zona o bahía"></select><div class="filters" id="mar-h"></div></div>
+        <div class="mar-img" id="mar-img"></div><p class="note" id="mar-cap"></p></div>
+      <div class="panel"><h3>Altura de ola en la costa · modelo de referencia</h3><p class="srcline" data-srcline="olas_openmeteo"></p>
+        <p class="note" style="margin-top:0">Open-Meteo Marine, modelo global gratuito. <b>No es un pronóstico oficial</b>: para avisos, vale la DHN. Ola máxima esperada en cada ventana; los grados indican de dónde viene.</p>
+        <div class="scroll"><table><thead><tr><th>Punto</th><th class="num">Próx. 24 h</th><th class="num">24–48 h</th><th class="num">48–72 h</th></tr></thead><tbody id="mar-om"></tbody></table></div></div>
+    </div>
+    <div class="panel" style="margin-top:22px"><h3>Avisos de los últimos 30 días</h3><ul class="alist" id="mar-prev"></ul></div>
+  </section>
+  <section id="obras-sec">
+    <div class="sec-head"><div><p class="eyebrow">ANA · Autoridad Nacional del Agua</p><h2>Obras de prevención: ríos, quebradas y huaicos</h2></div><span class="src">snirhgeo.ana.gob.pe · puntos críticos priorizados 2026</span></div>
+    <p class="srcline" data-srcline="ana_obras"></p>
+    <p class="lede">Limpieza, descolmatación y bordos en ríos y quebradas, y barreras dinámicas contra huaicos, financiadas por decreto de urgencia ante El Niño. Avance, plazo, presupuesto y responsable de cada obra, según la ANA.</p>
+    <div class="thesis vias-cnt" id="obras-cnt"></div>
+    <div class="panel" style="margin-top:16px">
+      <div class="filters" id="obras-f"></div>
+      <input type="search" id="oq" placeholder="Filtrar por río, sector, distrito, provincia o responsable">
+      <div class="scroll"><table><thead><tr><th>Obra</th><th>Estado</th><th class="num">Avance</th><th class="num">Fin programado</th><th class="num">Último avance</th><th>Responsable</th></tr></thead><tbody id="obras"></tbody></table></div>
+      <p class="note" id="obras-note"></p>
     </div>
   </section>
   <section id="bom-sec">

@@ -260,6 +260,26 @@ def build():
         bomberos_med = {"total": len(med), "atendiendo": sum(1 for m in med if m.get("estado") == "Atendiendo"),
                         "por_reg": dict(collections.Counter(m["reg"] for m in med if m.get("reg"))),
                         "por_prov": dict(collections.Counter(m["prov"] for m in med if m.get("prov")))}
+        # Mar (DHN): avisos de oleaje y viento vigentes o de los últimos 30 días, mapas del modelo y puntos de Open-Meteo
+        lim_mar = (datetime.date.fromisoformat(today) - datetime.timedelta(days=30)).isoformat()
+        mar_avisos = sorted((a for a in db.get_items("dhn_avisos", "aviso_dhn", current_only=False) if (a.get("fin") or "") >= lim_mar),
+                            key=lambda a: (a.get("inicio") or "", a.get("numero") or ""), reverse=True)
+        mar = {"avisos": [{k: v for k, v in a.items() if k != "texto"} for a in mar_avisos],
+               "pronosticos": sorted(db.get_items("dhn_pronosticos", "producto"), key=lambda p: (p.get("tipo") != "zona", p.get("nombre") or "")),
+               "puntos": db.get_items("olas_openmeteo", "punto")}
+        # Obras de prevención de la ANA: días sin reporte y cuánto avanzó en 7 días (según el historial que lleva la Mesa)
+        hace7 = (datetime.date.fromisoformat(today) - datetime.timedelta(days=7)).isoformat()
+        obras = []
+        for o in db.get_items("ana_obras", "obra"):
+            h = o.get("hist") or []
+            base = next((e for e in reversed(h) if e[0] and e[0] <= hace7), None)
+            # solo lo que usan el mapa y la tabla; el resto (texto de la actividad, ficha, decreto…) va en la ficha al hacer clic
+            o = {k: o.get(k) for k in ("_key", "tipo", "rio", "sector", "dist", "prov", "reg", "lon", "lat", "estado", "avance_km_pct", "avance_m3_pct",
+                                       "inicio", "fin", "fec_avance", "nivel_peligro", "responsable", "costo", "poblacion")}
+            o["dias_sin_reporte"] = (datetime.date.fromisoformat(today) - datetime.date.fromisoformat(o["fec_avance"])).days if o.get("fec_avance") else None
+            o["avance_7d"] = round(o["avance_km_pct"] - base[1], 2) if base and base[1] is not None and o.get("avance_km_pct") is not None else None
+            o["dias_para_fin"] = (datetime.date.fromisoformat(o["fin"]) - datetime.date.fromisoformat(today)).days if o.get("fin") else None
+            obras.append(o)
         com = db.get_items("enfen", "comunicado", current_only=False, order="key DESC", limit=1)
         firms_n = len(db.get_items("firms", "deteccion"))
 
@@ -353,7 +373,7 @@ def build():
             "indeci": indeci, "indeciWindowH": INDECI_WINDOW_H,
             "indeciUnlocated": sum(1 for i in indeci if i.get("clase") == "reporte" and not i.get("prov")),
             "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,
-            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "viasFotos": vias_fotos[:80],
+            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "mar": mar, "obras": obras, "viasFotos": vias_fotos[:80],
             "enfen": {"ultimo_comunicado": com[0] if com else {}}, "firmsCount": firms_n,
             "comunicados": comunicados, "sidpol": sidpol, "regions": sorted(regions, key=lambda r: r["n"]),
             "fotosDia": fotos_dia[:80], "danos": danos,
