@@ -248,6 +248,12 @@ function initMap() {
     .on("click", (e, f) => { state.sel = f.properties.id; renderMap(); renderRail(); showProvince(); });
   gDep.selectAll("path").data(V.geo.deps.features).join("path").attr("class","dep").attr("d", path);
   $("#layers").addEventListener("change", e => { state.layers[e.target.dataset.l] = e.target.checked; renderPoints(); });
+  // Todas / Ninguna: prende o apaga de una vez todas las capas puntuales (la capa base de avisos o UV no cambia)
+  document.querySelector(".layers-all").addEventListener("click", e => {
+    const b = e.target.closest("button[data-all]"); if (!b) return;
+    for (const l of layerDefs) state.layers[l.id] = b.dataset.all === "1";
+    renderLayers(); renderPoints();
+  });
 }
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,

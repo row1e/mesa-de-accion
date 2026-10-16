@@ -131,6 +131,10 @@ tr:last-child td{border-bottom:0}
 .seg button:last-child{border-right:0}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
 .seg button:hover:not([aria-pressed="true"]){background:var(--surface-2)}
+.layers-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.layers-all{display:flex;gap:4px}
+.layers-all button{font:inherit;font-size:11.5px;padding:2px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:3px;cursor:pointer}
+.layers-all button:hover{border-color:var(--ink);color:var(--ink)}
 .ctl-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:650}
 .layers{display:grid;grid-template-columns:1fr;gap:5px}
 .layers label{display:grid;grid-template-columns:auto 14px 1fr auto;gap:8px;align-items:center;font-size:13px;cursor:pointer;user-select:none}
@@ -639,7 +643,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
         <div class="controls">
           <div><span class="ctl-label">Capa base</span><div class="seg" id="mode"></div></div>
           <div><span class="ctl-label">Día</span><div class="pills" id="days"></div></div>
-          <div><span class="ctl-label">Capas</span><div class="layers" id="layers"></div></div>
+          <div><div class="layers-head"><span class="ctl-label">Capas</span><span class="layers-all" role="group" aria-label="Todas las capas"><button type="button" data-all="1">Todas</button><button type="button" data-all="0">Ninguna</button></span></div><div class="layers" id="layers"></div></div>
           <div class="legend" id="legend"></div>
         </div>
         <div class="rail" id="rail"></div>
