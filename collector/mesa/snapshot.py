@@ -260,6 +260,13 @@ def build():
         bomberos_med = {"total": len(med), "atendiendo": sum(1 for m in med if m.get("estado") == "Atendiendo"),
                         "por_reg": dict(collections.Counter(m["reg"] for m in med if m.get("reg"))),
                         "por_prov": dict(collections.Counter(m["prov"] for m in med if m.get("prov")))}
+        # Mar (DHN): avisos de oleaje y viento vigentes o de los últimos 30 días, mapas del modelo y puntos de Open-Meteo
+        lim_mar = (datetime.date.fromisoformat(today) - datetime.timedelta(days=30)).isoformat()
+        mar_avisos = sorted((a for a in db.get_items("dhn_avisos", "aviso_dhn", current_only=False) if (a.get("fin") or "") >= lim_mar),
+                            key=lambda a: (a.get("inicio") or "", a.get("numero") or ""), reverse=True)
+        mar = {"avisos": [{k: v for k, v in a.items() if k != "texto"} for a in mar_avisos],
+               "pronosticos": sorted(db.get_items("dhn_pronosticos", "producto"), key=lambda p: (p.get("tipo") != "zona", p.get("nombre") or "")),
+               "puntos": db.get_items("olas_openmeteo", "punto")}
         com = db.get_items("enfen", "comunicado", current_only=False, order="key DESC", limit=1)
         firms_n = len(db.get_items("firms", "deteccion"))
 
@@ -353,7 +360,7 @@ def build():
             "indeci": indeci, "indeciWindowH": INDECI_WINDOW_H,
             "indeciUnlocated": sum(1 for i in indeci if i.get("clase") == "reporte" and not i.get("prov")),
             "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,
-            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "viasFotos": vias_fotos[:80],
+            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "mar": mar, "viasFotos": vias_fotos[:80],
             "enfen": {"ultimo_comunicado": com[0] if com else {}}, "firmsCount": firms_n,
             "comunicados": comunicados, "sidpol": sidpol, "regions": sorted(regions, key=lambda r: r["n"]),
             "fotosDia": fotos_dia[:80], "danos": danos,

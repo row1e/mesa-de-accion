@@ -280,6 +280,40 @@ def _f_bomberos(it, ex):
             "fields": {k: v for k, v in it.items() if not k.startswith("_")}}
 
 
+NIVEL_MAR = {"oleaje": {2: "ligero", 3: "moderado", 4: "fuerte"}, "viento": {2: "brisa fresca", 3: "brisa fuerte", 4: "viento fuerte"}}
+
+
+def _f_aviso_dhn(it, ex):
+    from .sources.dhn import ZONA_NOMBRE
+    palabras = NIVEL_MAR.get(it.get("tipo"), {})
+    facts = [["Tipo", f"Aviso especial de {it.get('tipo')}"], ["Número", it.get("numero")], ["Vigencia", it.get("validez")],
+             ["Emitido", it.get("emitido") or "—"]]
+    if it.get("tipo") == "oleaje":
+        for z, v in (it.get("zonas") or {}).items():
+            dias = ", ".join(f"{d[8:]}/{d[5:7]} {palabras.get(n, n)}" for d, n in sorted((v.get("por_dia") or {}).items()))
+            facts.append([ZONA_NOMBRE.get(z, z), f"{dias or 'sin oleaje anómalo'} — {v.get('texto')}"])
+    else:
+        facts += [["Intensidad en la costa", palabras.get(it.get("nivel"), "—") + (f" (hasta {it['nudos']} nudos)" if it.get("nudos") else "")],
+                  ["Provincias costeras afectadas", str(len(it.get("provs") or []))]]
+    niveles = [n for pp in (it.get("provs_por_dia") or {}).values() for n in pp.values()]
+    links = [x for x in ({"label": "Aviso en PDF (DHN)", "url": it.get("pdf")}, {"label": "Imagen del aviso (DHN)", "url": it.get("imagen")},
+                         {"label": "Avisos especiales de la DHN", "url": "https://www.dhn.mil.pe/portal/avisos-especiales"}) if x["url"]]
+    return {"title": it.get("titulo"), "subtitle": f"Dirección de Hidrografía y Navegación · {it.get('validez')}", "level": max(niveles) if niveles else None,
+            "facts": facts, "text": it.get("texto"), "links": links, "fields": {k: v for k, v in it.items() if not k.startswith("_") and k != "texto"}}
+
+
+def _f_ola_punto(it, ex):
+    nombres = ("Próximas 24 h", "De 24 a 48 h", "De 48 a 72 h")
+    facts = [[n, f"{v['ola_max_m']} m (máx. a las {v['hora_max'][11:]} del {v['hora_max'][8:10]}/{v['hora_max'][5:7]}) · de {v['direccion']}° · período {v['periodo_s']} s"
+              + (f" · mar de fondo {v['mar_de_fondo_max_m']} m" if v.get("mar_de_fondo_max_m") is not None else "") if v else "sin dato"]
+             for n, v in zip(nombres, it.get("ventanas") or [])]
+    return {"title": f"Altura de ola · {it.get('nombre')}", "subtitle": "Modelo Open-Meteo Marine — referencial, no es un pronóstico oficial de la DHN",
+            "level": None, "facts": facts + [["Calculado desde", it.get("desde")]],
+            "links": [{"label": "Open-Meteo Marine", "url": "https://open-meteo.com/en/docs/marine-weather-api"},
+                      {"label": "Pronóstico oficial de olas (DHN)", "url": "https://www.dhn.mil.pe/portal/"}],
+            "fields": {k: v for k, v in it.items() if not k.startswith("_")}}
+
+
 def _f_hidro(it, ex):
     raw = it.get("raw") or {}
     links = [{"label": "Mapa de avisos hidrológicos (SENAMHI)", "url": "https://www.senamhi.gob.pe/?p=aviso-hidrologico"}]
@@ -364,5 +398,5 @@ FORMAT = {
     ("igp", "sismo"): _f_sismo, ("serfor", "alerta"): _f_alerta, ("serfor", "foco"): _f_foco,
     ("ingemmet", "zona_alerta"): _f_zona, ("senamhi_hidro", "aviso_estacion"): _f_hidro, ("indeci", "item"): _f_indeci,
     ("senamhi_avisos", "aviso"): _f_aviso, ("firms", "deteccion"): _f_firms, ("provias", "emergencia"): _f_provias,
-    ("bomberos", "parte"): _f_bomberos,
+    ("bomberos", "parte"): _f_bomberos, ("dhn_avisos", "aviso_dhn"): _f_aviso_dhn, ("olas_openmeteo", "punto"): _f_ola_punto,
 }

@@ -71,7 +71,8 @@ h3{margin:0 0 10px;font-size:17px;font-weight:700;font-variation-settings:"wdth"
 /* thesis strip */
 .thesis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));background:var(--surface);border:1px solid var(--line);margin-top:28px;overflow:hidden}
 .thesis>div,.thesis>a{background:var(--surface);padding:16px 18px;box-shadow:1px 0 0 var(--line),0 1px 0 var(--line)}
-@media (min-width:1000px){#thesis{grid-template-columns:repeat(7,1fr)}#thesis>a{padding:14px 14px}}
+@media (min-width:1000px){#thesis{grid-template-columns:repeat(4,1fr)}}
+@media (min-width:1280px){#thesis{grid-template-columns:repeat(8,1fr)}#thesis>a{padding:14px 12px}}
 #thesis .big{font-size:30px}
 .thesis>a{color:inherit;text-decoration:none;display:block}
 .thesis>a:hover{background:var(--ground)}
@@ -136,6 +137,21 @@ tr:last-child td{border-bottom:0}
 .layers label .muted{font-size:12px}
 .layers input{accent-color:var(--ink)}
 .bom-per{margin:4px 0 14px}
+.mar-av{margin-bottom:16px}
+.mar-h{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px}
+.mar-h h3{margin:2px 0}
+.mar-h p{margin:0}
+.mar-t td,.mar-t th{vertical-align:top}
+.mar-ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.mar-ctl select{font:inherit;padding:6px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:4px}
+.mar-img img{display:block;width:100%;height:auto;border:1px solid var(--line);background:#fff}
+.olabar{display:inline-block;width:calc(var(--w) * .4);max-width:40px;height:6px;background:var(--hidro);opacity:.7;margin-right:6px;vertical-align:middle;border-radius:2px}
+.layers .olah{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.layers .olah button{font:inherit;font-size:11.5px;padding:2px 7px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:3px;cursor:pointer}
+.layers .olah button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.layers .olah span{flex-basis:100%}
+#map .olatxt{font:600 10px/1 var(--f-body,inherit);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;pointer-events:none}
+#map .mar .out{opacity:.25}
 .bom-up{color:var(--n3);font-weight:700;font-size:12px}
 .layers .lnote{margin:-2px 0 3px 36px;font-size:11.5px;line-height:1.35;color:var(--ink-3)}
 .sw{width:10px;height:10px;display:inline-block;border-radius:50%}
@@ -583,6 +599,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#enfen-sec">El Niño</a>
     <a href="#senamhi">SENAMHI</a>
     <a href="#vias-sec">Vías (PROVIAS)</a>
+    <a href="#mar-sec">Mar (DHN)</a>
     <a href="#bom-sec">Bomberos (CGBVP)</a>
     <a href="#ciud-sec">Nuestros corresponsales</a>
     <a href="#com-sec">Comunicados</a>
@@ -687,6 +704,20 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
       <div class="scroll"><table><thead><tr><th>Tránsito</th><th>Tipo de emergencia</th><th>Ruta · tramo · sector</th><th>Lugar</th><th class="num">Desde</th></tr></thead><tbody id="vias"></tbody></table></div>
       <p class="note" id="vias-note"></p>
     </div>
+  </section>
+  <section id="mar-sec">
+    <div class="sec-head"><div><p class="eyebrow">DHN · Dirección de Hidrografía y Navegación (Marina de Guerra)</p><h2>Mar: oleaje y viento</h2></div><span class="src">dhn.mil.pe · avisos especiales y pronóstico de olas</span></div>
+    <p class="srcline" data-srcline="dhn_avisos"></p>
+    <div id="mar-vig"></div>
+    <div class="grid2" style="margin-top:22px">
+      <div class="panel"><h3>Pronóstico de olas de la DHN</h3><p class="srcline" data-srcline="dhn_pronosticos"></p>
+        <div class="mar-ctl"><select id="mar-zona" aria-label="Zona o bahía"></select><div class="filters" id="mar-h"></div></div>
+        <div class="mar-img" id="mar-img"></div><p class="note" id="mar-cap"></p></div>
+      <div class="panel"><h3>Altura de ola en la costa · modelo de referencia</h3><p class="srcline" data-srcline="olas_openmeteo"></p>
+        <p class="note" style="margin-top:0">Open-Meteo Marine, modelo global gratuito. <b>No es un pronóstico oficial</b>: para avisos, vale la DHN. Ola máxima esperada en cada ventana; los grados indican de dónde viene.</p>
+        <div class="scroll"><table><thead><tr><th>Punto</th><th class="num">Próx. 24 h</th><th class="num">24–48 h</th><th class="num">48–72 h</th></tr></thead><tbody id="mar-om"></tbody></table></div></div>
+    </div>
+    <div class="panel" style="margin-top:22px"><h3>Avisos de los últimos 30 días</h3><ul class="alist" id="mar-prev"></ul></div>
   </section>
   <section id="bom-sec">
     <div class="sec-head"><div><p class="eyebrow">CGBVP · Cuerpo General de Bomberos Voluntarios del Perú</p><h2>Emergencias atendidas por bomberos</h2></div><span class="src">sgonorte.bomberosperu.gob.pe/24horas</span></div>

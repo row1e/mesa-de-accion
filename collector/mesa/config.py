@@ -36,6 +36,9 @@ INTERVALS = {
     "senamhi_uv": 6 * 3600,
     "enfen": 12 * 3600,
     "provias": 15 * 60,       # visor de emergencias viales (SGCV)
+    "dhn_avisos": 30 * 60,      # avisos especiales de oleaje y viento (la DHN emite unos pocos por semana)
+    "dhn_pronosticos": 6 * 3600, # mapas del modelo de olas: corre una vez al día (00Z)
+    "olas_openmeteo": 3 * 3600,  # modelo global de olas, referencial
     "bomberos": 10 * 60,      # página pública de las últimas 24 horas del CGBVP (lista 24 h: no se pierde nada; bloquea si se consulta seguido)
     "provias_fotos": 10 * 60, # cronología y fotos, hasta 40 emergencias por turno
     "com_pnp": 15 * 60, "com_provias": 15 * 60, "com_mtc": 15 * 60, "com_mininter": 15 * 60,   # gob.pe, una fuente por institución
