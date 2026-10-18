@@ -132,10 +132,63 @@ def reporte_archivo(rid: str):
     return FileResponse(ruta, media_type=tipo)
 
 
+def _base(request):
+    """Origen público con que se abrió la página (detrás de Caddy: https y el dominio real)."""
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    return f"{proto}://{host}"
+
+
+def _meta_reportar(base):
+    """Etiquetas para que el enlace compartido se vea bien en WhatsApp, Facebook, X y Google: título, descripción e
+    imagen de 1200×630 (pública: /marca/ está abierta en el servidor). Direcciones absolutas, del dominio de la visita."""
+    import html as _h
+    marca = MARCAS.get(config.MARCA)
+    titulo = f"Reporta una emergencia · {marca}" if marca else "Reporta una emergencia · Mesa de Acción"
+    desc = (f"¿Ves una emergencia? Repórtala a la mesa de noticias{' del ' + marca if marca else ''}: qué pasa, dónde y una foto. "
+            "Verificamos cada reporte antes de publicarlo.")
+    img = f"{base}/marca/{config.MARCA}-reportar.png" if marca else f"{base}/marca/reportar.png"
+    alt = "Reporta una emergencia: cuéntanos qué pasa y dónde, con una foto. Riesgo para la vida: Bomberos 116, Policía 105, SAMU 106."
+    url = f"{base}/reportar"
+    e = lambda s: _h.escape(s, quote=True)   # noqa: E731
+    ld = json.dumps({"@context": "https://schema.org", "@type": "WebPage", "name": titulo, "description": desc, "url": url,
+                     "inLanguage": "es-PE", "image": img, **({"publisher": {"@type": "Organization", "name": marca}} if marca else {})},
+                    ensure_ascii=False)
+    tags = [f'<meta name="description" content="{e(desc)}">', f'<link rel="canonical" href="{e(url)}">',
+            '<meta name="robots" content="index, follow, max-image-preview:large">', '<meta name="theme-color" content="#C1002D">' if marca else '<meta name="theme-color" content="#15140F">',
+            '<meta property="og:type" content="website">', f'<meta property="og:site_name" content="{e(marca or "Mesa de Acción")}">',
+            '<meta property="og:locale" content="es_PE">', f'<meta property="og:url" content="{e(url)}">',
+            f'<meta property="og:title" content="{e(titulo)}">', f'<meta property="og:description" content="{e(desc)}">',
+            f'<meta property="og:image" content="{e(img)}">', *([f'<meta property="og:image:secure_url" content="{e(img)}">'] if img.startswith("https") else []),
+            '<meta property="og:image:type" content="image/png">', '<meta property="og:image:width" content="1200">',
+            '<meta property="og:image:height" content="630">', f'<meta property="og:image:alt" content="{e(alt)}">',
+            '<meta name="twitter:card" content="summary_large_image">', f'<meta name="twitter:title" content="{e(titulo)}">',
+            f'<meta name="twitter:description" content="{e(desc)}">', f'<meta name="twitter:image" content="{e(img)}">',
+            f'<meta name="twitter:image:alt" content="{e(alt)}">',
+            *([f'<link rel="icon" type="image/png" href="/marca/{config.MARCA}.png">', f'<link rel="apple-touch-icon" href="/marca/{config.MARCA}.png">'] if marca else []),
+            f'<script type="application/ld+json">{ld}</script>']
+    return titulo, "\n".join(tags)
+
+
 @app.get("/reportar", include_in_schema=False)
-def reportar():
+def reportar(request: Request):
     """Formulario público para corresponsales y ciudadanos: envía a /api/reportes (ver reportes.py)."""
-    return _con_marca("reportar.html")
+    titulo, meta = _meta_reportar(_base(request))
+    r = _con_marca("reportar.html")
+    html = r.body.decode("utf-8").replace("<title>Reporta una emergencia · Mesa de Acción</title>", f"<title>{titulo}</title>").replace("<!--META-->", meta)
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots(request: Request):
+    """Solo el formulario público se indexa; el tablero y la API no (además, en el servidor piden clave)."""
+    return PlainTextResponse(f"User-agent: *\nAllow: /reportar\nAllow: /marca/\nDisallow: /\n\nSitemap: {_base(request)}/sitemap.xml\n")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap(request: Request):
+    return Response(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                    f'<url><loc>{_base(request)}/reportar</loc><changefreq>monthly</changefreq></url></urlset>\n', media_type="application/xml")
 
 
 @app.get("/marca/{name}", include_in_schema=False)

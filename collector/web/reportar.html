@@ -2,14 +2,16 @@
 <html lang="es">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reportar una emergencia · Mesa de Acción</title>
+<title>Reporta una emergencia · Mesa de Acción</title>
+<!--META-->
 <script>try { const t = localStorage.getItem("mesa.tema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* sin almacenamiento: tema del sistema */ }</script>
 <!--MARCA-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap">
 <style>
-/* Formulario ciudadano. VISTA PREVIA: no envía ni guarda nada; la foto se muestra solo en este navegador. */
+/* Formulario público de corresponsales y ciudadanos: envía a /api/reportes (mesa/reportes.py). Es la única página que
+   se indexa y se comparte: el servidor completa <!--META--> con título, descripción e imagen para WhatsApp y redes. */
 :root{
   --ground:#F3F3EF; --surface:#FFFFFF; --surface-2:#F8F8F5; --ink:#15140F; --ink-2:#4A4840; --ink-3:#7C796E; --line:#DCDBD3;
   --brand:#FFD100; --brand-ink:#15140F; --ok:#2F7D4F; --ok-bg:#E3F1E7; --warn:#9A6A00; --warn-bg:#FBF0D2;
