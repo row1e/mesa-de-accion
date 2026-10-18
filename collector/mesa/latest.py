@@ -32,7 +32,7 @@ def _ocurrencia(rec, it=None):
 FEED_KINDS = [("senamhi_avisos", "aviso"), ("senamhi_hidro", "aviso_estacion"), ("indeci", "item"), ("igp", "sismo"),
               ("serfor", "alerta"), ("serfor", "foco"), ("ingemmet", "zona_alerta"), ("enfen", "comunicado"),
               ("com_pnp", "noticia"), ("com_provias", "noticia"), ("com_mtc", "noticia"), ("com_mininter", "noticia"),
-              ("firms", "deteccion"), ("provias", "emergencia"), ("bomberos", "parte"), ("dhn_avisos", "aviso_dhn")]
+              ("firms", "deteccion"), ("provias", "emergencia"), ("bomberos", "parte"), ("dhn_avisos", "aviso_dhn"), ("corresponsales", "reporte")]
 # expresión SQL con la fecha propia de cada tipo: desempata registros recibidos en el mismo lote (p. ej. la carga inicial)
 EVENT_SQL = {"aviso": "json_extract(payload,'$.emision') || printf('%05d', json_extract(payload,'$.nro'))",
              "aviso_estacion": "json_extract(payload,'$.fecha_hora')", "item": "json_extract(payload,'$.ts')",
@@ -42,7 +42,7 @@ EVENT_SQL = {"aviso": "json_extract(payload,'$.emision') || printf('%05d', json_
              "comunicado": "key", "noticia": "json_extract(payload,'$.fecha')",
              "deteccion": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')", "zona_alerta": "key", "emergencia": "json_extract(payload,'$.fecha')",
              "parte": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')",
-             "aviso_dhn": "json_extract(payload,'$.inicio') || json_extract(payload,'$.numero')"}
+             "aviso_dhn": "json_extract(payload,'$.inicio') || json_extract(payload,'$.numero')", "reporte": "key"}
 UPDATES = {"senamhi_uv": ("prono_ruv.json", "Índice UV actualizado"),
            "senamhi_pronostico": ("pronostico.html", "Pronóstico por ciudad actualizado"),
            "sidpol": ("denuncias.csv", "Nuevo mes de denuncias SIDPOL publicado")}
@@ -105,6 +105,9 @@ def summarize(source, kind, it):
                        "subtitle": f"{it.get('ruta')} · {it.get('tramo')}" + (f" · km {it['km_ini']}" if it.get("km_ini") else ""),
                        "event_time": it.get("fecha"),
                        "place": it.get("sector"), "reg": it.get("reg")}
+    if kind == "reporte":   # corresponsales: sin teléfono ni nombre (ver reportes.py)
+        return base | {"title": f"Reporte de corresponsal · {it.get('tipo_nombre')}" + (" (sin verificar)" if it.get("estado") == "sin_verificar" else ""),
+                       "subtitle": (it.get("descripcion") or "")[:140], "place": it.get("lugar") or it.get("departamento"), "reg": it.get("reg")}
     if kind == "aviso_dhn":
         niveles = [n for pp in (it.get("provs_por_dia") or {}).values() for n in pp.values()]
         return base | {"title": f"Aviso especial de {it.get('tipo')} N° {it.get('numero')} (DHN)", "subtitle": it.get("validez"),
@@ -207,7 +210,8 @@ def feed(source=None, region=None, limit=60, before=None, days=7, seguimientos=T
     page = rows[:limit]
     return {"rows": page, "more": len(rows) > limit, "next_before": page[-1]["received"] if len(rows) > limit and page else None,
             "seguimientos_ocultos": ocultos,
-            "sources": {sid: {"org": m["org"], "name": m["name"]} for sid, m in SOURCES.items()}}
+            "sources": {**{sid: {"org": m["org"], "name": m["name"]} for sid, m in SOURCES.items()},
+                        "corresponsales": {"org": "Corresponsales", "name": "Reportes desde el lugar (sin verificar hasta revisarlos)"}}}
 
 
 def counts(region=None, hours=24, seguimientos=True):

@@ -137,6 +137,11 @@ def dossier_registro(source, kind, key):
     if d is None:
         raise IAError("El registro ya no está en la base.", 404)
     org = SOURCES.get(source, {}).get("org", source)
+    if source == "corresponsales":
+        # un reporte ciudadano solo se redacta después de que la mesa lo verificó (llamada a quien reporta, fuentes oficiales)
+        if (db.get_item(source, kind, key) or {}).get("estado") != "verificado":
+            raise IAError("Este reporte aún no está verificado. Verifíquelo primero (llame a quien lo envió y contraste con las fuentes oficiales).", 409)
+        org = "Reporte de corresponsal, verificado por la mesa de noticias"
     fields = {k: v for k, v in (d.get("fields") or {}).items()
               if not k.startswith("_") and k not in ("link", "guid", "url", "geometry", "ts", "pub") and not isinstance(v, (dict, list))}
     dossier = {

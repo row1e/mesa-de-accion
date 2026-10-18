@@ -34,6 +34,7 @@ const every = s => s < 3600 ? `cada ${s / 60} min` : `cada ${s / 3600} h`;
 const STATUS = { ok: "Al día", actualizando: "Actualizando", atrasada: "Atrasada", fallando: "Fallando", sin_acceso: "Sin acceso", pendiente: "Pendiente" };
 
 let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = vista filtrada por región
+const REP = {lista: [], filtro: "sin_verificar", firma: ""};   // reportes de corresponsales (cargarReportes)
 
 /* ── filtro por región ──────────────────────────────────────────── */
 // Denuncias policiales (SIDPOL): fuera del tablero por ahora, no es información de emergencias. Para volver a mostrarlas:
@@ -159,6 +160,7 @@ async function poll() {
     H = j.sources;
     const sig = sigOf(H);
     if (sig !== lastSig) { lastSig = sig; await loadSnapshot(); loadLatest(); } else { renderHealth(); if (LAT.req) renderLatest(); }
+    cargarReportes();
     $("#conn").className = "conn on"; $("#conn").textContent = "En vivo";
   } catch (e) {
     $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector";
@@ -259,7 +261,7 @@ function initMap() {
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
   olaH: 0, marZona: null, marH: "24",
-  layers: { obras: true, oleaje: true, viento: false, olas: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
+  layers: { reportes: true, obras: true, oleaje: true, viento: false, olas: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -308,6 +310,7 @@ const layerDefs = [
   { id: "sismos365", label: "Sismos · 12 meses", sw: `<i class="sw" style="border:1px solid var(--sismo);opacity:.6"></i>`, n: () => recentSismos(365).length },
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
   { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
+  { id: "reportes", label: "Reportes de corresponsales", sw: `<i class="sw" style="background:var(--brand);border:1.5px solid var(--ink);border-radius:2px"></i>`, n: () => REP.lista.filter(r => r.lat != null && r.estado !== "descartado" && (!state.region || r.reg === state.region)).length },
   { id: "obras", label: "Obras de prevención · ANA", sw: `<i class="sw" style="background:var(--sismo);border:1.5px solid var(--ink)"></i>`, n: () => (V.obras || []).length },
   { id: "oleaje", label: "Oleaje · avisos DHN", sw: `<i class="sw sq" style="background:repeating-linear-gradient(45deg,var(--n3) 0 2px,transparent 2px 4px)"></i>`, n: () => Object.keys(marProvs("oleaje")).filter(p => !state.region || p.startsWith(state.region)).length, unit: "prov." },
   { id: "viento", label: "Viento · avisos DHN", sw: `<i class="sw sq" style="background:repeating-linear-gradient(-45deg,var(--n2) 0 2px,transparent 2px 4px)"></i>`, n: () => Object.keys(marProvs("viento")).filter(p => !state.region || p.startsWith(state.region)).length, unit: "prov." },
@@ -654,6 +657,10 @@ function renderPoints() {
       + `<br>${obraNombre(o.estado)} · avance ${o.avance_km_pct ?? 0} %${o.tipo === "barrera" ? " de la barrera" : " del tramo"}${o.fin ? ` · fin ${fmtDM(o.fin)}` : ""}`
       + `<br><span style="opacity:.7">peligro ${esc((o.nivel_peligro || "").toLowerCase())} · ${esc(o.responsable || "")}</span>` + tipWhen(o.fec_avance ? fmtDay(o.fec_avance) : "—", "último avance ANA"),
       o => ({source: "ana_obras", kind: "obra", key: o._key}));
+  if (L.reportes) layer(REP.lista.filter(r => r.lat != null && r.estado !== "descartado" && (!state.region || r.reg === state.region)), "path", r => [r.lon, r.lat])
+    .attr("d", d3.symbol(d3.symbolSquare, 70)).attr("fill", r => r.estado === "verificado" ? css("--ok") : css("--brand")).attr("stroke", css("--ink")).attr("stroke-width", 1.2)
+    .call(on, r => `<b>Reporte de corresponsal · ${esc(r.tipo_nombre)}</b> · ${r.estado === "verificado" ? "verificado" : "sin verificar"}<br>${esc((r.descripcion || "").slice(0, 140))}<br><span style="opacity:.7">${esc(r.lugar || r.departamento || "")}</span>` + tipWhen(when(r._first_seen), "recibido"),
+      r => ({source: "corresponsales", kind: "reporte", key: r._key}));
   // Encima de todo y sin capturar el mouse: orientan pero no tapan los clics sobre los puntos
   if (L.ciudades) {
     const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(CIUDADES).join("g").attr("class", d => `pt ciudad t${d[3]}`).each(function (d) { this.__ll = [d[1], d[2]]; });
@@ -906,6 +913,56 @@ function renderObras() {
 }
 $("#oq").addEventListener("input", () => D && renderObras());
 $("#obras").addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "ana_obras", kind: "obra", key: tr.dataset.key}); });
+// ── Nuestros corresponsales: reportes enviados desde /reportar (ver mesa/reportes.py) ──
+async function cargarReportes() {
+  try {
+    const r = await fetch("/api/reportes", {cache: "no-store"}); if (!r.ok) return;
+    const l = await r.json(), firma = l.map(x => x._key + x.estado).join();
+    if (firma === REP.firma) return;
+    REP.lista = l; REP.firma = firma; renderReportes(); if (D) { renderLayers(); renderPoints(); }
+  } catch { /* sin conexión: se reintenta en el próximo sondeo */ }
+}
+function renderReportes() {
+  const L_ = REP.lista.filter(r => !state.region || r.reg === state.region), n = f => L_.filter(f).length;
+  const filtros = [["sin_verificar", "Sin verificar", r => r.estado === "sin_verificar"], ["medio", "De medios", r => r.quien === "medio" && r.estado !== "descartado"],
+    ["verificado", "Verificados", r => r.estado === "verificado"], ["descartado", "Descartados", r => r.estado === "descartado"]];
+  $("#ciud-f").innerHTML = filtros.map(([k, t, f]) => `<button type="button" data-f="${k}" aria-pressed="${REP.filtro === k}">${t} <span class="n">${n(f)}</span></button>`).join("");
+  const sel = L_.filter(filtros.find(([k]) => k === REP.filtro)[2]);
+  $("#ciud").innerHTML = sel.map(r => {
+    const m = r.medio || {}, p = r.privado || {}, a = r.archivo || {}, rev = r.revision || {};
+    const quien = r.quien === "medio" ? `<span class="medio">Medio: ${esc(m.nombre || "—")}${m.canal ? ` · ${esc(m.canal)}` : ""}${m.detalle ? ` · ${esc(m.detalle)}` : ""}</span>` : r.quien === "autoridad" ? `autoridad · ${esc(r.autoridad || "")}` : "ciudadano/a";
+    const url = `/api/reportes/${encodeURIComponent(r.id)}/archivo`;
+    return `<li class="${r.estado}" data-key="${esc(r._key)}"><div class="ch"><span class="tipo">${esc(r.tipo_nombre)}</span><span class="muted">${ago(r._first_seen)}${a.tipo ? (a.tipo.startsWith("video") ? " · con video" : " · con foto") : ""} · N° ${esc(r.id)}</span></div>
+      <p class="t">“${esc(r.descripcion)}”</p>
+      ${a.tipo?.startsWith("image/") ? `<div class="media"><a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Foto del reporte" loading="lazy"></a></div>` : a.tipo?.startsWith("video/") ? `<div class="media"><video src="${url}" controls preload="none"></video></div>` : ""}
+      <p class="who">Reporta <b>${esc(r.nombre)}</b> · ${quien} · nombre al aire: ${r.nombre_al_aire ? "sí" : "no"}</p>
+      <p class="s">${esc([r.departamento, r.lugar].filter(Boolean).join(" · ") || "sin lugar")}${r.lat != null ? " · con ubicación del teléfono" : ""} · personas afectadas: ${esc(r.afectados || "—")} · teléfono para verificar: <a class="tel" href="tel:${esc(p.telefono || "")}">${esc(p.telefono || "—")}</a></p>
+      ${(r.cruce || []).length ? `<p class="cruce">Cruce automático: ${r.cruce.map(esc).join(" · ")}</p>` : ""}
+      ${rev.por ? `<p class="rev">${r.estado === "verificado" ? "Verificado" : r.estado === "descartado" ? "Descartado" : "Revisado"} por ${esc(rev.por)}${rev.nota ? `: ${esc(rev.nota)}` : ""}</p>` : ""}
+      <div class="acc">${r.estado !== "verificado" ? `<button type="button" data-acc="verificado">Verificar</button>` : ""}${r.estado !== "descartado" ? `<button type="button" data-acc="descartado">Descartar</button>` : `<button type="button" data-acc="sin_verificar">Reabrir</button>`}
+        <button type="button" data-acc="ficha">${r.estado === "verificado" ? "Redactar con IA" : "Ver ficha"}</button></div></li>`;
+  }).join("") || `<li class="muted" style="border:0;background:none">${REP.filtro === "sin_verificar" ? "No hay reportes pendientes de verificar." : "Ninguno."}</li>`;
+  $("#ciud-note").textContent = `${L_.length} reportes${state.region ? ` en ${regName(state.region)}` : ""}. El teléfono, la ubicación exacta y el nombre (si no aceptó que se mencione) no salen de este tablero.`;
+}
+$("#ciud-f").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (b) { REP.filtro = b.dataset.f; renderReportes(); } });
+$("#ciud").addEventListener("click", async e => {
+  const b = e.target.closest("[data-acc]"), li = e.target.closest("li[data-key]"); if (!b || !li) return;
+  if (b.dataset.acc === "ficha") return openDetail({source: "corresponsales", kind: "reporte", key: li.dataset.key});
+  const actor = iaFirmado(); if (!actor) return;
+  const nota = b.dataset.acc === "verificado" ? prompt("¿Cómo se verificó? (p. ej.: llamé a quien reporta, coincide con INDECI)") : b.dataset.acc === "descartado" ? prompt("Motivo para descartar (opcional):") : "";
+  if (nota === null) return;
+  try {
+    const r = await fetch(`/api/reportes/${encodeURIComponent(li.dataset.key)}/estado`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({estado: b.dataset.acc, actor, nota})});
+    if (!r.ok) throw new Error((await r.json()).detail);
+    REP.firma = ""; await cargarReportes(); toast(b.dataset.acc === "verificado" ? "Reporte verificado" : b.dataset.acc === "descartado" ? "Reporte descartado" : "Reporte reabierto");
+  } catch (err) { toast(`No se pudo guardar: ${err.message}`); }
+});
+// Enlace público del formulario: en el servidor en línea es el que se comparte; en una Mesa local solo sirve en esa red.
+(() => {
+  const url = `${location.origin}/reportar`; $("#ciud-url").value = url;
+  $("#ciud-url-nota").textContent = /^(localhost|127\.|\[::1\])/.test(location.hostname) ? "Esta Mesa corre en este equipo: el enlace solo funciona aquí. El público usa el de la versión en línea (mesa.ondaai.com/reportar)." : "Este enlace es público: no pide la clave del tablero.";
+  $("#ciud-copiar").onclick = async () => { try { await navigator.clipboard.writeText(url); toast("Enlace copiado"); } catch { $("#ciud-url").select(); } };
+})();
 let bomF = "", bomPer = "24";
 const bomMin = m => m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
 const bomT0 = b => Date.parse(`${b.fecha}T${b.hora}:00-05:00`);
@@ -1370,10 +1427,10 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderBomberos(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderBomberos(); renderReportes(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
-loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });
+loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); cargarReportes(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });
 setInterval(poll, 15000);
 setInterval(() => H.length && renderHealth(), 30000);
 

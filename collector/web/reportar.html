@@ -73,7 +73,6 @@ input[aria-invalid="true"]{border-color:#B42323;box-shadow:0 0 0 1px #B42323}
 </header>
 
 <main>
-  <p class="preview" role="note">Vista previa: este formulario todavía no envía datos.</p>
   <p class="sos"><b>¿Hay riesgo para la vida?</b> Llama primero: Bomberos <b>116</b> · Policía <b>105</b> · SAMU <b>106</b>.</p>
 
   <form id="f" novalidate>
@@ -156,13 +155,15 @@ input[aria-invalid="true"]{border-color:#B42323;box-shadow:0 0 0 1px #B42323}
       <p class="hint" id="tel-nota" style="margin:8px 0 0">La mesa de noticias puede llamarte o escribirte para confirmar lo que reportas. Tu teléfono no se publica.</p>
     </fieldset>
 
-    <button type="submit" class="send">Enviar reporte</button>
-    <p class="legal">Vista previa. Al conectarse, los reportes se guardarán con fecha y hora, y la mesa de noticias confirmará cada uno con quien lo envió y lo contrastará con SENAMHI, INDECI y las demás fuentes oficiales antes de usarlos.</p>
+    <input type="text" name="web" id="web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px" placeholder="No llenar">
+    <button type="submit" class="send" id="send">Enviar reporte</button>
+    <p class="err" id="send-err" hidden role="alert"></p>
+    <p class="legal">Tu reporte se guarda con fecha y hora. La mesa de noticias lo confirma con quien lo envió y lo contrasta con SENAMHI, INDECI y las demás fuentes oficiales antes de usarlo. Tu teléfono no se publica ni se comparte.</p>
   </form>
 
   <div class="done" id="done" hidden role="status">
     <h2>Gracias, reporte recibido</h2>
-    <p>Así verá la confirmación quien reporte. En esta vista previa no se envió ni se guardó nada.</p>
+    <p>Tu reporte N° <b id="num"></b> llegó a la mesa de noticias. Si hace falta, te llamaremos al número que dejaste para confirmarlo.</p>
     <button type="button" id="otro">Hacer otro reporte</button>
   </div>
 </main>
@@ -170,7 +171,17 @@ input[aria-invalid="true"]{border-color:#B42323;box-shadow:0 0 0 1px #B42323}
 <script>
 // Todo ocurre en este navegador: no hay envío, ni geolocalización real, ni subida de archivos.
 const $ = s => document.querySelector(s);
-$("#geo").onclick = () => { $("#geo").classList.add("on"); $("#geo").textContent = "📍 Ubicación agregada (vista previa: no se tomó la real)"; };
+// Ubicación del teléfono (solo si la persona la autoriza): ayuda a cruzar el reporte con las fuentes oficiales.
+let pos = null;
+$("#geo").onclick = () => {
+  if (!navigator.geolocation) { $("#geo").textContent = "📍 Este navegador no permite compartir la ubicación"; return; }
+  $("#geo").textContent = "📍 Buscando tu ubicación…";
+  navigator.geolocation.getCurrentPosition(p => {
+    pos = {lat: p.coords.latitude, lon: p.coords.longitude};
+    $("#geo").classList.add("on"); $("#geo").textContent = `📍 Ubicación agregada (precisión ~${Math.round(p.coords.accuracy)} m)`;
+  }, () => { pos = null; $("#geo").classList.remove("on"); $("#geo").textContent = "📍 No se pudo obtener la ubicación (puedes escribir la referencia)"; },
+  {enableHighAccuracy: true, timeout: 15000});
+};
 $("#foto").onchange = e => {
   const f = e.target.files[0], t = $("#thumb");
   if (f && f.type.startsWith("image/")) { t.src = URL.createObjectURL(f); t.hidden = false; } else t.hidden = true;
@@ -190,8 +201,31 @@ $("#f").onsubmit = e => {
   if (!$("#nombre").value.trim()) { marcar("nombre", "Escribe tu nombre para enviar el reporte."); faltas.push("nombre"); }
   if (!$("#tel").value.trim()) { marcar("tel", "El teléfono es obligatorio: sin él no podemos verificar tu reporte."); faltas.push("tel"); }
   else if (!telOk($("#tel").value)) { marcar("tel", "Revisa el número: celular de 9 dígitos (ej.: 987 654 321) o fijo con código de ciudad."); faltas.push("tel"); }
-  if (faltas.length) { $("#" + faltas[0]).focus(); return; }
-  $("#f").hidden = true; $("#done").hidden = false; scrollTo(0, 0);
+  const tipo = document.querySelector('input[name="tipo"]:checked')?.value;
+  if (!tipo) { faltas.push("tipo"); err("Elige qué está pasando."); }
+  else if ($("#desc").value.trim().length < 10) { faltas.push("desc"); err("Cuéntanos un poco más de lo que ves."); $("#desc").focus(); }
+  if (faltas.length) { if (faltas[0] === "nombre" || faltas[0] === "tel") $("#" + faltas[0]).focus(); return; }
+  enviar(tipo);
 };
-$("#otro").onclick = () => { $("#f").reset(); verQuien(); marcar("nombre", ""); marcar("tel", ""); $("#thumb").hidden = true; $("#geo").classList.remove("on"); $("#geo").textContent = "📍 Usar mi ubicación actual"; $("#done").hidden = true; $("#f").hidden = false; };
+const err = m => { $("#send-err").textContent = m || ""; $("#send-err").hidden = !m; };
+const leer = f => new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = mal; r.readAsDataURL(f); });
+async function enviar(tipo) {
+  err(""); const btn = $("#send"); btn.disabled = true; btn.textContent = "Enviando…";
+  try {
+    const f = $("#foto").files[0];
+    if (f && f.size > 15 * 1024 * 1024) throw new Error("La foto o el video pesa más de 15 MB. Elige uno más corto.");
+    const v = n => document.querySelector(`input[name="${n}"]:checked`)?.value || null;
+    const body = {tipo, departamento: $("#dep").value || null, lugar: $("#lugar").value, descripcion: $("#desc").value, afectados: v("afectados"),
+      nombre: $("#nombre").value, quien: v("quien"), medio_nombre: $("#medio-nombre").value, medio_canal: $("#medio-canal").value,
+      medio_detalle: $("#medio-detalle").value, autoridad_detalle: $("#aut-detalle").value, nombre_al_aire: $("#ok-nombre").checked,
+      telefono: $("#tel").value, web: $("#web").value, ...(pos || {}),
+      ...(f ? {archivo: {tipo: f.type, datos: await leer(f)}} : {})};
+    const r = await fetch("/api/reportes", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    const b = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(b.detail || "No se pudo enviar el reporte. Intenta de nuevo.");
+    $("#num").textContent = b.id; $("#f").hidden = true; $("#done").hidden = false; scrollTo(0, 0);
+  } catch (e) { err(e.message === "Failed to fetch" ? "No hay conexión. Revisa tu internet e intenta de nuevo." : e.message); }
+  finally { btn.disabled = false; btn.textContent = "Enviar reporte"; }
+}
+$("#otro").onclick = () => { pos = null; err(""); $("#f").reset(); verQuien(); marcar("nombre", ""); marcar("tel", ""); $("#thumb").hidden = true; $("#geo").classList.remove("on"); $("#geo").textContent = "📍 Usar mi ubicación actual"; $("#done").hidden = true; $("#f").hidden = false; };
 </script>

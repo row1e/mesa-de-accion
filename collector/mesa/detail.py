@@ -340,6 +340,35 @@ def _f_obra_ana(it, ex):
             "fields": {k: v for k, v in it.items() if not k.startswith("_") and k != "hist"}}
 
 
+def _f_reporte(it, ex):
+    """Ficha de un reporte de corresponsal. Nunca incluye el teléfono, la IP ni el navegador (it["privado"]); el nombre,
+    solo si quien reporta aceptó que se mencione."""
+    m = it.get("medio") or {}
+    quien = it.get("quien_nombre") or "—"
+    if m.get("nombre"):
+        quien += f" · {m['nombre']}" + (f" ({m.get('canal')})" if m.get("canal") else "") + (f" · {m['detalle']}" if m.get("detalle") else "")
+    if it.get("autoridad"):
+        quien += f" · {it['autoridad']}"
+    nombre = it.get("nombre") if it.get("nombre_al_aire") else "reservado (no aceptó que se mencione)"
+    rev = it.get("revision") or {}
+    estado = {"sin_verificar": "Sin verificar", "verificado": "Verificado por la mesa", "descartado": "Descartado"}.get(it.get("estado"), "—")
+    if rev.get("por"):
+        estado += f" · {rev['por']}" + (f": {rev['nota']}" if rev.get("nota") else "")
+    a = it.get("archivo") or {}
+    publico = {"tipo": it.get("tipo_nombre"), "descripcion": it.get("descripcion"), "departamento": it.get("departamento"),
+               "lugar": it.get("lugar"), "personas_afectadas": it.get("afectados"), "quien_reporta": quien,
+               "nombre": nombre, "estado": estado}
+    return {"title": f"Reporte de corresponsal · {it.get('tipo_nombre')}", "subtitle": " · ".join(x for x in (it.get("lugar"), it.get("departamento")) if x) or None,
+            "level": None,
+            "facts": [["Estado", estado], ["Qué pasa", it.get("tipo_nombre")], ["Dónde", " · ".join(x for x in (it.get("lugar"), it.get("departamento")) if x) or "—"],
+                      ["Ubicación", f"{it['lat']}, {it['lon']} (del teléfono de quien reporta)" if it.get("lat") is not None else "no compartida"],
+                      ["Personas afectadas", it.get("afectados") or "—"], ["Reporta", quien], ["Nombre", nombre]],
+            "text": it.get("descripcion"),
+            "images": [{"label": "Foto enviada por quien reporta", "url": f"/api/reportes/{it['id']}/archivo"}] if a.get("tipo", "").startswith("image/") else [],
+            "links": [{"label": "Video enviado por quien reporta", "url": f"/api/reportes/{it['id']}/archivo"}] if a.get("tipo", "").startswith("video/") else [],
+            "fields": publico}
+
+
 def _f_hidro(it, ex):
     raw = it.get("raw") or {}
     links = [{"label": "Mapa de avisos hidrológicos (SENAMHI)", "url": "https://www.senamhi.gob.pe/?p=aviso-hidrologico"}]
@@ -424,5 +453,5 @@ FORMAT = {
     ("igp", "sismo"): _f_sismo, ("serfor", "alerta"): _f_alerta, ("serfor", "foco"): _f_foco,
     ("ingemmet", "zona_alerta"): _f_zona, ("senamhi_hidro", "aviso_estacion"): _f_hidro, ("indeci", "item"): _f_indeci,
     ("senamhi_avisos", "aviso"): _f_aviso, ("firms", "deteccion"): _f_firms, ("provias", "emergencia"): _f_provias,
-    ("bomberos", "parte"): _f_bomberos, ("dhn_avisos", "aviso_dhn"): _f_aviso_dhn, ("olas_openmeteo", "punto"): _f_ola_punto, ("ana_obras", "obra"): _f_obra_ana,
+    ("bomberos", "parte"): _f_bomberos, ("dhn_avisos", "aviso_dhn"): _f_aviso_dhn, ("olas_openmeteo", "punto"): _f_ola_punto, ("ana_obras", "obra"): _f_obra_ana, ("corresponsales", "reporte"): _f_reporte,
 }

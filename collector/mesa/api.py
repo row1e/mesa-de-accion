@@ -84,9 +84,57 @@ def get_resumen():
     return resumen.build()
 
 
+# ── Reportes de corresponsales (ver reportes.py). Enviar es público; listar, revisar y ver archivos, solo el tablero ──
+def _ip(request):
+    return (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() or (request.client.host if request.client else None)
+
+
+@app.post("/api/reportes")
+async def reporte_nuevo(request: Request):
+    from . import reportes
+    try:
+        b = await request.json()
+    except ValueError:
+        raise HTTPException(400, "Envío no válido.") from None
+    try:
+        return reportes.guardar(b if isinstance(b, dict) else {}, _ip(request), request.headers.get("user-agent"))
+    except reportes.ReporteError as e:
+        raise HTTPException(400, str(e)) from None
+
+
+@app.get("/api/reportes")
+def reportes_lista(estado: str | None = None):
+    from . import reportes
+    return reportes.listar(estado)
+
+
+class ReporteEstado(BaseModel):
+    estado: str
+    actor: str
+    nota: str | None = None
+
+
+@app.post("/api/reportes/{rid}/estado")
+def reporte_estado(rid: str, b: ReporteEstado):
+    from . import reportes
+    try:
+        return reportes.cambiar_estado(rid, b.estado, b.actor, b.nota)
+    except reportes.ReporteError as e:
+        raise HTTPException(400, str(e)) from None
+
+
+@app.get("/api/reportes/{rid}/archivo", include_in_schema=False)
+def reporte_archivo(rid: str):
+    from . import reportes
+    ruta, tipo = reportes.ruta_archivo(rid)
+    if not ruta or not ruta.exists():
+        raise HTTPException(404, "sin archivo")
+    return FileResponse(ruta, media_type=tipo)
+
+
 @app.get("/reportar", include_in_schema=False)
 def reportar():
-    """Formulario ciudadano. Vista previa: no envía ni guarda nada (todo ocurre en el navegador)."""
+    """Formulario público para corresponsales y ciudadanos: envía a /api/reportes (ver reportes.py)."""
     return _con_marca("reportar.html")
 
 
@@ -185,7 +233,7 @@ def get_detail(source: str, kind: str, key: str, fresh: bool = False):
 def get_latest(source: str | None = None, region: str | None = None, limit: int = Query(60, le=300),
                before: float | None = None, days: int = Query(7, le=60), seguimientos: bool = False):
     """Últimos registros recibidos (todas las fuentes o una), opcionalmente por región; paginar con `before`."""
-    if source and source not in SOURCES:
+    if source and source not in SOURCES and source not in {s for s, _ in latest.FEED_KINDS}:
         raise HTTPException(404, f"fuente desconocida: {source}")
     # Por defecto no se muestran los reportes INDECI que siguen eventos ocurridos hace más de una semana.
     data = latest.feed(source=source, region=region, limit=limit, before=before, days=days, seguimientos=seguimientos)
