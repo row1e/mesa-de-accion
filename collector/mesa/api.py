@@ -25,7 +25,7 @@ LIBRES = ("/api/licencia", "/marca/", "/fuentes/", "/licencia")
 async def control_licencia(request: Request, call_next):
     p = request.url.path
     if licencia.requerida() and not p.startswith(LIBRES) and licencia.bloqueada():
-        if p in ("/", "/index.html", "/reportar"):
+        if p in ("/", "/index.html", "/reportar", "/resumen"):
             return _con_marca("licencia.html")
         return JSONResponse({"detail": "Licencia vencida o ausente.", "licencia": licencia.estado()}, status_code=403)
     return await call_next(request)
@@ -70,6 +70,18 @@ def _con_marca(pagina):
 @app.get("/", include_in_schema=False)
 def index():
     return _con_marca("index.html")
+
+
+@app.get("/resumen", include_in_schema=False)
+def resumen_pagina():
+    """Resumen del día: lo más significativo de las últimas 24 horas, con sus registros y la redacción con IA."""
+    return _con_marca("resumen.html")
+
+
+@app.get("/api/resumen")
+def get_resumen():
+    from . import resumen
+    return resumen.build()
 
 
 @app.get("/reportar", include_in_schema=False)

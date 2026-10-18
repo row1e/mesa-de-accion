@@ -71,6 +71,14 @@ TIPOS = {
                   "Propón 5 preguntas concretas para una autoridad (alcaldía, gobierno regional, COER o la "
                   "institución que informa), basadas en los datos. Cada pregunta es una pieza con etiqueta "
                   "\"Pregunta\". Deben poder responderse con hechos y no presuponer lo que los datos no dicen.", {}),
+    "resumen": ("Resumen del día", {"resumen"},
+                "Escribe el resumen del día para la redacción con los puntos de DATOS, que vienen ordenados por importancia. "
+                "Devuelve cinco piezas: \"Titular\" (máximo 90 caracteres, el hecho más importante del día), \"Lo más importante\" "
+                "(cinco viñetas de una oración cada una, de mayor a menor importancia, cada una con su cifra y la institución que "
+                "informa), \"Para radio\" (guion para leer en 60 a 80 segundos, frases cortas, tono sereno), \"Para redes\" "
+                "(un texto de máximo 260 caracteres para X) y \"Qué vigilar\" (dos o tres oraciones con lo que puede cambiar en "
+                "las próximas horas según los datos). No pongas en el titular un punto de importancia baja. Si un punto trae "
+                "una nota sobre los límites del dato, respétala.", {"Titular": 90, "Para redes": 260}),
     "briefing": ("Briefing de turno", {"briefing"},
                  "Escribe el resumen para el inicio de turno de una redacción. Devuelve cuatro piezas: "
                  "\"Lo principal\" (3 a 5 oraciones con lo más relevante), \"Qué está escalando\" (avisos de "
@@ -490,6 +498,15 @@ def generar(tipo, alcance, ref, actor, origen=None, lugar=None):
         raise IAError("La licencia de la Mesa venció o falta: el asistente está desactivado.", 403)
     if alcance == "registro":
         dossier, cita, titulo = dossier_registro(ref["source"], ref["kind"], ref["key"])
+    elif alcance == "resumen":
+        from . import resumen
+        dossier = resumen.dossier()
+        salud = {h["id"]: h for h in snapshot.health()}
+        fuentes = ("senamhi_avisos", "indeci", "serfor", "igp", "provias", "dhn_avisos", "bomberos", "ana_obras", "enfen")
+        cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
+                 "url": None} for s in fuentes if s in SOURCES]
+        titulo = f"Resumen del día {datetime.datetime.now(LIMA).strftime('%d/%m %H:%M')}"
+        ref = None
     else:
         dossier, cita, titulo = dossier_briefing(lugar)
         ref = {"lugar": lugar} if lugar else None

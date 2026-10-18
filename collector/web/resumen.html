@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resumen del día · Mesa de Acción</title>
+<script>try { const t = localStorage.getItem("mesa.tema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* tema del sistema */ }</script>
+<!--MARCA-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap">
+<style>
+/* Resumen del día: lo más significativo de las últimas 24 h (mesa/resumen.py), cada punto con sus registros; la ficha de
+   un registro se abre al lado, y desde ella o desde el resumen se redacta con IA (mismo flujo y firma que el tablero). */
+:root{--ground:#F3F3EF;--surface:#FFFFFF;--surface-2:#F8F8F5;--ink:#15140F;--ink-2:#4A4840;--ink-3:#7C796E;--line:#DCDBD3;--line-2:#EAE9E3;
+  --brand:#FFD100;--brand-ink:#15140F;--n2:#E9BF1F;--n3:#EA7A1A;--n4:#D0302F;--ok:#2F7D4F;--ok-bg:#E3F1E7;--warn:#9A6A00;--warn-bg:#FBF0D2;
+  --bad:#B42323;--bad-bg:#F8E0DE;--f-display:"Archivo","Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ground:#121210;--surface:#1B1A17;--surface-2:#22211D;--ink:#F1F0EA;--ink-2:#C4C2B8;--ink-3:#8F8C81;
+  --line:#35342E;--line-2:#2A2925;--n2:#E3B81A;--n3:#E8791F;--n4:#E0443F;--ok:#7CCB98;--ok-bg:#1F3326;--warn:#E7BE55;--warn-bg:#352C14;--bad:#F08A84;--bad-bg:#3A1C1A}}
+:root[data-theme="dark"]{--ground:#121210;--surface:#1B1A17;--surface-2:#22211D;--ink:#F1F0EA;--ink-2:#C4C2B8;--ink-3:#8F8C81;--line:#35342E;--line-2:#2A2925;
+  --n2:#E3B81A;--n3:#E8791F;--n4:#E0443F;--ok:#7CCB98;--ok-bg:#1F3326;--warn:#E7BE55;--warn-bg:#352C14;--bad:#F08A84;--bad-bg:#3A1C1A}
+:root[data-marca="irtp"]{--brand:#C1002D;--brand-ink:#FFFFFF}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ground);color:var(--ink);font:400 15px/1.5 var(--f-display)}
+a{color:inherit}
+button{font:inherit;cursor:pointer}
+.mast{background:var(--brand);color:var(--brand-ink)}
+.mast-in{max-width:1280px;margin:0 auto;padding:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.marca-logo{display:block;height:44px;width:auto}
+.mast h1{margin:0;font-size:26px;line-height:1;font-weight:800;font-variation-settings:"wdth" 70;text-transform:uppercase}
+.mast .per{font-size:13px;opacity:.9}
+.mast .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.mast .acts a,.mast .acts button{background:transparent;color:var(--brand-ink);border:1px solid currentColor;border-radius:4px;padding:6px 12px;text-decoration:none;font-size:14px}
+main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);padding:16px 18px}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:650;margin:0}
+.ia{grid-column:1/-1}
+.ia-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ia-top h2{margin:0;font-size:19px}
+.gen{background:var(--ink);color:var(--surface);border:0;border-radius:4px;padding:9px 16px;font-weight:700}
+.gen:disabled{opacity:.45;cursor:not-allowed}
+.firma{font-size:13px;color:var(--ink-3)}
+.firma button{background:none;border:0;padding:0;color:var(--ink-2);text-decoration:underline}
+.note{font-size:13px;color:var(--ink-3)}
+.punto{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--line);padding:14px 16px;margin-bottom:12px}
+.punto.n3{border-left-color:var(--n4)}.punto.n2{border-left-color:var(--n3)}.punto.n1{border-left-color:var(--line)}
+.punto h3{margin:3px 0 4px;font-size:18px;line-height:1.25}
+.punto p{margin:0 0 6px;color:var(--ink-2)}
+.punto .nota{font-size:12.5px;color:var(--ink-3)}
+.imp{display:inline-block;font-size:11px;font-weight:700;border-radius:3px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+.imp.n3{background:var(--n4);color:#fff}.imp.n2{background:var(--n3);color:#15140F}.imp.n1{background:var(--line-2);color:var(--ink-2)}
+.items{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid var(--line-2)}
+.items li{border-bottom:1px solid var(--line-2)}
+.items button{display:block;width:100%;text-align:left;background:none;border:0;padding:7px 2px;color:var(--ink)}
+.items button:hover,.items button.sel{background:var(--surface-2)}
+.items .t{font-weight:600;font-size:14px}
+.items .s{display:block;font-size:12.5px;color:var(--ink-3)}
+.det{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto}
+@media (max-width:900px){.det{position:static;max-height:none}}
+.det h3{margin:4px 0;font-size:19px;line-height:1.25}
+.det .sub{color:var(--ink-2);font-size:14px}
+.det dl{display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:4px 12px;margin:12px 0;font-size:13.5px}
+.det dt{color:var(--ink-3)}.det dd{margin:0}
+.det .txt{white-space:pre-wrap;font-size:13.5px;color:var(--ink-2);background:var(--surface-2);padding:10px;max-height:260px;overflow:auto}
+.det .imgs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.det .imgs img{height:110px;width:auto;border:1px solid var(--line)}
+.det .links a{display:inline-block;margin:0 10px 6px 0;font-size:13.5px}
+.redactar{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.redactar button{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-size:13.5px}
+.redactar button:hover{border-color:var(--ink)}
+.bor{border:1px solid var(--line);background:var(--surface-2);padding:12px;margin-top:12px}
+.bor .pz{margin:10px 0}
+.bor .pz b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.bor .pz div{white-space:pre-wrap}
+.ver{padding:8px 10px;font-size:13px;background:var(--ok-bg);color:var(--ok);margin:8px 0}
+.ver.mal{background:var(--bad-bg);color:var(--bad)}
+.chip{font-size:11px;font-weight:700;border-radius:3px;padding:1px 6px;background:var(--line-2)}
+.chip.borrador{background:var(--warn-bg);color:var(--warn)}.chip.aprobado{background:var(--ok-bg);color:var(--ok)}.chip.bloqueado{background:var(--bad-bg);color:var(--bad)}
+.acc{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.acc button{border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:6px 12px}
+.acc button.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+.err{background:var(--bad-bg);color:var(--bad);padding:8px 10px;font-size:13.5px;margin:8px 0}
+.vacio{color:var(--ink-3);font-size:14px}
+</style>
+
+<header class="mast"><div class="mast-in"><!--MARCA-LOGO--><div><h1>Resumen del día</h1><div class="per" id="per">Cargando…</div></div>
+  <div class="acts"><button type="button" id="recargar">Actualizar</button><a href="/">Volver al tablero</a></div></div></header>
+<main>
+  <section class="panel ia">
+    <div class="ia-top"><h2>Resumen del día con IA</h2><button type="button" class="gen" id="gen" disabled>Generar resumen del día</button><span class="firma" id="firma"></span></div>
+    <p class="note" style="margin:6px 0 0">La IA redacta solo con los puntos de abajo y sus cifras. Cada cifra se compara con esos datos; si alguna no coincide, el borrador se bloquea. Nada se publica sin que una persona lo apruebe.</p>
+    <div id="ia-res"></div>
+  </section>
+  <section id="puntos"><p class="vacio">Cargando lo más importante de las últimas 24 horas…</p></section>
+  <aside class="panel det" id="det"><p class="eyebrow">Ficha</p><p class="vacio">Elija un registro de la lista para ver su ficha completa y redactar contenidos a partir de él.</p></aside>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"})[c]);
+const NIVEL = {3: "importancia alta", 2: "media", 1: "baja"};
+let IA = null;
+const firma = () => { try { return localStorage.getItem("mesa.firma") || ""; } catch { return ""; } };
+function pedirFirma() {
+  const n = (prompt("Su nombre (queda registrado en cada borrador que pida o apruebe):", firma()) || "").trim();
+  if (n) { try { localStorage.setItem("mesa.firma", n); } catch { /* sin almacenamiento */ } }
+  pintarFirma(); return n || firma();
+}
+function pintarFirma() {
+  const a = firma();
+  $("#firma").innerHTML = a ? `Firmando como <b>${esc(a)}</b> · <button type="button" id="cambiar">cambiar</button>` : `<button type="button" id="cambiar">Indicar mi nombre</button>`;
+  $("#cambiar").onclick = pedirFirma;
+}
+async function post(url, body) {
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const ct = r.headers.get("content-type") || "";
+  const b = ct.includes("json") ? await r.json() : await r.text();
+  if (!r.ok) throw new Error(b?.detail || b || `HTTP ${r.status}`);
+  return b;
+}
+
+async function cargar() {
+  $("#puntos").innerHTML = `<p class="vacio">Cargando…</p>`;
+  const R = await (await fetch("/api/resumen", {cache: "no-store"})).json();
+  const f = iso => new Date(iso.replace(" ", "T") + (iso.length <= 16 ? ":00-05:00" : "")).toLocaleString("es-PE", {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"});
+  $("#per").textContent = `Últimas ${R.horas} horas · del ${f(R.desde)} al ${f(R.generado.slice(0, 16).replace("T", " "))}`;
+  $("#puntos").innerHTML = R.puntos.map((p, i) => `<article class="punto n${p.nivel}">
+      <p class="eyebrow">${esc(p.tema)}<span class="imp n${p.nivel}">${NIVEL[p.nivel]}</span></p>
+      <h3>${esc(p.titulo)}</h3><p>${esc(p.resumen)}</p>${p.nota ? `<p class="nota">${esc(p.nota)}</p>` : ""}
+      ${p.items.length ? `<ul class="items">${p.items.map((it, j) => `<li><button type="button" data-i="${i}" data-j="${j}"><span class="t">${esc(it.titulo)}</span><span class="s">${esc([it.lugar, it.sub].filter(Boolean).join(" · "))}</span></button></li>`).join("")}</ul>` : ""}
+    </article>`).join("") || `<p class="vacio">Sin datos.</p>`;
+  $("#puntos").onclick = e => {
+    const b = e.target.closest("button[data-i]"); if (!b) return;
+    document.querySelectorAll(".items button.sel").forEach(x => x.classList.remove("sel")); b.classList.add("sel");
+    abrir(R.puntos[b.dataset.i].items[b.dataset.j]);
+  };
+}
+
+async function abrir(it) {
+  const det = $("#det");
+  det.innerHTML = `<p class="eyebrow">Ficha</p><p class="vacio">Cargando…</p>`;
+  if (innerWidth <= 900) det.scrollIntoView({behavior: "smooth"});
+  let d;
+  try {
+    const r = await fetch(`/api/detail?source=${encodeURIComponent(it.source)}&kind=${encodeURIComponent(it.kind)}&key=${encodeURIComponent(it.key)}`);
+    if (!r.ok) throw new Error((await r.json()).detail || `HTTP ${r.status}`);
+    d = await r.json();
+  } catch (e) { det.innerHTML = `<p class="eyebrow">Ficha</p><div class="err">No se pudo abrir el registro: ${esc(e.message)}</div>`; return; }
+  const imgs = [...(d.images || []), ...(d.fotos || [])].filter(x => x?.url).slice(0, 4);
+  const tipos = IA?.habilitado ? Object.entries(IA.tipos).filter(([, t]) => t.alcances.includes("registro")) : [];
+  det.innerHTML = `<p class="eyebrow">${esc(it.source)}</p><h3>${esc(d.title || it.titulo)}</h3>${d.subtitle ? `<div class="sub">${esc(d.subtitle)}</div>` : ""}
+    ${d.error ? `<div class="err">${esc(d.error)}</div>` : ""}
+    ${(d.facts || []).length ? `<dl>${d.facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v ?? "—")}</dd>`).join("")}</dl>` : ""}
+    ${imgs.length ? `<div class="imgs">${imgs.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener"><img src="${esc(x.url)}" alt="${esc(x.label || x.caption || "")}" loading="lazy"></a>`).join("")}</div>` : ""}
+    ${d.text ? `<div class="txt">${esc(d.text.slice(0, 4000))}</div>` : ""}
+    ${(d.links || []).length ? `<p class="links">${d.links.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`).join("")}</p>` : ""}
+    <p class="eyebrow" style="margin-top:14px">Redactar con IA a partir de este registro</p>
+    ${tipos.length ? `<div class="redactar">${tipos.map(([k, t]) => `<button type="button" data-tipo="${k}">${esc(t.nombre)}</button>`).join("")}</div>` : `<p class="note">${IA ? "El asistente no está configurado en este servidor (falta la clave de la API de Claude)." : "…"}</p>`}
+    <div id="det-ia"></div>`;
+  det.querySelectorAll("[data-tipo]").forEach(b => b.onclick = () => generar(b.dataset.tipo, {alcance: "registro", source: it.source, kind: it.kind, key: it.key}, $("#det-ia")));
+}
+
+async function generar(tipo, ref, cont) {
+  const actor = firma() || pedirFirma(); if (!actor) return;
+  cont.innerHTML = `<div class="bor"><p class="vacio">Redactando y verificando cifras… suele tardar entre 10 y 60 segundos.</p></div>`;
+  try { mostrar(await post("/api/ia/borradores", {tipo, actor, ...ref}), cont); }
+  catch (e) { cont.innerHTML = `<div class="err">No se pudo redactar: ${esc(e.message)}</div>`; }
+}
+
+function mostrar(b, cont) {
+  const V = b.verificacion || {};
+  const ver = b.estado === "bloqueado"
+    ? `<div class="ver mal"><b>Bloqueado.</b> Tras dos intentos seguía teniendo cifras que no están en los datos: ${esc([...(V.no_encontradas || []), ...(V.en_letras || [])].join(", "))}. Descártelo y vuelva a intentarlo.</div>`
+    : V.ok ? `<div class="ver"><b>Cifras verificadas.</b> ${(V.cifras || []).length ? `Las ${(V.cifras || []).length} cifras del texto están en los datos.` : "El texto no contiene cifras."}</div>`
+      : `<div class="ver mal">Cifras sin respaldo en los datos: ${esc([...(V.no_encontradas || []), ...(V.en_letras || [])].join(", "))}.</div>`;
+  cont.innerHTML = `<div class="bor"><p class="eyebrow">${esc(b.tipo_nombre || "")} · <span class="chip ${b.estado}">${esc(b.estado)}</span> · borrador N° ${b.id} · pedido por ${esc(b.autor || "")}</p>
+    ${ver}${V.advertencia_modelo ? `<div class="ver mal">Advertencia del modelo: ${esc(V.advertencia_modelo)}</div>` : ""}
+    ${(b.contenido || []).map(p => `<div class="pz"><b>${esc(p.etiqueta)}</b><div>${esc(p.texto)}</div></div>`).join("")}
+    <div class="acc">${b.estado === "borrador" ? `<button type="button" class="ok" data-a="aprobar">Aprobar</button><button type="button" data-a="descartar">Descartar</button>` : ""}
+      ${b.estado === "aprobado" ? `<button type="button" class="ok" data-a="copiar">Copiar texto con la fuente</button>` : ""}</div>
+    <div class="msg"></div></div>`;
+  cont.querySelectorAll("[data-a]").forEach(btn => btn.onclick = async () => {
+    const actor = firma() || pedirFirma(); if (!actor) return;
+    const msg = cont.querySelector(".msg");
+    try {
+      if (btn.dataset.a === "aprobar") mostrar(await post(`/api/ia/borradores/${b.id}/aprobar`, {actor}), cont);
+      else if (btn.dataset.a === "descartar") { const motivo = prompt("Motivo (opcional):") ?? null; mostrar(await post(`/api/ia/borradores/${b.id}/descartar`, {actor, motivo}), cont); }
+      else { const t = await post(`/api/ia/borradores/${b.id}/texto`, {actor}); await navigator.clipboard.writeText(t); msg.innerHTML = `<p class="note">Texto copiado, con la línea de fuente.</p>`; }
+    } catch (e) { msg.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  });
+}
+
+$("#gen").onclick = () => generar("resumen", {alcance: "resumen"}, $("#ia-res"));
+$("#recargar").onclick = () => cargar().catch(e => $("#puntos").innerHTML = `<div class="err">${esc(e.message)}</div>`);
+(async () => {
+  pintarFirma();
+  try { IA = await (await fetch("/api/ia/estado")).json(); } catch { IA = {habilitado: false, tipos: {}}; }
+  $("#gen").disabled = !(IA.habilitado && IA.tipos?.resumen);
+  if (!IA.habilitado) $("#gen").title = "El asistente no está configurado en este servidor (falta la clave de la API de Claude).";
+  cargar().catch(e => $("#puntos").innerHTML = `<div class="err">No se pudo cargar el resumen: ${esc(e.message)}</div>`);
+})();
+</script>
