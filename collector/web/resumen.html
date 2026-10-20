@@ -28,7 +28,7 @@ button{font:inherit;cursor:pointer}
 .mast-in{max-width:1280px;margin:0 auto;padding:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .marca-logo{display:block;height:44px;width:auto}
 .mast h1{margin:0;font-size:26px;line-height:1;font-weight:800;font-variation-settings:"wdth" 70;text-transform:uppercase}
-.mast .per{font-size:13px;opacity:.9}
+.mast .per{font-size:13px;opacity:.95;max-width:760px}
 .mast .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .mast .acts a,.mast .acts button{background:transparent;color:var(--brand-ink);border:1px solid currentColor;border-radius:4px;padding:6px 12px;text-decoration:none;font-size:14px}
 main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
@@ -75,6 +75,8 @@ main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;display:grid;grid-tem
 .bor .pz div{white-space:pre-wrap}
 .ver{padding:8px 10px;font-size:13px;background:var(--ok-bg);color:var(--ok);margin:8px 0}
 .ver.mal{background:var(--bad-bg);color:var(--bad)}
+.ver.nota{background:var(--surface);color:var(--ink-2);border:1px solid var(--line)}
+.periodo{margin:2px 0 0;font-size:12.5px;color:var(--ink-3)}
 .chip{font-size:11px;font-weight:700;border-radius:3px;padding:1px 6px;background:var(--line-2)}
 .chip.borrador{background:var(--warn-bg);color:var(--warn)}.chip.aprobado{background:var(--ok-bg);color:var(--ok)}.chip.bloqueado{background:var(--bad-bg);color:var(--bad)}
 .acc{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -123,9 +125,10 @@ async function cargar() {
   $("#puntos").innerHTML = `<p class="vacio">Cargando…</p>`;
   const R = await (await fetch("/api/resumen", {cache: "no-store"})).json();
   const f = iso => new Date(iso.replace(" ", "T") + (iso.length <= 16 ? ":00-05:00" : "")).toLocaleString("es-PE", {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"});
-  $("#per").textContent = `Últimas ${R.horas} horas · del ${f(R.desde)} al ${f(R.generado.slice(0, 16).replace("T", " "))}`;
+  $("#per").innerHTML = `<b>${esc(R.hoy_txt[0].toUpperCase() + R.hoy_txt.slice(1))}</b>, corte a las ${esc(R.generado.slice(11, 16))} (hora de Lima) · las cifras de "24 h" van del ${f(R.desde)} al ${f(R.generado.slice(0, 16).replace("T", " "))}`;
   $("#puntos").innerHTML = R.puntos.map((p, i) => `<article class="punto n${p.nivel}">
       <p class="eyebrow">${esc(p.tema)}<span class="imp n${p.nivel}">${NIVEL[p.nivel]}</span></p>
+      ${p.periodo ? `<p class="periodo">🕒 ${esc(p.periodo)}</p>` : ""}
       <h3>${esc(p.titulo)}</h3><p>${esc(p.resumen)}</p>${p.nota ? `<p class="nota">${esc(p.nota)}</p>` : ""}
       ${p.items.length ? `<ul class="items">${p.items.map((it, j) => `<li><button type="button" data-i="${i}" data-j="${j}"><span class="t">${esc(it.titulo)}</span><span class="s">${esc([it.lugar, it.sub].filter(Boolean).join(" · "))}</span></button></li>`).join("")}</ul>` : ""}
     </article>`).join("") || `<p class="vacio">Sin datos.</p>`;
@@ -173,8 +176,10 @@ function mostrar(b, cont) {
     ? `<div class="ver mal"><b>Bloqueado.</b> Tras dos intentos seguía teniendo cifras que no están en los datos: ${esc([...(V.no_encontradas || []), ...(V.en_letras || [])].join(", "))}. Descártelo y vuelva a intentarlo.</div>`
     : V.ok ? `<div class="ver"><b>Cifras verificadas.</b> ${(V.cifras || []).length ? `Las ${(V.cifras || []).length} cifras del texto están en los datos.` : "El texto no contiene cifras."}</div>`
       : `<div class="ver mal">Cifras sin respaldo en los datos: ${esc([...(V.no_encontradas || []), ...(V.en_letras || [])].join(", "))}.</div>`;
-  cont.innerHTML = `<div class="bor"><p class="eyebrow">${esc(b.tipo_nombre || "")} · <span class="chip ${b.estado}">${esc(b.estado)}</span> · borrador N° ${b.id} · pedido por ${esc(b.autor || "")}</p>
-    ${ver}${V.advertencia_modelo ? `<div class="ver mal">Advertencia del modelo: ${esc(V.advertencia_modelo)}</div>` : ""}
+  const cuando = b.creado ? new Date(b.creado * 1000).toLocaleString("es-PE", {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"}) : "";
+  cont.innerHTML = `<div class="bor"><p class="eyebrow">${esc(b.tipo_nombre || "")} · <span class="chip ${b.estado}">${esc(b.estado)}</span> · borrador N° ${b.id} · pedido por ${esc(b.autor || "")}${cuando ? ` · ${esc(cuando)}` : ""}</p>
+    ${b.titulo ? `<p class="note" style="margin:4px 0 0">${esc(b.titulo)} · redactado con los datos de ese momento</p>` : ""}
+    ${ver}${V.advertencia_modelo ? `<div class="ver nota">Nota del modelo: ${esc(V.advertencia_modelo)}</div>` : ""}
     ${(b.contenido || []).map(p => `<div class="pz"><b>${esc(p.etiqueta)}</b><div>${esc(p.texto)}</div></div>`).join("")}
     <div class="acc">${b.estado === "borrador" ? `<button type="button" class="ok" data-a="aprobar">Aprobar</button><button type="button" data-a="descartar">Descartar</button>` : ""}
       ${b.estado === "aprobado" ? `<button type="button" class="ok" data-a="copiar">Copiar texto con la fuente</button>` : ""}</div>

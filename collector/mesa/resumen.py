@@ -31,9 +31,33 @@ def _item(source, kind, key, titulo, sub=None, lugar=None):
     return {"source": source, "kind": kind, "key": key, "titulo": titulo, "sub": sub, "lugar": lugar}
 
 
-def _punto(pid, tema, titulo, resumen, nivel, cifras, items=None, nota=None):
+def _punto(pid, tema, titulo, resumen, nivel, cifras, items=None, nota=None, periodo=None):
+    """`periodo`: a qué tiempo se refieren las cifras (hoy, últimas 24 h, estado actual…), visible en la página y para la IA."""
     return {"id": pid, "tema": tema, "titulo": titulo, "resumen": resumen, "nivel": nivel, "cifras": cifras,
-            "items": items or [], "nota": nota}
+            "items": items or [], "nota": nota, "periodo": periodo}
+
+
+DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"]
+
+
+def _dm(iso):
+    """'2026-10-21' → 'mié 21 oct'"""
+    try:
+        d = datetime.date.fromisoformat(iso[:10])
+    except (TypeError, ValueError):
+        return iso or "—"
+    return f"{DIAS[d.weekday()][:3]} {d.day} {MESES[d.month - 1]}"
+
+
+def _vigencia(ini, fin, hoy):
+    """Rango de un aviso en palabras y si ya rige: 'del mié 21 oct al vie 23 oct · empieza el mié 21 oct'."""
+    rango = f"del {_dm(ini)} al {_dm(fin)}"
+    if ini and ini > hoy:
+        return f"{rango} · empieza el {_dm(ini)}"
+    if fin and fin < hoy:
+        return f"{rango} · ya terminó"
+    return f"{rango} · vigente hoy" + (" (último día)" if fin == hoy else "")
 
 
 def _ocurrencia(texto):
@@ -59,6 +83,7 @@ def _build(horas):
     desde_ts = time.time() - horas * 3600
     desde = (ahora - datetime.timedelta(hours=horas)).strftime("%Y-%m-%d %H:%M")
     hoy = ahora.date().isoformat()
+    hoy_txt = f"{DIAS[ahora.weekday()]} {ahora.day} de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','setiembre','octubre','noviembre','diciembre'][ahora.month - 1]}"
     P = {f["properties"]["id"]: f["properties"] for f in D["geo"]["provs"]["features"]}
     pn = lambda p: _t(P[p]["n"]) if p in P else None   # noqa: E731
     puntos = []
@@ -69,12 +94,13 @@ def _build(horas):
     nuevos = [a for a in D["avisos"] if (a.get("emision") or "") >= (ahora - datetime.timedelta(hours=horas)).date().isoformat()]
     rojos = [a for a in D["avisos"] if a.get("nivel") == "ROJO" and hoy in (a.get("dias") or [])]
     puntos.append(_punto(
-        "senamhi", "Clima", f"{n4 + n3} provincias en aviso naranja o rojo hoy" + (f"; {len(rojos)} aviso{'s' if len(rojos) != 1 else ''} rojo{'s' if len(rojos) != 1 else ''} vigente{'s' if len(rojos) != 1 else ''}" if rojos else ""),
+        "senamhi", "Clima", f"{n4 + n3} provincias en aviso naranja o rojo hoy, {hoy_txt}" + (f"; {len(rojos)} aviso{'s' if len(rojos) != 1 else ''} rojo{'s' if len(rojos) != 1 else ''} vigente{'s' if len(rojos) != 1 else ''}" if rojos else ""),
         "El SENAMHI emitió " + (f"{len(nuevos)} avisos nuevos en las últimas {horas} h" if nuevos else f"ningún aviso nuevo en las últimas {horas} h") + ".",
         3 if n4 or rojos else 2 if n3 else 1,
         {"provincias_nivel_4_hoy": n4, "provincias_nivel_3_hoy": n3, "provincias_con_aviso_hoy": len(lv), "avisos_nuevos": len(nuevos)},
-        [_item("senamhi_avisos", "aviso", a["key"], f"Aviso N° {a['nro']} · {_t(a['titulo'])}", f"{a['nivel'].lower()} · {a['inicio']} → {a['fin']}")
-         for a in sorted(nuevos + [r for r in rojos if r not in nuevos], key=lambda a: ({"ROJO": 0, "NARANJA": 1}.get(a["nivel"], 2), -a["nro"]))][:8]))
+        [_item("senamhi_avisos", "aviso", a["key"], f"Aviso N° {a['nro']} · {_t(a['titulo'])}", f"{a['nivel'].lower()} · {_vigencia(a.get('inicio'), a.get('fin'), hoy)}"
+               + (" · emitido en las últimas 24 h" if a in nuevos else ""))
+         for a in sorted(nuevos + [r for r in rojos if r not in nuevos], key=lambda a: ({"ROJO": 0, "NARANJA": 1}.get(a["nivel"], 2), -a["nro"]))][:8], periodo=f"hoy, {hoy_txt} (niveles por provincia) · avisos emitidos en las últimas 24 h"))
 
     # ── INDECI: emergencias nuevas (sin seguimientos) y daños de eventos nuevos ──
     rep = [i for i in D["indeci"] if i.get("clase") == "reporte" and float(i.get("ts") or 0) >= desde_ts]
@@ -96,7 +122,7 @@ def _build(horas):
          for e in con_danos[:6]]
         + [_item("indeci", "item", i["_key"], f"{_t(i.get('evento'))} — {_t(i.get('distrito'))}", f"reporte N° {i.get('num')}", _t(i.get("dpto")))
            for i in nuevas if i["_key"] not in {e["item_key"] for e in con_danos[:6]}][:max(0, 8 - len(con_danos[:6]))],
-        f"Daños de los eventos nuevos de los últimos {dn.get('dias') or 7} días: " + ", ".join(f"{k.replace('_', ' ')} {v:g}" for k, v in nd.items() if v) if nd else None))
+        f"Daños de los eventos nuevos de los últimos {dn.get('dias') or 7} días: " + ", ".join(f"{k.replace('_', ' ')} {v:g}" for k, v in nd.items() if v) if nd else None, periodo=f"reportes de las últimas 24 h · daños: eventos nuevos de los últimos 7 días"))
 
     # ── Incendios forestales: SERFOR (satélite) e INDECI ──
     g = collections.defaultdict(list)
@@ -121,7 +147,7 @@ def _build(horas):
          "satelite_7_dias_con_reporte_indeci": cob["reportados"], "satelite_7_dias_porcentaje_reportado": cob["pct"]},
         [_item("serfor", "alerta", f["key"], f"Incendio forestal · {_t(f['dist'])}", f"{f['n']} detecciones · {f['estado'].lower()} · desde {f['ini']}", _t(f["dep"]))
          for f in sorted(activos, key=lambda f: -f["n"])[:8]],
-        "El cruce satélite–INDECI se hace por distrito y fecha (±3 días); INDECI solo reporta los incendios que causan daños o piden atención."))
+        "El cruce satélite–INDECI se hace por distrito y fecha (±3 días); INDECI solo reporta los incendios que causan daños o piden atención.", periodo=f"nuevos en las últimas 24 h · activos ahora · cobertura satélite–INDECI: últimos 7 días"))
 
     # ── Sismos ──
     s24 = sorted([s for s in D["sismos"] if f"{s[0]} {s[1]}" >= desde], key=lambda s: -s[2])
@@ -131,7 +157,7 @@ def _build(horas):
         f"{sum(1 for s in s24 if s[2] >= 4)} de magnitud 4 o más." if s24 else "Sin sismos registrados por el IGP.",
         3 if mx and mx[2] >= 5.5 else 2 if mx and mx[2] >= 4.5 else 1,
         {"sismos": len(s24), "sismos_magnitud_4_o_mas": sum(1 for s in s24 if s[2] >= 4), "magnitud_maxima": mx[2] if mx else None},
-        [_item("igp", "sismo", s[8], f"Sismo M{s[2]} · prof. {s[3]} km", s[6], None) for s in s24[:6]]))
+        [_item("igp", "sismo", s[8], f"Sismo M{s[2]} · prof. {s[3]} km", s[6], None) for s in s24[:6]], periodo=f"últimas 24 h"))
 
     # ── Vías (PROVIAS) ──
     V = D.get("vias") or []
@@ -144,7 +170,7 @@ def _build(horas):
         3 if inter else 2 if nv else 1,
         {"vias_interrumpidas": len(inter), "emergencias_viales_nuevas": len(nv), "emergencias_viales_total": len(V)},
         [_item("provias", "emergencia", v["_key"], f"{v['transito']} · {(v.get('tipo') or '').capitalize()}", f"{v.get('ruta')} · {v.get('tramo')}", pn(v.get("prov")))
-         for v in inter + [x for x in nv if x not in inter]][:8]))
+         for v in inter + [x for x in nv if x not in inter]][:8], periodo=f"estado actual · nuevas: registradas en las últimas 24 h"))
 
     # ── Mar (DHN) ──
     M = D.get("mar") or {}
@@ -159,7 +185,7 @@ def _build(horas):
         (f"Ola máxima esperada en las próximas 24 h: {om['ventanas'][0]['ola_max_m']} m en {om['nombre']} (modelo Open-Meteo, referencial)." if om else ""),
         3 if niv >= 4 else 2 if vig else 1,
         {"avisos_dhn_vigentes": len(vig), "ola_max_m_24h_referencial": om["ventanas"][0]["ola_max_m"] if om else None},
-        [_item("dhn_avisos", "aviso_dhn", a["_key"], f"Aviso de {a['tipo']} N° {a['numero']}", a.get("validez")) for a in vig]))
+        [_item("dhn_avisos", "aviso_dhn", a["_key"], f"Aviso de {a['tipo']} N° {a['numero']}", a.get("validez")) for a in vig], periodo=f"avisos vigentes hoy · ola: próximas 24 h (modelo referencial)"))
 
     # ── Bomberos (Lima, Callao y costa sur) ──
     B = D.get("bomberos") or []
@@ -175,7 +201,7 @@ def _build(horas):
          **{"bomberos_" + re.sub(r"\W+", "_", k.lower()).strip("_"): v for k, v in cats.most_common(5)}},
         [_item("bomberos", "parte", b["_key"], f"{b['categoria']} · {b.get('detalle') or ''}", f"{b.get('direccion') or ''} · {b.get('estado')}", b.get("distrito"))
          for b in (esc + largos[:4] + [b for b in B if b["categoria"] in ("Incendio", "Materiales Peligrosos (Incidente)")])][:8],
-        "La página del CGBVP cubre Lima, Callao y parte de la costa sur."))
+        "La página del CGBVP cubre Lima, Callao y parte de la costa sur.", periodo=f"partes de las últimas 24 h"))
 
     # ── Obras de prevención (ANA) y cruce con los avisos de lluvia ──
     O = D.get("obras") or []
@@ -195,7 +221,7 @@ def _build(horas):
          "obras_con_avance_reportado_hoy": len(avanzaron), "obras_vencidas": len(venc), "obras_por_ejecutar_total": sum(1 for o in O if o["estado"] == "Por Ejecutar"),
          "obras_total": len(O)},
         [_item("ana_obras", "obra", o["_key"], f"{_t(o.get('rio'))} · {o.get('sector')}", f"{o['estado'].lower()} · avance {o.get('avance_km_pct') or 0} %", _t(o.get("dist")))
-         for o in (venc + sorted(sin_empezar, key=lambda o: o.get("nivel_peligro") != "MUY ALTO"))][:8]))
+         for o in (venc + sorted(sin_empezar, key=lambda o: o.get("nivel_peligro") != "MUY ALTO"))][:8], periodo=f"estado actual de las obras · avisos de lluvia de hoy · avance reportado desde ayer"))
 
     # ── ENFEN ──
     enf = (D.get("enfen") or {}).get("ultimo_comunicado") or {}
@@ -203,7 +229,7 @@ def _build(horas):
         puntos.append(_punto("enfen", "El Niño", f"ENFEN: {enf.get('estado') or 'sin dato'}",
                              f"Último comunicado oficial N° {enf.get('numero')} ({enf.get('fecha') or '—'}).",
                              2 if "ALERTA" in _norm(enf.get("estado")) else 1, {"comunicado_numero": enf.get("numero")},
-                             [_item("enfen", "comunicado", enf.get("_key"), enf.get("titulo") or f"Comunicado N° {enf.get('numero')}", enf.get("estado"))] if enf.get("_key") else []))
+                             [_item("enfen", "comunicado", enf.get("_key"), enf.get("titulo") or f"Comunicado N° {enf.get('numero')}", enf.get("estado"))] if enf.get("_key") else [], periodo=f"último comunicado oficial"))
 
     # ── Comunicados oficiales (gob.pe) ──
     com = [c for c in D.get("comunicados") or [] if (c.get("_first_seen") or 0) >= desde_ts]
@@ -211,10 +237,11 @@ def _build(horas):
         puntos.append(_punto("comunicados", "Comunicados", f"{len(com)} comunicados y notas de prensa oficiales",
                              ", ".join(f"{k} ({v})" for k, v in collections.Counter(c.get("inst_nombre") for c in com).most_common(4)) + ".", 1,
                              {"comunicados": len(com)},
-                             [_item(c.get("source"), "noticia", c["_key"], c.get("titulo"), c.get("inst_nombre")) for c in com[:6]]))
+                             [_item(c.get("source"), "noticia", c["_key"], c.get("titulo"), c.get("inst_nombre")) for c in com[:6]], periodo=f"publicados en las últimas 24 h"))
 
     puntos.sort(key=lambda p: -p["nivel"])
-    return {"generado": ahora.isoformat(timespec="minutes"), "desde": desde, "horas": horas, "puntos": puntos}
+    return {"generado": ahora.isoformat(timespec="minutes"), "desde": desde, "horas": horas, "hoy": hoy, "hoy_txt": hoy_txt,
+            "puntos": puntos}
 
 
 def _cobertura_incendios(dias=7):
@@ -249,8 +276,10 @@ def _cobertura_incendios(dias=7):
 def dossier():
     """Lo que recibe la IA para el resumen diario: los puntos con sus cifras y sus registros principales."""
     R = build()
-    return {"alcance": "resumen_diario", "periodo": f"últimas {R['horas']} horas, hasta {R['generado'][:16].replace('T', ' ')}",
-            "puntos": [{"tema": p["tema"], "importancia": {3: "alta", 2: "media", 1: "baja"}[p["nivel"]], "titular": p["titulo"],
+    return {"alcance": "resumen_diario", "fecha_del_resumen": R["hoy_txt"], "hora_de_corte": R["generado"][11:16],
+            "periodo": f"últimas {R['horas']} horas, hasta {R['generado'][:16].replace('T', ' ')} (hora de Lima)",
+            "importante": "Cada punto dice a qué periodo se refieren sus cifras (campo 'periodo'): respétalo al redactar.",
+            "puntos": [{"tema": p["tema"], "periodo": p.get("periodo"), "importancia": {3: "alta", 2: "media", 1: "baja"}[p["nivel"]], "titular": p["titulo"],
                         "resumen": p["resumen"], "cifras": {k: v for k, v in p["cifras"].items() if v is not None},
                         "registros": [{"que": i["titulo"], "detalle": i["sub"], "lugar": i["lugar"]} for i in p["items"][:5]],
                         **({"nota": p["nota"]} if p.get("nota") else {})} for p in R["puntos"]]}

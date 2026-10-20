@@ -333,7 +333,8 @@ def verificar(piezas, dossier, limites=None):
             cifras.append({"cifra": t, "pieza": p["etiqueta"], "en_datos": ok})
             if not ok:
                 sobran.append(t)
-        letras += [w for w in _LETRAS.findall(_sin_tildes(texto))]
+        # "19 por ciento" (normal en un guion de radio) es un porcentaje, no un número escrito en letras
+        letras += [w for w in _LETRAS.findall(re.sub(r"\bpor\s+ciento\b", "%", _sin_tildes(texto), flags=re.I))]
         mx = (limites or {}).get(p["etiqueta"])
         if mx and len(p["texto"]) > mx:
             largos.append({"pieza": p["etiqueta"], "caracteres": len(p["texto"]), "maximo": mx})
