@@ -30,6 +30,7 @@ button{font:inherit;cursor:pointer}
 .mast h1{margin:0;font-size:26px;line-height:1;font-weight:800;font-variation-settings:"wdth" 70;text-transform:uppercase}
 .mast .per{font-size:13px;opacity:.95;max-width:760px}
 .mast .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.mast .acts select{font:inherit;font-size:14px;padding:6px 8px;border-radius:4px;border:1px solid currentColor;background:var(--surface);color:var(--ink);max-width:260px}
 .mast .acts a,.mast .acts button{background:transparent;color:var(--brand-ink);border:1px solid currentColor;border-radius:4px;padding:6px 12px;text-decoration:none;font-size:14px}
 main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
 @media (max-width:900px){main{grid-template-columns:1fr}}
@@ -87,7 +88,7 @@ main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;display:grid;grid-tem
 </style>
 
 <header class="mast"><div class="mast-in"><!--MARCA-LOGO--><div><h1>Resumen del día</h1><div class="per" id="per">Cargando…</div></div>
-  <div class="acts"><button type="button" id="recargar">Actualizar</button><a href="/">Volver al tablero</a></div></div></header>
+  <div class="acts"><select id="lugar" aria-label="Lugar del resumen"><option value="">Todo el Perú</option></select><button type="button" id="recargar">Actualizar</button><a href="/">Volver al tablero</a></div></div></header>
 <main>
   <section class="panel ia">
     <div class="ia-top"><h2>Resumen del día con IA</h2><button type="button" class="gen" id="gen" disabled>Generar resumen del día</button><span class="firma" id="firma"></span></div>
@@ -121,11 +122,28 @@ async function post(url, body) {
   return b;
 }
 
+const lugar = () => $("#lugar").value || "";
+const lugarNombre = () => $("#lugar").selectedOptions[0]?.dataset.n || "Todo el Perú";
+async function cargarLugares() {
+  try {
+    const L = await (await fetch("/api/lugares")).json();
+    $("#lugar").innerHTML = `<option value="" data-n="todo el Perú">Todo el Perú</option>` + L.map(d => `<optgroup label="${esc(d.nombre)}">
+      <option value="${d.id}" data-n="${esc(d.nombre)}">${esc(d.nombre)} · todo el departamento</option>
+      ${d.provincias.map(p => `<option value="${p.id}" data-n="${esc(p.nombre)} (${esc(d.nombre)})">  ${esc(p.nombre)}</option>`).join("")}</optgroup>`).join("");
+  } catch { /* sin lista: solo nacional */ }
+  const q = new URLSearchParams(location.search).get("lugar") || "";
+  if ([...$("#lugar").options].some(o => o.value === q)) $("#lugar").value = q;
+}
 async function cargar() {
   $("#puntos").innerHTML = `<p class="vacio">Cargando…</p>`;
-  const R = await (await fetch("/api/resumen", {cache: "no-store"})).json();
+  $("#det").innerHTML = `<p class="eyebrow">Ficha</p><p class="vacio">Elija un registro de la lista para ver su ficha completa y redactar contenidos a partir de él.</p>`;
+  const r = await fetch(`/api/resumen${lugar() ? `?lugar=${lugar()}` : ""}`, {cache: "no-store"});
+  if (!r.ok) throw new Error((await r.json()).detail || `HTTP ${r.status}`);
+  const R = await r.json();
+  $("#gen").textContent = R.lugar ? `Generar resumen del día · ${R.lugar.nombre}` : "Generar resumen del día · todo el Perú";
+  document.title = `Resumen del día${R.lugar ? ` · ${R.lugar.nombre}` : ""} · Mesa de Acción`;
   const f = iso => new Date(iso.replace(" ", "T") + (iso.length <= 16 ? ":00-05:00" : "")).toLocaleString("es-PE", {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"});
-  $("#per").innerHTML = `<b>${esc(R.hoy_txt[0].toUpperCase() + R.hoy_txt.slice(1))}</b>, corte a las ${esc(R.generado.slice(11, 16))} (hora de Lima) · las cifras de "24 h" van del ${f(R.desde)} al ${f(R.generado.slice(0, 16).replace("T", " "))}`;
+  $("#per").innerHTML = `<b>${esc(R.lugar ? R.lugar.nombre : "Todo el Perú")}</b> · <b>${esc(R.hoy_txt[0].toUpperCase() + R.hoy_txt.slice(1))}</b>, corte a las ${esc(R.generado.slice(11, 16))} (hora de Lima) · las cifras de "24 h" van del ${f(R.desde)} al ${f(R.generado.slice(0, 16).replace("T", " "))}`;
   $("#puntos").innerHTML = R.puntos.map((p, i) => `<article class="punto n${p.nivel}">
       <p class="eyebrow">${esc(p.tema)}<span class="imp n${p.nivel}">${NIVEL[p.nivel]}</span></p>
       ${p.periodo ? `<p class="periodo">🕒 ${esc(p.periodo)}</p>` : ""}
@@ -195,13 +213,19 @@ function mostrar(b, cont) {
   });
 }
 
-$("#gen").onclick = () => generar("resumen", {alcance: "resumen"}, $("#ia-res"));
+$("#gen").onclick = () => generar("resumen", {alcance: "resumen", ...(lugar() ? {lugar: lugar()} : {})}, $("#ia-res"));
+$("#lugar").onchange = () => {
+  const u = new URL(location.href); lugar() ? u.searchParams.set("lugar", lugar()) : u.searchParams.delete("lugar"); history.replaceState(null, "", u);
+  $("#ia-res").innerHTML = "";
+  cargar().catch(e => $("#puntos").innerHTML = `<div class="err">${esc(e.message)}</div>`);
+};
 $("#recargar").onclick = () => cargar().catch(e => $("#puntos").innerHTML = `<div class="err">${esc(e.message)}</div>`);
 (async () => {
   pintarFirma();
   try { IA = await (await fetch("/api/ia/estado")).json(); } catch { IA = {habilitado: false, tipos: {}}; }
   $("#gen").disabled = !(IA.habilitado && IA.tipos?.resumen);
   if (!IA.habilitado) $("#gen").title = "El asistente no está configurado en este servidor (falta la clave de la API de Claude).";
+  await cargarLugares();
   cargar().catch(e => $("#puntos").innerHTML = `<div class="err">No se pudo cargar el resumen: ${esc(e.message)}</div>`);
 })();
 </script>

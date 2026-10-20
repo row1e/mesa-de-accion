@@ -506,13 +506,16 @@ def generar(tipo, alcance, ref, actor, origen=None, lugar=None):
         dossier, cita, titulo = dossier_registro(ref["source"], ref["kind"], ref["key"])
     elif alcance == "resumen":
         from . import resumen
-        dossier = resumen.dossier()
+        try:
+            dossier = resumen.dossier(lugar)
+        except ValueError as e:
+            raise IAError(str(e), 400) from None
         salud = {h["id"]: h for h in snapshot.health()}
         fuentes = ("senamhi_avisos", "indeci", "serfor", "igp", "provias", "dhn_avisos", "bomberos", "ana_obras", "enfen")
         cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
                  "url": None} for s in fuentes if s in SOURCES]
-        titulo = f"Resumen del día {datetime.datetime.now(LIMA).strftime('%d/%m %H:%M')}"
-        ref = None
+        titulo = f"Resumen del día · {dossier['lugar']} · {datetime.datetime.now(LIMA).strftime('%d/%m %H:%M')}"
+        ref = {"lugar": lugar} if lugar else None
     else:
         dossier, cita, titulo = dossier_briefing(lugar)
         ref = {"lugar": lugar} if lugar else None

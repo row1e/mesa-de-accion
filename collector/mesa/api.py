@@ -79,9 +79,25 @@ def resumen_pagina():
 
 
 @app.get("/api/resumen")
-def get_resumen():
+def get_resumen(lugar: str | None = None):
+    """Resumen del día nacional, o de un departamento (2 dígitos) o provincia (4)."""
     from . import resumen
-    return resumen.build()
+    try:
+        return resumen.build(lugar=lugar)
+    except ValueError as e:
+        raise HTTPException(404, str(e)) from None
+
+
+@app.get("/api/lugares")
+def get_lugares():
+    """Departamentos y provincias para elegir el lugar del resumen (liviano: sin geometrías)."""
+    provs = geo.provinces()
+    deps = {}
+    for c, p in provs.items():
+        deps.setdefault(c[:2], {"id": c[:2], "nombre": p["dpto"].title(), "provincias": []})["provincias"].append({"id": c, "nombre": p["nombre"].title()})
+    for d in deps.values():
+        d["provincias"].sort(key=lambda x: x["nombre"])
+    return sorted(deps.values(), key=lambda d: d["nombre"])
 
 
 # ── Reportes de corresponsales (ver reportes.py). Enviar es público; listar, revisar y ver archivos, solo el tablero ──
@@ -466,7 +482,7 @@ def ia_generar(b: IAGenerar, request: Request):
     ref = {"source": b.source, "kind": b.kind, "key": b.key} if b.alcance == "registro" else None
     if b.alcance == "registro" and not all(ref.values()):
         raise HTTPException(400, "Falta source, kind o key del registro.")
-    lugar = b.lugar if b.alcance == "briefing" and b.lugar else None
+    lugar = b.lugar if b.alcance in ("briefing", "resumen") and b.lugar else None
     return _ia(asistente.generar, b.tipo, b.alcance, ref, b.actor, request.client.host if request.client else None, lugar)
 
 

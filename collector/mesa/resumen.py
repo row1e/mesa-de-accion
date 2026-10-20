@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 from . import db, snapshot
 
 LIMA = ZoneInfo("America/Lima")
-_cache = {"t": 0, "data": None}
+_cache = {}   # (lugar, horas) → (t, data)
 _lock = threading.Lock()
 
 
@@ -25,6 +25,10 @@ def _norm(s):
 
 def _t(s):
     return (s or "").title()
+
+
+def _pl(n, uno, varios):
+    return f"{n} {uno if n == 1 else varios}"
 
 
 def _item(source, kind, key, titulo, sub=None, lugar=None):
@@ -68,17 +72,72 @@ def _ocurrencia(texto):
         return None
 
 
-def build(horas=24):
+def build(horas=24, lugar=None):
+    """Resumen nacional, o de un departamento (lugar de 2 dígitos) o una provincia (4). ValueError si el lugar no existe."""
+    lugar = (lugar or "").strip() or None
     with _lock:
-        if _cache["data"] and time.time() - _cache["t"] < 300:
-            return _cache["data"]
-        data = _build(horas)
-        _cache.update(t=time.time(), data=data)
+        hit = _cache.get((lugar, horas))
+        if hit and time.time() - hit[0] < 300:
+            return hit[1]
+        data = _build(horas, lugar)
+        _cache[(lugar, horas)] = (time.time(), data)
         return data
 
 
-def _build(horas):
-    D = snapshot.build()
+def _alcance(lugar):
+    """{code, tipo, nombre, provs, dep} del lugar, o None para todo el Perú."""
+    if not lugar:
+        return None
+    from . import ficha
+    sc = ficha.scope_of(lugar)
+    if not sc:
+        raise ValueError(f"Lugar desconocido: «{lugar}». Use 2 dígitos (departamento) o 4 (provincia).")
+    nombre = _t(sc["nombre"]) if sc["tipo"] == "departamental" else f"{_t(sc['nombre'])} ({_t(sc['departamento'])})"
+    return {"code": lugar, "tipo": sc["tipo"], "nombre": nombre, "provs": set(sc["provs"]), "dep": sc["dep"]}
+
+
+def _recortar(D, sc):
+    """Copia del snapshot con solo lo del lugar. Cada fuente se filtra por la provincia que trae (o su departamento);
+    los sismos, por departamento; ENFEN queda nacional."""
+    if not sc:
+        return D
+    P, dep, prov_level = sc["provs"], sc["dep"], sc["tipo"] == "provincial"
+    en = lambda prov=None, reg=None: (prov in P) if prov_level else ((reg or (prov or "")[:2]) == dep)   # noqa: E731
+    from . import geo
+    nombres = {geo.norm(p["nombre"]): c for c, p in geo.provinces().items() if c in P}
+    R = dict(D)
+    R["levelsByDay"] = {d: {p: c for p, c in cells.items() if p in P} for d, cells in D["levelsByDay"].items()}
+    R["avisos"] = [a for a in D["avisos"] if dep in (a.get("regs") or [])]
+    R["indeci"] = [i for i in D["indeci"] if en(i.get("prov"), i.get("reg"))]
+    dn = dict(D.get("danos") or {})
+    evs = [e for e in dn.get("eventos") or [] if (any(p in P for p in (e.get("por_prov") or {})) if prov_level else dep in (e.get("por_reg") or {}))]
+    nuevos = collections.Counter()
+    for e in evs:
+        if e.get("nuevo"):
+            parte = (e.get("por_prov") or {}).get(sc["code"]) if prov_level else (e.get("por_reg") or {}).get(dep)
+            for k, v in (parte or {}).items():
+                if isinstance(v, (int, float)):
+                    nuevos[k] += v
+    R["danos"] = dn | {"eventos": evs, "nuevos": dict(nuevos)}
+    R["alertas"] = [a for a in D["alertas"] if en(str(a.get("ubigeo") or "")[:4] or None, a.get("reg"))]
+    R["focos"] = [f for f in D["focos"] if f[5] == dep and (not prov_level or geo.norm(f[3]) in nombres)]
+    R["sismos"] = [s for s in D["sismos"] if len(s) > 9 and s[9] == dep]
+    R["vias"] = [v for v in D.get("vias") or [] if en(v.get("prov"), v.get("reg"))]
+    M = dict(D.get("mar") or {})
+    M["avisos"] = [a for a in M.get("avisos") or [] if any(p in P for pp in (a.get("provs_por_dia") or {}).values() for p in pp)]
+    M["puntos"] = [p for p in M.get("puntos") or [] if en(p.get("prov"), p.get("reg"))]
+    R["mar"] = M
+    R["bomberos"] = [b for b in D.get("bomberos") or [] if en(b.get("prov"), b.get("reg"))]
+    bm = D.get("bomberosMedicas") or {}
+    R["bomberosMedicas"] = bm | {"total": sum(v for p, v in (bm.get("por_prov") or {}).items() if p in P) if prov_level else (bm.get("por_reg") or {}).get(dep, 0)}
+    R["obras"] = [o for o in D.get("obras") or [] if en(o.get("prov"), o.get("reg"))]
+    R["comunicados"] = [c for c in D.get("comunicados") or [] if dep in (c.get("regs") or [])]
+    return R
+
+
+def _build(horas, lugar=None):
+    sc = _alcance(lugar)
+    D = _recortar(snapshot.build(), sc)
     ahora = datetime.datetime.now(LIMA)
     desde_ts = time.time() - horas * 3600
     desde = (ahora - datetime.timedelta(hours=horas)).strftime("%Y-%m-%d %H:%M")
@@ -92,10 +151,17 @@ def _build(horas):
     lv = D["levelsByDay"].get(hoy, {})
     n4, n3 = sum(1 for c in lv.values() if c["m"] == 4), sum(1 for c in lv.values() if c["m"] == 3)
     nuevos = [a for a in D["avisos"] if (a.get("emision") or "") >= (ahora - datetime.timedelta(hours=horas)).date().isoformat()]
-    rojos = [a for a in D["avisos"] if a.get("nivel") == "ROJO" and hoy in (a.get("dias") or [])]
+    en_rojo = {nro for c in lv.values() for nro, n in c["a"] if n == 4}   # rojo HOY en las provincias del alcance
+    rojos = [a for a in D["avisos"] if a["nro"] in en_rojo]
+    if sc and sc["tipo"] == "provincial":
+        m = max([c["m"] for c in lv.values()] or [0])
+        clima_tit = (f"Aviso nivel {m} ({['', '', 'amarillo', 'naranja', 'rojo'][m]}) hoy, {hoy_txt}, en {sc['nombre']}" if m >= 2
+                     else f"Sin aviso SENAMHI de nivel 2 o más hoy, {hoy_txt}, en {sc['nombre']}")
+    else:
+        clima_tit = f"{_pl(n4 + n3, 'provincia', 'provincias')} en aviso naranja o rojo hoy, {hoy_txt}"
     puntos.append(_punto(
-        "senamhi", "Clima", f"{n4 + n3} provincias en aviso naranja o rojo hoy, {hoy_txt}" + (f"; {len(rojos)} aviso{'s' if len(rojos) != 1 else ''} rojo{'s' if len(rojos) != 1 else ''} vigente{'s' if len(rojos) != 1 else ''}" if rojos else ""),
-        "El SENAMHI emitió " + (f"{len(nuevos)} avisos nuevos en las últimas {horas} h" if nuevos else f"ningún aviso nuevo en las últimas {horas} h") + ".",
+        "senamhi", "Clima", clima_tit + (f"; {len(rojos)} aviso{'s' if len(rojos) != 1 else ''} rojo{'s' if len(rojos) != 1 else ''} vigente{'s' if len(rojos) != 1 else ''}" if rojos else ""),
+        "El SENAMHI emitió " + (f"{_pl(len(nuevos), 'aviso nuevo', 'avisos nuevos')} en las últimas {horas} h" if nuevos else f"ningún aviso nuevo en las últimas {horas} h") + ".",
         3 if n4 or rojos else 2 if n3 else 1,
         {"provincias_nivel_4_hoy": n4, "provincias_nivel_3_hoy": n3, "provincias_con_aviso_hoy": len(lv), "avisos_nuevos": len(nuevos)},
         [_item("senamhi_avisos", "aviso", a["key"], f"Aviso N° {a['nro']} · {_t(a['titulo'])}", f"{a['nivel'].lower()} · {_vigencia(a.get('inicio'), a.get('fin'), hoy)}"
@@ -112,7 +178,7 @@ def _build(horas):
                        key=lambda e: -sum(v for k, v in e["totales"].items() if k.startswith("personas") and isinstance(v, (int, float))))
     fall = sum((e["totales"].get("personas_fallecidas") or 0) for e in con_danos)
     puntos.append(_punto(
-        "indeci", "Emergencias", f"{len(nuevas)} emergencias nuevas reportadas por INDECI",
+        "indeci", "Emergencias", f"{_pl(len(nuevas), 'emergencia nueva reportada', 'emergencias nuevas reportadas')} por INDECI",
         ("Las más frecuentes: " + ", ".join(f"{t.lower()} ({n})" for t, n in tipos.most_common(3)) + ". " if tipos else "")
         + (f"{len(rep) - len(nuevas)} reportes más son seguimientos de eventos antiguos." if len(rep) > len(nuevas) else ""),
         3 if fall or len(nuevas) >= 30 else 2 if nuevas else 1,
@@ -136,9 +202,9 @@ def _build(horas):
     nuevos_f = [f for f in fuegos if f["ini"] >= desde]
     activos = [f for f in fuegos if f["estado"] != "Extinguido"]
     ind_f = sum(1 for i in nuevas if "INCENDIO FORESTAL" in (i.get("evento") or "").upper())
-    cob = _cobertura_incendios()
+    cob = _cobertura_incendios(lugar=sc["code"] if sc else None)
     puntos.append(_punto(
-        "incendios", "Incendios", f"{len(nuevos_f)} incendios forestales nuevos detectados por satélite; {len(activos)} siguen activos",
+        "incendios", "Incendios", f"{_pl(len(nuevos_f), 'incendio forestal nuevo detectado', 'incendios forestales nuevos detectados')} por satélite; {len(activos)} {'sigue activo' if len(activos) == 1 else 'siguen activos'}",
         f"INDECI reportó {ind_f} incendios forestales como emergencia en las últimas {horas} h. "
         + (f"En los últimos 7 días, solo {cob['reportados']} de {cob['detectados']} incendios vistos por el satélite ({cob['pct']} %) llegaron a un reporte de emergencia." if cob["detectados"] else ""),
         3 if len(activos) >= 30 or len(nuevos_f) >= 30 else 2 if nuevos_f or activos else 1,
@@ -153,7 +219,7 @@ def _build(horas):
     s24 = sorted([s for s in D["sismos"] if f"{s[0]} {s[1]}" >= desde], key=lambda s: -s[2])
     mx = s24[0] if s24 else None
     puntos.append(_punto(
-        "sismos", "Sismos", f"{len(s24)} sismos en {horas} h" + (f"; el mayor, M{mx[2]} {mx[6]}" if mx else ""),
+        "sismos", "Sismos", f"{_pl(len(s24), 'sismo', 'sismos')} en {horas} h" + (f"; el mayor, M{mx[2]} {mx[6]}" if mx else ""),
         f"{sum(1 for s in s24 if s[2] >= 4)} de magnitud 4 o más." if s24 else "Sin sismos registrados por el IGP.",
         3 if mx and mx[2] >= 5.5 else 2 if mx and mx[2] >= 4.5 else 1,
         {"sismos": len(s24), "sismos_magnitud_4_o_mas": sum(1 for s in s24 if s[2] >= 4), "magnitud_maxima": mx[2] if mx else None},
@@ -164,7 +230,7 @@ def _build(horas):
     nv = [v for v in V if (v.get("_first_seen") or 0) >= desde_ts]
     inter = [v for v in V if v.get("transito_cod") == "03"]
     puntos.append(_punto(
-        "vias", "Vías", f"{len(inter)} vías nacionales interrumpidas; {len(nv)} emergencias viales nuevas",
+        "vias", "Vías", f"{_pl(len(inter), 'vía nacional interrumpida', 'vías nacionales interrumpidas')}; {_pl(len(nv), 'emergencia vial nueva', 'emergencias viales nuevas')}",
         f"PROVIAS registra {len(V)} emergencias en la red vial nacional: {sum(1 for v in V if v.get('transito_cod') == '02')} con tránsito restringido "
         f"y {sum(1 for v in V if v.get('transito_cod') == '04')} por confirmar.",
         3 if inter else 2 if nv else 1,
@@ -193,7 +259,7 @@ def _build(horas):
     esc = [b for b in B if b.get("escalo")]
     largos = sorted([b for b in B if b.get("duracion_min")], key=lambda b: -b["duracion_min"])
     puntos.append(_punto(
-        "bomberos", "Bomberos", f"{len(B)} emergencias atendidas por bomberos, {cats.get('Incendio', 0)} incendios",
+        "bomberos", "Bomberos", f"{_pl(len(B), 'emergencia atendida', 'emergencias atendidas')} por bomberos, {_pl(cats.get('Incendio', 0), 'incendio', 'incendios')}",
         ", ".join(f"{k.lower()} {v}" for k, v in cats.most_common(4)) + f"; además {D.get('bomberosMedicas', {}).get('total', 0)} emergencias médicas."
         + (f" {len(esc)} sumaron unidades en el camino." if esc else ""),
         2 if cats.get("Incendio", 0) >= 15 or esc else 1,
@@ -213,7 +279,9 @@ def _build(horas):
     venc = [o for o in O if o["estado"] == "Vencida"]
     puntos.append(_punto(
         "obras", "Prevención", (f"{len(sin_empezar)} de {len(en_lluvia)} obras de prevención en provincias con aviso de lluvia aún no empiezan"
-                                if en_lluvia else f"{len(venc)} obras de prevención con el plazo vencido"),
+                                if en_lluvia else (f"{sum(1 for o in O if o['estado'] == 'Por Ejecutar')} de {len(O)} obras de prevención siguen sin empezar"
+                                                   if any(o["estado"] == "Por Ejecutar" for o in O) else f"{_pl(len(O), 'obra de prevención', 'obras de prevención')}, ninguna pendiente de empezar")
+                                + (f"; {_pl(len(venc), 'tiene', 'tienen')} el plazo vencido" if venc else "")),
         f"La ANA reportó avance de {len(avanzaron)} obras desde ayer; {len(venc)} tienen el plazo vencido y "
         f"{sum(1 for o in O if o['estado'] == 'Por Ejecutar')} de {len(O)} siguen por ejecutar.",
         3 if en_lluvia and len(sin_empezar) >= 20 else 2 if venc or sin_empezar else 1,
@@ -239,19 +307,24 @@ def _build(horas):
                              {"comunicados": len(com)},
                              [_item(c.get("source"), "noticia", c["_key"], c.get("titulo"), c.get("inst_nombre")) for c in com[:6]], periodo=f"publicados en las últimas 24 h"))
 
+    if sc:
+        # en un lugar, fuera los puntos que no le aplican: sin costa, sin cobertura de bomberos, sin obras de la ANA, sin sismos
+        vacio = {"mar": lambda c: not c.get("avisos_dhn_vigentes") and c.get("ola_max_m_24h_referencial") is None,
+                 "bomberos": lambda c: not c.get("partes"), "obras": lambda c: not c.get("obras_total"), "sismos": lambda c: not c.get("sismos")}
+        puntos = [p for p in puntos if not (p["id"] in vacio and vacio[p["id"]](p["cifras"]))]
     puntos.sort(key=lambda p: -p["nivel"])
     return {"generado": ahora.isoformat(timespec="minutes"), "desde": desde, "horas": horas, "hoy": hoy, "hoy_txt": hoy_txt,
-            "puntos": puntos}
+            "lugar": {k: sc[k] for k in ("code", "tipo", "nombre")} if sc else None, "puntos": puntos}
 
 
-def _cobertura_incendios(dias=7):
+def _cobertura_incendios(dias=7, lugar=None):
     """Incendios que vio el satélite (SERFOR) en los últimos días y cuántos tienen un reporte de emergencia de INDECI en
     el mismo distrito (±3 días). Mide cuánto del fuego llega a los registros oficiales."""
     hoy = datetime.datetime.now(LIMA).date()
     lim = (hoy - datetime.timedelta(days=dias)).isoformat()
     g = collections.defaultdict(list)
     for a in db.get_items("serfor", "alerta", current_only=False):
-        if (a.get("fecha") or "") >= (hoy - datetime.timedelta(days=dias + 10)).isoformat():
+        if (a.get("fecha") or "") >= (hoy - datetime.timedelta(days=dias + 10)).isoformat() and (not lugar or str(a.get("ubigeo") or "").startswith(lugar)):
             g[a.get("cod") or a["_key"]].append(a)
     fuegos = []
     for xs in g.values():
@@ -273,10 +346,13 @@ def _cobertura_incendios(dias=7):
     return {"detectados": len(fuegos), "reportados": rep, "pct": round(rep * 100 / len(fuegos)) if fuegos else None}
 
 
-def dossier():
+def dossier(lugar=None):
     """Lo que recibe la IA para el resumen diario: los puntos con sus cifras y sus registros principales."""
-    R = build()
+    R = build(lugar=lugar)
+    L = R.get("lugar")
     return {"alcance": "resumen_diario", "fecha_del_resumen": R["hoy_txt"], "hora_de_corte": R["generado"][11:16],
+            "lugar": L["nombre"] if L else "todo el Perú",
+            **({"solo_este_lugar": f"Todos los datos son solo de {L['nombre']}, salvo ENFEN (nacional) y los sismos (de todo el departamento). No hables del resto del país."} if L else {}),
             "periodo": f"últimas {R['horas']} horas, hasta {R['generado'][:16].replace('T', ' ')} (hora de Lima)",
             "importante": "Cada punto dice a qué periodo se refieren sus cifras (campo 'periodo'): respétalo al redactar.",
             "puntos": [{"tema": p["tema"], "periodo": p.get("periodo"), "importancia": {3: "alta", 2: "media", 1: "baja"}[p["nivel"]], "titular": p["titulo"],
