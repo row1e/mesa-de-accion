@@ -3,7 +3,7 @@ import json
 import time
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 
@@ -189,6 +189,9 @@ def _meta_reportar(base):
 @app.get("/reportar", include_in_schema=False)
 def reportar(request: Request):
     """Formulario público para corresponsales y ciudadanos: envía a /api/reportes (ver reportes.py)."""
+    from . import reportes
+    if reportes.remoto():          # Mesa instalada: el formulario que vale es el de la versión en línea
+        return RedirectResponse(config.RELE_SERVIDOR.rstrip("/") + "/reportar")
     titulo, meta = _meta_reportar(_base(request))
     r = _con_marca("reportar.html")
     html = r.body.decode("utf-8").replace("<title>Reporta una emergencia · Mesa de Acción</title>", f"<title>{titulo}</title>").replace("<!--META-->", meta)
@@ -349,6 +352,26 @@ def relay_result(request: Request, b: RelayResultado):
     from . import rele_hub
     ok = rele_hub.entregar(_cliente_rele(request), b.id, b.status, b.headers, b.body_b64, b.error)
     return {"ok": ok}
+
+
+# La bandeja de corresponsales para las Mesas instaladas (ver reportes.py): misma lista, revisión y archivos que el tablero.
+@app.get("/api/relay/reportes", include_in_schema=False)
+def relay_reportes(request: Request):
+    from . import reportes
+    _cliente_rele(request)
+    return reportes.listar()
+
+
+@app.post("/api/relay/reportes/{rid}/estado", include_in_schema=False)
+def relay_reporte_estado(request: Request, rid: str, b: ReporteEstado):
+    _cliente_rele(request)
+    return reporte_estado(rid, b)
+
+
+@app.get("/api/relay/reportes/{rid}/archivo", include_in_schema=False)
+def relay_reporte_archivo(request: Request, rid: str):
+    _cliente_rele(request)
+    return reporte_archivo(rid)
 
 
 @app.get("/api/relay/estado")

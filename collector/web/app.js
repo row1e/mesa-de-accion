@@ -958,10 +958,13 @@ $("#ciud").addEventListener("click", async e => {
     REP.firma = ""; await cargarReportes(); toast(b.dataset.acc === "verificado" ? "Reporte verificado" : b.dataset.acc === "descartado" ? "Reporte descartado" : "Reporte reabierto");
   } catch (err) { toast(`No se pudo guardar: ${err.message}`); }
 });
-// Enlace público del formulario: en el servidor en línea es el que se comparte; en una Mesa local solo sirve en esa red.
-(() => {
-  const url = `${location.origin}/reportar`; $("#ciud-url").value = url;
-  $("#ciud-url-nota").textContent = /^(localhost|127\.|\[::1\])/.test(location.hostname) ? "Esta Mesa corre en este equipo: el enlace solo funciona aquí. El público usa el de la versión en línea (mesa.ondaai.com/reportar)." : "Este enlace es público: no pide la clave del tablero.";
+// Enlace público del formulario: el de la versión en línea. Una Mesa instalada comparte la bandeja del servidor.
+(async () => {
+  let srv = null;
+  try { srv = (await (await fetch("/api/relay/estado")).json()).servidor || null; } catch {}
+  const url = `${(srv || location.origin).replace(/\/$/, "")}/reportar`; $("#ciud-url").value = url;
+  $("#ciud-url-nota").textContent = srv ? "Este enlace es público. Los reportes llegan a la versión en línea y esta Mesa los trae: todas las Mesas ven la misma bandeja y la verificación se comparte."
+    : /^(localhost|127\.|\[::1\])/.test(location.hostname) ? "Esta Mesa corre en este equipo: el enlace solo funciona aquí." : "Este enlace es público: no pide la clave del tablero.";
   $("#ciud-copiar").onclick = async () => { try { await navigator.clipboard.writeText(url); toast("Enlace copiado"); } catch { $("#ciud-url").select(); } };
 })();
 let bomF = "", bomPer = "24";

@@ -79,6 +79,8 @@ def start():
     scheduler.start()
     from . import rele_cliente
     rele_cliente.start()       # Mesa instalada con MESA_RELE_SERVIDOR: atiende las consultas que le encarga el servidor
+    from . import reportes
+    reportes.start()           # ...y comparte su bandeja de corresponsales
 
 
 def next_runs():
