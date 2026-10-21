@@ -1,5 +1,6 @@
 # Arma la app de Mac (MesaDeAccion-IRTP-<versión>-<arquitectura>.dmg) para Apple Silicon e Intel y la deja como artefacto.
-# Se dispara a mano (Actions → Instalador Mac → Run workflow, con la versión) o al empujar a una rama instalador/*.
+# Se dispara a mano (Actions → Instalador Mac → Run workflow, con la versión) o al empujar a una rama instalador/*
+# (instalador/mac-1.0.7 arma la 1.0.7).
 name: Instalador Mac
 
 on:
@@ -36,7 +37,11 @@ jobs:
           pip install -r collector/requirements.txt -r collector/windows/requirements-build.txt
 
       - name: Versión
-        run: echo "MESA_VERSION=${{ inputs.version || format('1.0.{0}', github.run_number) }}" >> "$GITHUB_ENV"
+        # Manual: la versión ingresada. Rama instalador/mac-1.0.7: la del nombre. Si no, 1.0.<número de corrida>.
+        run: |
+          V="${{ inputs.version }}"
+          [ -n "$V" ] || V="$(echo '${{ github.ref_name }}' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+          echo "MESA_VERSION=${V:-1.0.${{ github.run_number }}}" >> "$GITHUB_ENV"
 
       - name: Empaquetar (PyInstaller)
         working-directory: collector
