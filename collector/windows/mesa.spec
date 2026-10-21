@@ -6,7 +6,7 @@ from PyInstaller.utils.hooks import collect_submodules
 
 C = os.path.abspath(os.path.join(SPECPATH, ".."))          # collector/
 a = Analysis(
-    [os.path.join(C, "app_windows.py")],
+    [os.path.join(C, "app_escritorio.py")],
     pathex=[C],
     datas=[(os.path.join(C, "web"), "web"), (os.path.join(C, "certs"), "certs"),
            (os.path.join(C, "..", "ref"), "ref"), (os.path.join(C, "windows", "icono.png"), "windows")],

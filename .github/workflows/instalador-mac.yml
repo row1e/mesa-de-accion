@@ -1,0 +1,72 @@
+# Arma la app de Mac (MesaDeAccion-IRTP-<versión>-<arquitectura>.dmg) para Apple Silicon e Intel y la deja como artefacto.
+# Se dispara a mano (Actions → Instalador Mac → Run workflow, con la versión) o al empujar a una rama instalador/*.
+name: Instalador Mac
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión (p. ej. 1.0.7); vacío = 1.0.<número de corrida>"
+        required: false
+  push:
+    branches: ["instalador/**"]
+
+jobs:
+  mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            collector/requirements.txt
+            collector/windows/requirements-build.txt
+
+      - name: Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r collector/requirements.txt -r collector/windows/requirements-build.txt
+
+      - name: Versión
+        run: echo "MESA_VERSION=${{ inputs.version || format('1.0.{0}', github.run_number) }}" >> "$GITHUB_ENV"
+
+      - name: Empaquetar (PyInstaller)
+        working-directory: collector
+        run: pyinstaller --noconfirm mac/mesa.spec
+
+      - name: Prueba de humo (la app arranca, exige licencia y toma la marca)
+        working-directory: collector
+        run: |
+          P="$RUNNER_TEMP/prueba"; mkdir -p "$P/home" "$P/base"
+          printf 'MESA_MARCA=irtp\n' > "$P/base/config.env"
+          HOME="$P/home" MESA_BASE="$P/base" "dist/Mesa de Acción.app/Contents/MacOS/MesaDeAccion" --minimizado &
+          ok=""
+          for i in $(seq 1 60); do sleep 2; if curl -sf http://127.0.0.1:8787/api/licencia -o "$P/lic.json"; then ok=1; break; fi; done
+          tail -40 "$P/base/logs/mesa.log" || true
+          [ -n "$ok" ] || { echo "La app empaquetada no respondió"; exit 1; }
+          python -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['requerida'] and d['bloqueada'], d" "$P/lic.json"
+          curl -sf http://127.0.0.1:8787/ | grep -q 'Código de licencia'
+          curl -sf http://127.0.0.1:8787/ | grep -q 'marca-logo'
+          [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/api/health)" = "403" ]
+          curl -sf http://127.0.0.1:8787/fuentes/indeci.png -o /dev/null
+          grep -q "MESA_RELE_SERVIDOR=https://mesa.ondaai.com" "$P/base/config.env"
+          pkill -f "Mesa de Acción.app" || true
+          echo "La Mesa respondió y exige licencia"
+
+      - name: Imagen .dmg
+        working-directory: collector
+        run: mac/dmg.sh "$MESA_VERSION" && ls -la dist/dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MesaDeAccion-IRTP-Mac-${{ matrix.runner == 'macos-15' && 'apple-silicon' || 'intel' }}
+          path: collector/dist/dmg/*.dmg
+          if-no-files-found: error

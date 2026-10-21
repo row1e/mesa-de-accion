@@ -1,0 +1,13 @@
+MESA DE ACCIÓN PARA MAC
+
+1. Arrastre "Mesa de Acción" a la carpeta Aplicaciones.
+2. Ábrala desde Aplicaciones. La primera vez, macOS avisa que no puede verificar al desarrollador:
+   - Haga clic en "Listo" (o "Cancelar").
+   - Abra Configuración del Sistema > Privacidad y seguridad, baje hasta el aviso sobre "Mesa de Acción"
+     y haga clic en "Abrir de todos modos". Confirme con su contraseña.
+3. La Mesa pide el código de licencia (empieza con MESA-) y, opcional, la clave de Claude.
+4. Se abre el tablero en el navegador. La Mesa queda en la barra de menús (arriba a la derecha) y se abre sola
+   al iniciar sesión, para seguir recolectando datos. Para cerrarla: ícono > "Salir".
+
+Datos y configuración: ~/Library/Application Support/MesaDeAccion (menú > "Abrir carpeta de datos").
+Para la ficha en PDF se necesita Google Chrome instalado.
