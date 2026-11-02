@@ -7,7 +7,7 @@ import time
 from zoneinfo import ZoneInfo
 
 from . import config, db, geo, runner
-from .sources import SOURCES
+from .sources import SOURCES, others
 
 LIMA = ZoneInfo("America/Lima")
 INDECI_WINDOW_H = 24
@@ -248,7 +248,7 @@ def build():
         for ln in db.get_items("provias", "linea", current_only=False):
             v = vias_by.get(ln["_key"])
             for f in (ln.get("fotos") or [])[:3] if v else []:
-                vias_fotos.append({**f, "key": v["_key"], "transito": v.get("transito"), "transito_cod": v.get("transito_cod"),
+                vias_fotos.append({**f, "url": others.foto_via_local(f["url"]), "key": v["_key"], "transito": v.get("transito"), "transito_cod": v.get("transito_cod"),
                                    "tipo": v.get("tipo"), "ruta": v.get("ruta"), "sector": v.get("sector"), "prov": v.get("prov"), "reg": v.get("reg")})
         vias_fotos.sort(key=lambda f: f.get("fecha") or "", reverse=True)
         # Bomberos (CGBVP): partes de las últimas 24 h; las médicas solo como conteo (sin dirección)

@@ -1,11 +1,13 @@
 """INDECI, IGP, SERFOR, INGEMMET, ENFEN, FIRMS y verificación de acceso a PROVIAS."""
 import csv
 import datetime
+import hashlib
 import html
 import io
 import re
 import time
 
+import pymupdf
 from shapely.geometry import Point
 from shapely.ops import unary_union
 from shapely.prepared import prep
@@ -251,12 +253,74 @@ def provias():
                         + (f" · eventos: {'; '.join(e['nombre'] for e in eventos.values())}" if eventos else ""))
 
 
+FOTOS_VIAS = config.DATA / "media" / "provias"
+FOTOS_TABLERO, FOTO_MAX_PX = 80, 1600
+FIRMAS_FOTO = {b"\xff\xd8\xff": "jpg", b"\x89PNG": "png", b"GIF8": "gif", b"RIFF": "webp"}
+
+
+def foto_via_local(url):
+    """Dirección de la copia guardada de una foto de PROVIAS; sin copia, la del visor (que solo abre desde el Perú)."""
+    base = hashlib.sha1(url.encode()).hexdigest()[:20]
+    for ext in FIRMAS_FOTO.values():
+        if (FOTOS_VIAS / f"{base}.{ext}").exists():
+            return f"/media/provias/{base}.{ext}"
+    return url
+
+
+def _achicar_foto(datos, ext):
+    """A lo sumo FOTO_MAX_PX de ancho, en JPEG. Si no se puede leer, queda tal cual."""
+    try:
+        pix = pymupdf.Pixmap(datos)
+        if pix.alpha or pix.n > 3:
+            pix = pymupdf.Pixmap(pymupdf.csRGB, pix)
+        while pix.width > FOTO_MAX_PX:
+            pix.shrink(1)                       # a la mitad
+        return pix.tobytes("jpeg", jpg_quality=80), "jpg"
+    except Exception:  # noqa: BLE001
+        return datos, ext
+
+
+def _guardar_fotos_vias(limite=40):
+    """Copia aquí las fotos que muestra el tablero (las FOTOS_TABLERO más recientes, hasta 3 por emergencia vigente),
+    porque PROVIAS solo responde a IPs peruanas y quien mira el tablero puede estar en otro lado. Las achica para cuidar
+    el disco y borra las que el tablero ya no muestra."""
+    vigentes = {v["_key"] for v in db.get_items("provias", "emergencia")}
+    fotos = [f for ln in db.get_items("provias", "linea", current_only=False) if ln["_key"] in vigentes
+             for f in (ln.get("fotos") or [])[:3]]
+    fotos.sort(key=lambda f: f.get("fecha") or "", reverse=True)
+    urls = list(dict.fromkeys(f["url"] for f in fotos[:FOTOS_TABLERO]))
+    FOTOS_VIAS.mkdir(parents=True, exist_ok=True)
+    nuevas, fallas = 0, 0
+    for url in urls:
+        if nuevas >= limite or fallas >= 3:     # sin camino al Perú cada intento tarda: se sigue en el próximo turno
+            break
+        if not foto_via_local(url).startswith("http"):
+            continue
+        try:
+            datos = fetch("provias_fotos", url, keep_raw=False, retries=0)
+        except Exception:  # noqa: BLE001
+            fallas += 1
+            continue
+        ext = next((e for firma, e in FIRMAS_FOTO.items() if datos.startswith(firma)), None)
+        if not ext:
+            fallas += 1
+            continue
+        datos, ext = _achicar_foto(datos, ext)
+        (FOTOS_VIAS / f"{hashlib.sha1(url.encode()).hexdigest()[:20]}.{ext}").write_bytes(datos)
+        nuevas += 1
+    usadas = {foto_via_local(u).rsplit("/", 1)[-1] for u in urls}
+    for f in FOTOS_VIAS.iterdir():
+        if f.name not in usadas:
+            f.unlink()
+    return nuevas, len(urls)
+
+
 def provias_fotos(limite=40, cada=6 * 3600):
     """Fotos de la cronología de cada emergencia vial (el visor las entrega de a una emergencia).
 
     Por turno revisa hasta `limite`: primero las nunca revisadas, luego interrumpidas y por confirmar, y entre
-    las demás las revisadas hace más tiempo. Cada emergencia se vuelve a mirar cada `cada` segundos. Solo se
-    guarda la dirección de cada foto: las imágenes se muestran desde el visor de PROVIAS."""
+    las demás las revisadas hace más tiempo. Cada emergencia se vuelve a mirar cada `cada` segundos. Además guarda
+    una copia de las fotos que muestra el tablero (ver _guardar_fotos_vias)."""
     vias = db.get_items("provias", "emergencia")
     lineas = {x["_key"]: x for x in db.get_items("provias", "linea", current_only=False)}
     ahora, orden = time.time(), {"03": 0, "04": 1, "02": 2, "01": 3}
@@ -277,5 +341,7 @@ def provias_fotos(limite=40, cada=6 * 3600):
         fotos += len(fs)
     if hechas:
         db.upsert_items("provias", "linea", hechas)
-    msg = f"{len(hechas)} emergencias revisadas · {fotos} fotos · quedan {len(pend) - len(hechas)} por revisar"
+    nuevas, total = _guardar_fotos_vias()
+    msg = (f"{len(hechas)} emergencias revisadas · {fotos} fotos · quedan {len(pend) - len(hechas)} por revisar"
+           f" · {nuevas} copias nuevas de {total} fotos del tablero")
     return len(hechas), fotos, msg + (f" · errores: {', '.join(errores)}" if errores else "")

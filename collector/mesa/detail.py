@@ -12,7 +12,7 @@ import urllib.parse
 
 from . import config, db, indeci_pdf
 from .http import fetch, fetch_json, fetch_text
-from .sources.others import SERFOR
+from .sources.others import SERFOR, foto_via_local
 
 GEOCATMIN = "https://geocatmin.ingemmet.gob.pe/arcgis/rest/services"
 TTL = {  # segundos que vale el enriquecimiento cacheado
@@ -230,7 +230,7 @@ def _f_provias(it, ex):
                       ["Unidad zonal", f.get("Zonal") or "—"], ["Rutas alternas", (f.get("RutasAlt") or "").strip() or "—"]],
             "text": "\n\n".join(x for x in (f.get("UltimaActualizacion") and f"Última actualización: {' '.join(f['UltimaActualizacion'].split())}",
                                              cron and f"Cronología (lo más reciente primero):\n{cron}") if x) or None,
-            "images": [ph for x in linea for ph in x["fotos"]][:6],
+            "images": [{**ph, "url": foto_via_local(ph["url"])} for x in linea for ph in x["fotos"]][:6],
             "links": [{"label": "Visor de Emergencias Viales (PROVIAS)", "url": "https://wsgcv.proviasnac.gob.pe/emergenciavial"}],
             "fields": f or {k: v for k, v in it.items() if not k.startswith("_")}}
 
