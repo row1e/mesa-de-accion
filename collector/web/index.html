@@ -255,8 +255,10 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .board td.when{white-space:nowrap}
 .board td.when time{font-weight:600}
 .board .sub.bad{color:var(--bad)}
-.board td.msg{font-size:12.5px;max-width:420px}
+.board .sub.warn{color:var(--warn)}
+.board td.msg{font-size:12.5px;min-width:240px;max-width:420px;overflow-wrap:anywhere}
 .board td.msg.bad{color:var(--bad)}
+.board td.msg.warn{color:var(--warn)}
 .st-ok{background:var(--ok-bg);color:var(--ok)}
 .st-actualizando{background:var(--surface-2);color:var(--ink-2)}
 .st-atrasada{background:var(--warn-bg);color:var(--warn)}
@@ -392,6 +394,7 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .lat-head b{font-size:15px}
 .lat-head .msg{color:var(--ink-2);flex-basis:100%}
 .lat-head .msg.bad{color:var(--bad)}
+.lat-head .msg.warn{color:var(--warn)}
 .latest{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto;border-top:1px solid var(--line-2)}
 .latest li{border-bottom:1px solid var(--line-2)}
 .latest .row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:92px 132px minmax(0,1fr);gap:4px 14px;padding:9px 4px;width:100%;cursor:pointer}
@@ -919,7 +922,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
   </section>
   <section id="fuentes">
     <div class="sec-head"><div><p class="eyebrow">Colector local</p><h2>Estado de las fuentes</h2></div></div>
-    <p class="lede">Cada fuente se consulta sola a su propio ritmo. “Atrasada” significa que su último éxito supera tres veces su intervalo; “Fallando”, que el último intento dio error. El botón ↻ fuerza una lectura (máximo una por minuto por fuente).</p>
+    <p class="lede">Cada fuente se consulta sola a su propio ritmo. “Atrasada” significa que sus datos no son los más recientes: el último intento dio error o su último éxito supera tres veces su intervalo. “Fallando” significa que no logra actualizarse: falla seguido y sus datos tienen más de 6 horas (o más de tres veces su intervalo, si es mayor), o nunca funcionó. El botón ↻ fuerza una lectura (máximo una por minuto por fuente).</p>
     <div class="board"><table>
       <thead><tr><th>Institución</th><th>Fuente</th><th>Estado</th><th>Último éxito</th><th>Registros</th><th>Último mensaje</th><th></th></tr></thead>
       <tbody id="board"></tbody>

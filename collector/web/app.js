@@ -204,9 +204,9 @@ function renderHealth() {
     <td class="org">${esc(h.org)}</td>
     <td class="pick" data-pick="${h.id}" title="Ver lo último recibido de esta fuente">${esc(h.name)}<div class="muted sub" title="En la hoja: ${esc(h.sheet)}">${esc(h.via)} · ${esc(h.geo)}</div></td>
     <td><span class="chip st-${h.status}">${STATUS[h.status] || h.status}</span></td>
-    <td class="num when">${when(h.last_ok)}${h.failures && h.last_error ? `<div class="sub bad">último error: ${stamp(h.last_error)}</div>` : ""}<div class="muted sub">${every(h.interval_s)} · próxima ${h.next_run ? stamp(h.next_run).split(" ").pop() : "—"} (${until(h.next_run)})</div></td>
+    <td class="num when">${when(h.last_ok)}${h.failures && h.last_error ? `<div class="sub ${h.status === "fallando" ? "bad" : "warn"}">último error: ${stamp(h.last_error)} · ${plural(h.failures, "intento fallido", "intentos fallidos seguidos")}</div>` : ""}<div class="muted sub">${every(h.interval_s)} · próxima ${h.next_run ? stamp(h.next_run).split(" ").pop() : "—"} (${until(h.next_run)})</div></td>
     <td class="num">${h.items != null ? nf.format(h.items) : "—"}</td>
-    <td class="msg ${h.failures ? "bad" : "muted"}">${esc(h.message || "")}</td>
+    <td class="msg ${!h.failures ? "muted" : h.status === "fallando" ? "bad" : "warn"}">${esc(h.message || "")}</td>
     <td><button type="button" class="rbtn" data-src="${h.id}" aria-label="Actualizar ${esc(h.name)}" ${h.status === "actualizando" ? "disabled" : ""}>↻</button></td></tr>`).join("");
 }
 $("#board").addEventListener("click", e => {
@@ -1178,7 +1178,7 @@ function renderLatest() {
   if (s) $("#lat-head").innerHTML = `<span><b>${esc(s.org)} · ${esc(s.name)}</b></span>
       <span><span class="chip st-${s.status}">${STATUS[s.status] || s.status}</span> · última lectura ${when(s.last_run)} · último éxito ${when(s.last_ok)} · ${every(s.interval_s)}, próxima ${h_m(s.next_run)} (${until(s.next_run)})</span>
       <button type="button" class="rbtn" data-src="${s.id}" aria-label="Actualizar ${esc(s.name)}">↻</button>
-      <span class="msg ${s.failures ? "bad" : ""}">${esc(s.message || "")} · ${plural(LAT.counts[s.id] || 0, "registro nuevo", "registros nuevos")} en 24 h${state.region ? ` en ${esc(regName(state.region))}` : ""}.</span>`;
+      <span class="msg ${!s.failures ? "" : s.status === "fallando" ? "bad" : "warn"}">${esc(s.message || "")} · ${plural(LAT.counts[s.id] || 0, "registro nuevo", "registros nuevos")} en 24 h${state.region ? ` en ${esc(regName(state.region))}` : ""}.</span>`;
   $("#latest").innerHTML = LAT.rows.map((r, i) => `<li><button type="button" class="row ${r.detail || r.group ? "" : "nod"}" data-i="${i}">
       <span class="rt">${ago(r.received)}<small>${new Date(r.received * 1000).toLocaleString("es-PE", {timeZone: "America/Lima", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"})}</small></span>
       <span class="src">${esc(SHORT[r.source] || r.source)}${r.imagen ? `<img class="lthumb" src="${esc(r.imagen)}" alt="" loading="lazy">` : ""}</span>
