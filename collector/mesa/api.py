@@ -62,7 +62,8 @@ MARCAS = {"irtp": "IRTP"}
 def _con_marca(pagina):
     html = (config.WEB / pagina).read_text(encoding="utf-8")
     if config.MARCA in MARCAS:
-        html = (html.replace("<!--MARCA-->", f'<script>document.documentElement.dataset.marca = "{config.MARCA}";</script>')
+        icono = f'<link rel="icon" type="image/png" href="/marca/{config.MARCA}.png"><link rel="apple-touch-icon" href="/marca/{config.MARCA}.png">'
+        html = (html.replace("<!--MARCA-->", f'<script>document.documentElement.dataset.marca = "{config.MARCA}";</script>{icono}')
                     .replace("<!--MARCA-LOGO-->", f'<img class="marca-logo" src="/marca/{config.MARCA}.png" alt="{MARCAS[config.MARCA]}">'))
     return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
@@ -193,7 +194,6 @@ def _meta_reportar(base):
             '<meta name="twitter:card" content="summary_large_image">', f'<meta name="twitter:title" content="{e(titulo)}">',
             f'<meta name="twitter:description" content="{e(desc)}">', f'<meta name="twitter:image" content="{e(img)}">',
             f'<meta name="twitter:image:alt" content="{e(alt)}">',
-            *([f'<link rel="icon" type="image/png" href="/marca/{config.MARCA}.png">', f'<link rel="apple-touch-icon" href="/marca/{config.MARCA}.png">'] if marca else []),
             f'<script type="application/ld+json">{ld}</script>']
     return titulo, "\n".join(tags)
 
