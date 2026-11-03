@@ -70,6 +70,8 @@ def init():
     conn().executescript(SCHEMA)
     from .sources import gobpe          # migración única: fuente combinada "comunicados" → una por institución
     gobpe.migrate_combined()
+    from . import incendios             # migración única: registros de SERFOR repetidos por OBJECTID
+    incendios.migrar()
 
 
 @contextlib.contextmanager

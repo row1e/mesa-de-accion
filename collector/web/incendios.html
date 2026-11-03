@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Historial de incendios · Mesa de Acción</title>
+<script>try { const t = localStorage.getItem("mesa.tema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* tema del sistema */ }</script>
+<!--MARCA-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap">
+<style>
+/* Historial de incendios: focos de calor y alertas de SERFOR día por día (mesa/incendios.py). */
+:root{--ground:#F3F3EF;--surface:#FFFFFF;--surface-2:#F8F8F5;--ink:#15140F;--ink-2:#4A4840;--ink-3:#7C796E;--line:#DCDBD3;--line-2:#EAE9E3;
+  --brand:#FFD100;--brand-ink:#15140F;--n2:#E9BF1F;--n3:#EA7A1A;--n4:#D0302F;--fuego:#D0302F;--bar:#B9B7AD;--f-display:"Archivo","Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ground:#121210;--surface:#1B1A17;--surface-2:#22211D;--ink:#F1F0EA;--ink-2:#C4C2B8;--ink-3:#8F8C81;
+  --line:#35342E;--line-2:#2A2925;--n2:#E3B81A;--n3:#E8791F;--n4:#E0443F;--fuego:#FF6A4D;--bar:#5D5B52}}
+:root[data-theme="dark"]{--ground:#121210;--surface:#1B1A17;--surface-2:#22211D;--ink:#F1F0EA;--ink-2:#C4C2B8;--ink-3:#8F8C81;--line:#35342E;--line-2:#2A2925;
+  --n2:#E3B81A;--n3:#E8791F;--n4:#E0443F;--fuego:#FF6A4D;--bar:#5D5B52}
+:root[data-marca="irtp"]{--brand:#C1002D;--brand-ink:#FFFFFF}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ground);color:var(--ink);font:400 15px/1.5 var(--f-display)}
+a{color:inherit}
+button{font:inherit;cursor:pointer}
+.mast{background:var(--brand);color:var(--brand-ink)}
+.mast-in{max-width:1280px;margin:0 auto;padding:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.marca-logo{display:block;height:44px;width:auto}
+.mast h1{margin:0;font-size:26px;line-height:1;font-weight:800;font-variation-settings:"wdth" 70;text-transform:uppercase}
+.mast .per{font-size:13px;opacity:.95;max-width:760px}
+.mast .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.mast select{font:inherit;font-size:14px;padding:6px 8px;border-radius:4px;border:1px solid currentColor;background:var(--surface);color:var(--ink);max-width:260px}
+.mast .acts a{color:var(--brand-ink);border:1px solid currentColor;border-radius:4px;padding:6px 12px;text-decoration:none;font-size:14px}
+main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);padding:16px 18px;min-width:0}
+.ancho{grid-column:1/-1}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:650;margin:0}
+h2{margin:2px 0 8px;font-size:21px;line-height:1.2}
+h3{margin:16px 0 6px;font-size:15px}
+.note{font-size:13px;color:var(--ink-3);margin:8px 0 0}
+#mapa{position:relative;width:100%;aspect-ratio:4/5;max-height:680px}
+#mapa canvas,#mapa svg{position:absolute;inset:0;width:100%;height:100%}
+#mapa canvas{pointer-events:none}
+.dep{fill:var(--surface-2);stroke:var(--line);stroke-width:1}
+.lim{fill:none;stroke:var(--ink-3);stroke-width:1.5}
+.al{stroke:var(--surface);stroke-width:1.5;cursor:help}
+.leyenda{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink-2);margin-top:8px}
+.leyenda i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
+.leyenda i.p{border-radius:50%}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 0}
+.tile b{display:block;font-size:30px;line-height:1.1;font-weight:750;font-variation-settings:"wdth" 80;font-variant-numeric:tabular-nums}
+.tile span{font-size:12.5px;color:var(--ink-3)}
+.rank{list-style:none;margin:0;padding:0}
+.rank li{border-top:1px solid var(--line-2)}
+.rank button{display:flex;gap:10px;justify-content:space-between;width:100%;background:none;border:0;padding:6px 2px;color:var(--ink);text-align:left}
+.rank button:hover{background:var(--surface-2)}
+.rank .v{font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+.alista{list-style:none;margin:0;padding:0;max-height:220px;overflow:auto}
+.alista li{border-top:1px solid var(--line-2);padding:6px 2px;font-size:13.5px}
+.alista .s{display:block;font-size:12.5px;color:var(--ink-3)}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:8px}
+.play{background:var(--ink);color:var(--surface);border:0;border-radius:4px;padding:7px 14px;font-weight:700;min-width:96px}
+.paso{background:none;border:1px solid var(--line);border-radius:4px;padding:6px 11px;color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{background:none;border:0;border-left:1px solid var(--line);padding:6px 10px;color:var(--ink-2);font-size:13.5px}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.ctrl label{font-size:13.5px;color:var(--ink-2)}
+#fecha{font-weight:700;font-size:17px;margin-left:auto}
+#barras{width:100%;display:block;touch-action:none;cursor:pointer}
+#barras .g{stroke:var(--line-2)}
+#barras text{font:12px var(--f-display);fill:var(--ink-3)}
+#barras .b{fill:var(--bar)}
+#barras .b.sel{fill:var(--fuego)}
+#barras .b.ras{fill:var(--n3)}
+#barras .sd{fill:url(#sinDatos)}
+.tip{position:fixed;z-index:9;background:var(--ink);color:var(--surface);padding:6px 9px;border-radius:4px;font-size:13px;pointer-events:none;max-width:280px}
+details{margin-top:12px}
+summary{cursor:pointer;font-size:13.5px;color:var(--ink-2)}
+.tabla-w{max-height:320px;overflow:auto;margin-top:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{border-bottom:1px solid var(--line-2);padding:4px 8px;text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{position:sticky;top:0;background:var(--surface);color:var(--ink-3);font-weight:600}
+</style>
+<header class="mast"><div class="mast-in"><!--MARCA-LOGO--><div><h1>Historial de incendios</h1><div class="per" id="per">Cargando…</div></div>
+  <div class="acts"><select id="lugar" aria-label="Lugar"><option value="">Todo el Perú</option></select><a href="/">Volver al tablero</a></div></div></header>
+<main>
+  <section class="panel">
+    <p class="eyebrow">SERFOR · dónde hubo fuego</p>
+    <div id="mapa"><svg id="capa" role="img" aria-label="Mapa de focos de calor y alertas de incendio"></svg><canvas id="lienzo"></canvas><svg id="capa2" style="pointer-events:none"></svg></div>
+    <div class="leyenda" id="ley"></div>
+  </section>
+  <aside class="panel">
+    <p class="eyebrow" id="tit-lugar">Todo el Perú</p>
+    <h2 id="tit-fecha">—</h2>
+    <div class="tiles" id="tiles"></div>
+    <h3 id="rank-t">Dónde se concentra</h3>
+    <ul class="rank" id="rank"></ul>
+    <h3 id="al-t">Reportes de incendio de SERFOR</h3>
+    <ul class="alista" id="alista"></ul>
+  </aside>
+  <section class="panel ancho">
+    <div class="ctrl">
+      <button type="button" class="play" id="play">▶ Reproducir</button>
+      <button type="button" class="paso" id="ant" aria-label="Día anterior">←</button>
+      <button type="button" class="paso" id="sig" aria-label="Día siguiente">→</button>
+      <span class="seg" id="rastro" role="group" aria-label="Días que se muestran en el mapa"></span>
+      <label><input type="checkbox" id="ver-focos" checked> Focos de calor</label>
+      <label><input type="checkbox" id="ver-alertas" checked> Reportes SERFOR</label>
+      <span id="fecha"></span>
+    </div>
+    <p class="eyebrow">Zonas con fuego por día</p>
+    <svg id="barras" role="img" aria-label="Zonas con focos de calor por día"></svg>
+    <p class="note" id="nota"></p>
+    <details><summary>Ver los datos en una tabla</summary><div class="tabla-w"><table id="tabla"></table></div></details>
+  </section>
+</main>
+<div class="tip" id="tip" hidden></div>
+<script src="/vendor/d3.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const nf = new Intl.NumberFormat("es-PE");
+const plural = (n, a, b) => `${nf.format(n)} ${n === 1 ? a : b}`;
+const fmtLargo = d => new Date(d + "T12:00:00").toLocaleDateString("es-PE", {weekday: "long", day: "numeric", month: "long"});
+const fmtCorto = d => new Date(d + "T12:00:00").toLocaleDateString("es-PE", {day: "numeric", month: "short"}).replace(".", "");
+const titulo = s => (s || "").toLowerCase().replace(/(^|[\s(])\p{L}/gu, c => c.toUpperCase());
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const CELDA = 0.1;   // grados; unos 11 km: varias detecciones en la misma celda el mismo día son una zona con fuego
+const ESTADOS = {Confirmado: "--n4", Alertado: "--n3", Controlado: "--n2", Extinguido: "--ink-3"};
+const RASTROS = [[1, "Solo ese día"], [3, "3 días"], [7, "7 días"], [0, "Acumulado"]];
+const S = {D: null, cal: [], sel: 0, rastro: 3, lugar: "", nombres: {}, serie: [], idx: null, reproduciendo: null};
+
+// Calendario continuo: los días sin ningún registro quedan a la vista como "sin datos", no como días sin fuego.
+function armar(D) {
+  const a = new Date(D.dias[0] + "T12:00:00"), b = new Date(D.dias.at(-1) + "T12:00:00");
+  for (let d = a; d <= b; d.setDate(d.getDate() + 1)) S.cal.push(d.toLocaleDateString("en-CA"));
+  const pos = Object.fromEntries(S.cal.map((d, i) => [d, i]));
+  const m = D.dias.map(d => pos[d]);
+  S.dia = D.focos.d.map(i => m[i]);
+  S.conDatos = new Set(m);
+  D.alertas = D.alertas.filter(a => a.fin >= S.cal[0]);      // las que terminaron antes del primer día con focos quedan fuera
+  D.alertas.forEach(a => { a.i0 = pos[a.ini] ?? 0; a.i1 = pos[a.fin] ?? S.cal.length - 1; });
+}
+function indices() {
+  const u = S.D.focos.u, L = S.lugar;
+  S.idx = []; for (let i = 0; i < u.length; i++) if (!L || u[i].startsWith(L)) S.idx.push(i);
+  const lon = S.D.focos.lon, lat = S.D.focos.lat;
+  const celdas = S.cal.map(() => new Set()), n = S.cal.map(() => 0);
+  for (const i of S.idx) { celdas[S.dia[i]].add(Math.floor(lon[i] / CELDA) * 100000 + Math.floor(lat[i] / CELDA)); n[S.dia[i]]++; }
+  S.serie = S.cal.map((d, i) => ({d, i, zonas: celdas[i].size, n: n[i], sinDatos: !S.conDatos.has(i)}));
+  S.alertas = S.D.alertas.filter(a => !L || a.ub.startsWith(L));
+}
+const ventana = () => S.rastro ? [Math.max(0, S.sel - S.rastro + 1), S.sel] : [0, S.sel];
+
+// ── Mapa ──
+let proj, W, H;
+function medir() {
+  const r = $("#mapa").getBoundingClientRect(); W = r.width; H = r.height;
+  const ratio = devicePixelRatio || 1, c = $("#lienzo");
+  c.width = W * ratio; c.height = H * ratio; c.getContext("2d").setTransform(ratio, 0, 0, ratio, 0, 0);
+  for (const s of ["#capa", "#capa2"]) $(s).setAttribute("viewBox", `0 0 ${W} ${H}`);
+}
+function fondo() {
+  medir();
+  const feat = S.lugar.length === 4 ? S.D.provs.features.find(f => f.properties.id === S.lugar) : S.lugar ? S.D.deps.features.find(f => f.properties.id === S.lugar) : null;
+  proj = d3.geoIdentity().reflectY(true).fitExtent([[12, 12], [W - 12, H - 12]], feat || S.D.deps);
+  const p = d3.geoPath(proj);
+  $("#capa").innerHTML = S.D.deps.features.map(f => `<path class="dep" d="${p(f)}"><title>${esc(titulo(f.properties.n))}</title></path>`).join("") + (feat ? `<path class="lim" d="${p(feat)}"/>` : "");
+}
+function dibujarMapa() {
+  const c = $("#lienzo").getContext("2d"); c.clearRect(0, 0, W, H);
+  const [a, b] = ventana(), {lon, lat} = S.D.focos;
+  if ($("#ver-focos").checked) {
+    c.fillStyle = css("--fuego");
+    const r = S.lugar ? 2.6 : 1.8;
+    for (const i of S.idx) {
+      const d = S.dia[i]; if (d < a || d > b) continue;
+      c.globalAlpha = S.rastro === 0 ? .28 : S.rastro === 1 ? .85 : .85 * Math.pow(.5, b - d);
+      const [x, y] = proj([lon[i], lat[i]]);
+      c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+  const al = $("#ver-alertas").checked ? S.alertas.filter(x => x.i0 <= b && x.i1 >= a) : [];
+  $("#capa2").style.pointerEvents = "none";
+  $("#capa2").innerHTML = al.map(x => { const [px, py] = proj([x.lon, x.lat]); return `<rect class="al" x="${px - 4.5}" y="${py - 4.5}" width="9" height="9" fill="var(${ESTADOS[x.estado] || "--ink-3"})" style="pointer-events:auto"><title>${esc(titulo(x.dist))}, ${esc(titulo(x.prov))} · ${esc(x.estado || "Sin estado")} · ${fmtCorto(x.ini)}${x.fin !== x.ini ? " al " + fmtCorto(x.fin) : ""} · ${esc(x.cod)}</title></rect>`; }).join("");
+}
+
+// ── Barras por día ──
+const AL = 210, M = {t: 10, r: 8, b: 24, l: 40};
+let x, xw;
+function dibujarBarras() {
+  const svg = $("#barras"), W_ = svg.getBoundingClientRect().width || 900;
+  svg.setAttribute("viewBox", `0 0 ${W_} ${AL}`); svg.setAttribute("height", AL);
+  const y = d3.scaleLinear().domain([0, d3.max(S.serie, s => s.zonas) || 1]).nice().range([AL - M.b, M.t]);
+  x = i => M.l + i * xw; xw = (W_ - M.l - M.r) / S.cal.length;
+  const [a, b] = ventana(), ancho = Math.max(1, xw - 2);
+  let h = `<defs><pattern id="sinDatos" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="6" fill="${css("--line")}"/></pattern></defs>`;
+  for (const t of y.ticks(4)) h += `<line class="g" x1="${M.l}" x2="${W_ - M.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${M.l - 6}" y="${y(t) + 4}" text-anchor="end">${nf.format(t)}</text>`;
+  const cada = Math.ceil(S.cal.length / Math.max(3, Math.floor(W_ / 80)));
+  S.serie.forEach(s => {
+    if (s.sinDatos) h += `<rect class="sd" x="${x(s.i) + 1}" y="${M.t}" width="${ancho}" height="${AL - M.b - M.t}"/>`;
+    else if (s.zonas) { const top = y(s.zonas), alto = AL - M.b - top; const r = Math.min(3, ancho / 2, alto);
+      h += `<path class="b ${s.i === S.sel ? "sel" : s.i >= a && s.i <= b ? "ras" : ""}" d="M${x(s.i) + 1},${AL - M.b}V${top + r}Q${x(s.i) + 1},${top} ${x(s.i) + 1 + r},${top}H${x(s.i) + 1 + ancho - r}Q${x(s.i) + 1 + ancho},${top} ${x(s.i) + 1 + ancho},${top + r}V${AL - M.b}Z"/>`; }
+    if (s.i % cada === 0) h += `<text x="${x(s.i) + xw / 2}" y="${AL - 7}" text-anchor="middle">${fmtCorto(s.d)}</text>`;
+  });
+  svg.innerHTML = h;
+}
+function diaEn(ev) { const r = $("#barras").getBoundingClientRect(); return Math.max(0, Math.min(S.cal.length - 1, Math.floor((ev.clientX - r.left - M.l) / xw))); }
+const barras = $("#barras");
+barras.addEventListener("pointerdown", e => { barras.setPointerCapture(e.pointerId); parar(); elegir(diaEn(e)); });
+barras.addEventListener("pointermove", e => {
+  if (e.buttons) elegir(diaEn(e));
+  const s = S.serie[diaEn(e)], t = $("#tip"); t.hidden = false;
+  t.innerHTML = s.sinDatos ? `<b>${fmtCorto(s.d)}</b><br>Sin datos: la Mesa no estuvo recolectando` : `<b>${fmtCorto(s.d)}</b><br>${plural(s.zonas, "zona con fuego", "zonas con fuego")}<br>${plural(s.n, "detección", "detecciones")}`;
+  t.style.left = Math.min(e.clientX + 12, innerWidth - 200) + "px"; t.style.top = (e.clientY - 64) + "px";
+});
+barras.addEventListener("pointerleave", () => { $("#tip").hidden = true; });
+
+// ── Panel ──
+function panel() {
+  const [a, b] = ventana(), s = S.serie[S.sel];
+  const dias = S.serie.slice(a, b + 1), zonas = d3.sum(dias, d => d.zonas), n = d3.sum(dias, d => d.n);
+  const rango = a === b ? fmtLargo(S.cal[b]) : `${fmtCorto(S.cal[a])} al ${fmtCorto(S.cal[b])}`;
+  $("#tit-lugar").textContent = $("#lugar").selectedOptions[0]?.dataset.n || "Todo el Perú";
+  $("#tit-fecha").textContent = rango;
+  $("#fecha").textContent = fmtLargo(S.cal[S.sel]);
+  const al = S.alertas.filter(x => x.i0 <= b && x.i1 >= a);
+  $("#tiles").innerHTML = [[s.sinDatos ? "—" : nf.format(s.zonas), `zonas con fuego el ${fmtCorto(s.d)}`], [s.sinDatos ? "—" : nf.format(s.n), `detecciones el ${fmtCorto(s.d)}`],
+    [nf.format(n), a === b ? "detecciones en el periodo" : `detecciones, ${fmtCorto(S.cal[a])} al ${fmtCorto(S.cal[b])}`], [nf.format(al.length), "reportes SERFOR con actividad"]]
+    .map(([v, t]) => `<div class="tile"><b>${v}</b><span>${esc(t)}</span></div>`).join("");
+  const nivel = S.lugar.length === 2 ? 4 : 2, cuenta = {}, U = S.D.focos.u;
+  if (S.lugar.length < 4) { for (const i of S.idx) { const d = S.dia[i]; if (d >= a && d <= b) { const k = U[i].slice(0, nivel); cuenta[k] = (cuenta[k] || 0) + 1; } } }
+  const top = Object.entries(cuenta).sort((p, q) => q[1] - p[1]).slice(0, 6);
+  $("#rank-t").hidden = !top.length;
+  $("#rank-t").textContent = S.lugar ? "Provincias con más detecciones" : "Departamentos con más detecciones";
+  $("#rank").innerHTML = top.map(([k, v]) => `<li><button type="button" data-l="${k}"><span>${esc(S.nombres[k] || k)}</span><span class="v">${nf.format(v)}</span></button></li>`).join("");
+  al.sort((p, q) => (q.i1 - p.i1) || (q.n - p.n));
+  $("#al-t").textContent = `Reportes de incendio de SERFOR (${nf.format(al.length)})`;
+  $("#alista").innerHTML = al.slice(0, 60).map(x => `<li><b>${esc(titulo(x.dist))}</b>, ${esc(titulo(x.prov))} · ${esc(x.estado || "Sin estado")}<span class="s">${fmtCorto(x.ini)}${x.fin !== x.ini ? " al " + fmtCorto(x.fin) : ""} · ${plural(x.n, "detección", "detecciones")}${x.cob ? " · " + esc(x.cob) : ""}</span></li>`).join("") || `<li class="s">Ninguno en este periodo.</li>`;
+}
+function tabla() {
+  $("#tabla").innerHTML = `<thead><tr><th>Día</th><th>Zonas con fuego</th><th>Detecciones</th></tr></thead><tbody>` +
+    S.serie.slice().reverse().map(s => `<tr><td>${esc(fmtCorto(s.d))}</td><td>${s.sinDatos ? "sin datos" : nf.format(s.zonas)}</td><td>${s.sinDatos ? "sin datos" : nf.format(s.n)}</td></tr>`).join("") + "</tbody>";
+}
+function pintar() { dibujarMapa(); dibujarBarras(); panel(); }
+function elegir(i) { if (i !== S.sel) { S.sel = i; pintar(); } }
+function setLugar(v, empujar = true) {
+  S.lugar = v; $("#lugar").value = v; indices(); fondo(); pintar(); tabla();
+  if (empujar) history.replaceState(null, "", v ? `?lugar=${v}` : location.pathname);
+}
+function parar() { if (S.reproduciendo) { clearInterval(S.reproduciendo); S.reproduciendo = null; $("#play").textContent = "▶ Reproducir"; } }
+$("#play").onclick = () => {
+  if (S.reproduciendo) return parar();
+  if (S.sel >= S.cal.length - 1) S.sel = 0;
+  $("#play").textContent = "❚❚ Pausar";
+  S.reproduciendo = setInterval(() => { if (S.sel >= S.cal.length - 1) return parar(); elegir(S.sel + 1); }, 450);
+};
+$("#ant").onclick = () => { parar(); elegir(Math.max(0, S.sel - 1)); };
+$("#sig").onclick = () => { parar(); elegir(Math.min(S.cal.length - 1, S.sel + 1)); };
+$("#rastro").innerHTML = RASTROS.map(([v, t]) => `<button type="button" data-v="${v}" aria-pressed="${v === S.rastro}">${t}</button>`).join("");
+$("#rastro").onclick = e => { const b = e.target.closest("button"); if (!b) return; S.rastro = +b.dataset.v; [...$("#rastro").children].forEach(x => x.setAttribute("aria-pressed", x === b)); pintar(); };
+$("#ver-focos").onchange = $("#ver-alertas").onchange = dibujarMapa;
+$("#lugar").onchange = e => setLugar(e.target.value);
+$("#rank").onclick = e => { const b = e.target.closest("button"); if (b) setLugar(b.dataset.l); };
+addEventListener("keydown", e => { if (/SELECT|INPUT/.test(e.target.tagName)) return; if (e.key === "ArrowLeft") $("#ant").click(); if (e.key === "ArrowRight") $("#sig").click(); });
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (S.serie.length) { fondo(); pintar(); } }, 150); });
+
+(async () => {
+  const [D, L] = await Promise.all([fetch("/api/incendios").then(r => r.json()), fetch("/api/lugares").then(r => r.json()).catch(() => [])]);
+  S.D = D;
+  $("#lugar").innerHTML = `<option value="" data-n="Todo el Perú">Todo el Perú</option>` + L.map(d => { S.nombres[d.id] = d.nombre; d.provincias.forEach(p => S.nombres[p.id] = p.nombre);
+    return `<optgroup label="${esc(d.nombre)}"><option value="${d.id}" data-n="${esc(d.nombre)}">${esc(d.nombre)} · todo el departamento</option>${d.provincias.map(p => `<option value="${p.id}" data-n="${esc(p.nombre)} (${esc(d.nombre)})">  ${esc(p.nombre)}</option>`).join("")}</optgroup>`; }).join("");
+  if (!D.dias.length) { $("#per").textContent = "Aún no hay focos de calor guardados."; return; }
+  armar(D); S.sel = S.cal.length - 1;
+  $("#per").textContent = `Del ${fmtLargo(S.cal[0])} al ${fmtLargo(S.cal.at(-1))}. Elija un día en el gráfico o reproduzca la secuencia.`;
+  $("#ley").innerHTML = `<span><i class="p" style="background:var(--fuego)"></i>Foco de calor (más tenue si es de días anteriores)</span>` + Object.entries(ESTADOS).map(([e, v]) => `<span><i style="background:var(${v})"></i>${e}</span>`).join("");
+  const sd = S.cal.filter((_, i) => !S.conDatos.has(i));
+  $("#nota").textContent = `Una zona con fuego es una celda de unos 11 km con al menos un foco ese día. Un foco es una detección de calor por satélite, no un incendio: un mismo fuego puede dar muchos focos, y las nubes pueden ocultarlo, así que el gráfico muestra tendencias y lugares, no cuántos incendios hubo. Los días rayados no tienen datos porque la Mesa no estuvo recolectando${sd.length ? ` (${sd.map(fmtCorto).join(", ")})` : ""}; algunos días con pocos focos también pueden deberse a eso. El último día puede estar incompleto. Fuente: SERFOR.`;
+  const q = new URLSearchParams(location.search).get("lugar") || "";
+  setLugar([...$("#lugar").options].some(o => o.value === q) ? q : "", false);
+})().catch(e => { $("#per").textContent = "No se pudo cargar el historial: " + e.message; });
+</script>

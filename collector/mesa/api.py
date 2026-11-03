@@ -25,7 +25,7 @@ LIBRES = ("/api/licencia", "/marca/", "/fuentes/", "/licencia")
 async def control_licencia(request: Request, call_next):
     p = request.url.path
     if licencia.requerida() and not p.startswith(LIBRES) and licencia.bloqueada():
-        if p in ("/", "/index.html", "/reportar", "/resumen"):
+        if p in ("/", "/index.html", "/reportar", "/resumen", "/incendios"):
             return _con_marca("licencia.html")
         return JSONResponse({"detail": "Licencia vencida o ausente.", "licencia": licencia.estado()}, status_code=403)
     return await call_next(request)
@@ -76,6 +76,18 @@ def index():
 def resumen_pagina():
     """Resumen del día: lo más significativo de las últimas 24 horas, con sus registros y la redacción con IA."""
     return _con_marca("resumen.html")
+
+
+@app.get("/incendios", include_in_schema=False)
+def incendios_pagina():
+    """Cómo evolucionan los focos de calor e incendios a lo largo del tiempo (ver incendios.py)."""
+    return _con_marca("incendios.html")
+
+
+@app.get("/api/incendios")
+def get_incendios():
+    from . import incendios
+    return JSONResponse(incendios.historial(), headers={"Cache-Control": "private, max-age=300"})
 
 
 @app.get("/api/resumen")

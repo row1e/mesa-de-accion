@@ -178,7 +178,7 @@ def _f_alerta(it, ex):
             "level": {"Alertado": 2, "Confirmado": 3}.get(it["estado"]),
             "facts": [["Estado", it["estado"]], ["Fecha", f"{it.get('fecha') or '—'} {it.get('hora') or ''}"], ["Ubigeo", it.get("ubigeo")],
                       ["Código de reporte", it.get("cod") or "—"], ["Cobertura", it.get("cob") or "—"], ["Coordenadas", f"{it['lat']}, {it['lon']}"]],
-            "links": [{"label": "Registro en SERFOR (ArcGIS)", "url": _feature_page(f"{SERFOR}/2", it["_key"])},
+            "links": [{"label": "Registro en SERFOR (ArcGIS)", "url": _feature_page(f"{SERFOR}/2", it["oid"])},
                       {"label": "Visor SERFOR", "url": "https://geo.serfor.gob.pe/visor/"}],
             "fields": ex.get("fields") or {k: v for k, v in it.items() if not k.startswith("_")}}
 
@@ -187,7 +187,7 @@ def _f_foco(it, ex):
     return {"title": "Foco de calor", "subtitle": f"{it['prov']} · {it['dep']}".title(), "level": None,
             "facts": [["Fecha", f"{it.get('fecha') or '—'} {it.get('hora') or ''}"], ["Sensor", it.get("sensor")], ["Ubigeo distrital", it.get("ubigeo")],
                       ["Coordenadas", f"{it['lat']}, {it['lon']}"]],
-            "links": [{"label": "Registro en SERFOR (ArcGIS)", "url": _feature_page(f"{SERFOR}/0", it["_key"])},
+            "links": [{"label": "Registro en SERFOR (ArcGIS)", "url": _feature_page(f"{SERFOR}/0", it["oid"])},
                       {"label": "NASA FIRMS en el punto", "url": f"https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@{it['lon']},{it['lat']},12.0z"}],
             "fields": ex.get("fields") or {k: v for k, v in it.items() if not k.startswith("_")}}
 
@@ -442,8 +442,8 @@ def _f_enfen(it, ex):
 ENRICH = {
     **{(sid, "noticia"): _gobpe for sid in ("com_pnp", "com_provias", "com_mtc", "com_mininter")},
     ("igp", "sismo"): _igp, ("indeci", "item"): _indeci, ("senamhi_avisos", "aviso"): _aviso,
-    ("serfor", "alerta"): _arc(f"{SERFOR}/2", lambda it: it["_key"]),
-    ("serfor", "foco"): _arc(f"{SERFOR}/0", lambda it: it["_key"]),
+    ("serfor", "alerta"): _arc(f"{SERFOR}/2", lambda it: it["oid"]),
+    ("serfor", "foco"): _arc(f"{SERFOR}/0", lambda it: it["oid"]),
     ("ingemmet", "zona_alerta"): _arc(f"{GEOCATMIN}/SERV_PERU_ALERTA/MapServer/0", lambda it: it["_key"].split("-")[-1]),
     ("provias", "emergencia"): _provias, ("bomberos", "parte"): _bomberos,
 }

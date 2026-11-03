@@ -12,7 +12,7 @@ from shapely.geometry import Point
 from shapely.ops import unary_union
 from shapely.prepared import prep
 
-from .. import config, db, geo
+from .. import config, db, geo, incendios
 from ..http import fetch, fetch_json, fetch_text
 
 # ── INDECI ─────────────────────────────────────────────────────────────────────
@@ -114,23 +114,25 @@ def _ms_date(ms):
 
 def serfor():
     focos = _arcgis("serfor", f"{SERFOR}/0", "OBJECTID,NOMDEP,NOMPRO,NOMDIS,CATDIS,FECHA,HORA,SENSAT", "focos.geojson")
-    frec = {str(f["properties"]["OBJECTID"]): {"lon": round(f["geometry"]["coordinates"][0], 4),
+    frec = [{"oid": f["properties"]["OBJECTID"], "lon": round(f["geometry"]["coordinates"][0], 4),
                                               "lat": round(f["geometry"]["coordinates"][1], 4),
                                               "dep": f["properties"]["NOMDEP"], "prov": f["properties"]["NOMPRO"],
                                               "ubigeo": f["properties"]["CATDIS"], "fecha": _ms_date(f["properties"].get("FECHA")),
                                               "hora": f["properties"].get("HORA"), "sensor": f["properties"].get("SENSAT")}
-            for f in focos["features"] if f.get("geometry")}
+            for f in focos["features"] if f.get("geometry")]
+    frec = {incendios.clave_foco(r): r for r in frec}    # SERFOR cambia el OBJECTID en cada actualización (ver incendios.py)
     alertas = _arcgis("serfor", f"{SERFOR}/2", name="alertas.geojson")
     arec = {}
     for f in alertas["features"]:
         p = f["properties"]
         if not f.get("geometry"):
             continue
-        arec[str(p["OBJECTID"])] = {  # CODREP se repite entre alertas de un mismo reporte PIF
-            "lon": round(f["geometry"]["coordinates"][0], 4), "lat": round(f["geometry"]["coordinates"][1], 4),
+        r = {  # CODREP se repite entre alertas de un mismo reporte PIF
+            "oid": p["OBJECTID"], "lon": round(f["geometry"]["coordinates"][0], 4), "lat": round(f["geometry"]["coordinates"][1], 4),
             "estado": ESTADOS.get(p.get("ESTADO"), str(p.get("ESTADO"))), "dep": p["NOMDEP"], "prov": p["NOMPRO"],
             "dist": p["NOMDIS"], "ubigeo": p["CATDIS"], "cod": p.get("CODREP"), "fecha": _ms_date(p.get("FECHA")),
             "hora": p.get("HORA"), "cob": p.get("TIPCOB")}
+        arec[incendios.clave_alerta(r)] = r
     nf, newf = db.upsert_items("serfor", "foco", frec, snapshot=True)
     na, newa = db.upsert_items("serfor", "alerta", arec, snapshot=True)
     return nf + na, newf + newa, f"{nf} focos 24 h ({newf} nuevos) · {na} alertas ({newa} nuevas)"
