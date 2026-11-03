@@ -564,6 +564,9 @@ tr.clk:hover td,tr.clk:focus-visible td{background:var(--surface-2)}
 .ia-wait{font-size:14px;color:var(--ink-2);padding:6px 0}
 
 /* navegación entre secciones, dentro de la barra fija */
+.sec-enlace{margin:0 0 14px;font-size:14px;color:var(--ink-3)}
+.sec-enlace a{display:inline-block;background:var(--ink);color:var(--surface);font-weight:700;padding:7px 14px;border-radius:4px;text-decoration:none;margin-right:8px}
+.sec-enlace a:hover{opacity:.88}
 .jumpbar{max-width:1320px;margin:0 auto;padding:0 28px 7px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
 .jumpbar a{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:650;color:var(--ground);color:color-mix(in srgb, var(--ground) 72%, var(--ink));text-decoration:none;border:1px solid transparent;border-radius:100px;padding:3px 9px;white-space:nowrap}
 .jumpbar a:hover{color:var(--brand-on-ink);border-color:color-mix(in srgb, var(--ground) 30%, transparent)}
@@ -822,6 +825,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 
   <section id="serfor-sec">
     <div class="sec-head"><div><p class="eyebrow">SERFOR · Unidad de Monitoreo Satelital</p><h2>Incendios forestales</h2></div><span class="src">geo.serfor.gob.pe/geoservicios/rest/services/UFMS/Incendios_SAMI/MapServer</span></div>
+    <p class="sec-enlace"><a href="/incendios" class="nav-inc">Ver el historial de incendios día por día ↗</a> <span>Mapa y gráfico de cómo evolucionaron los focos de calor y los reportes.</span></p>
     <div class="grid2">
       <div class="panel"><h3>Alertas de incendio por departamento y estado</h3><div id="alert-chart"></div></div>
       <div class="panel"><h3>Focos de calor, últimas 24 horas</h3><div id="focos-chart"></div><p class="note">Detecciones satelitales (VIIRS, MODIS, GOES). Un foco no es un incendio confirmado.</p></div>

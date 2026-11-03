@@ -114,7 +114,7 @@ function renderRegionBar() {
 function updateFichaLinks() {
   const id = $("#region").value;
   const nr = document.querySelector("a.nav-out"); if (nr) nr.href = id ? `/resumen?lugar=${id}` : "/resumen";
-  const ni = document.querySelector("a.nav-inc"); if (ni) ni.href = id ? `/incendios?lugar=${id}` : "/incendios";
+  document.querySelectorAll("a.nav-inc").forEach(a => { a.href = id ? `/incendios?lugar=${id}` : "/incendios"; });
   for (const [el, href] of [[$("#ficha-dl"), `/ficha/${id}.pdf`], [$("#ficha-ver"), `/ficha/${id}`]]) {
     if (id) { el.href = href; el.removeAttribute("aria-disabled"); el.removeAttribute("title"); if (el.id === "ficha-dl") el.setAttribute("download", ""); }
     else { el.removeAttribute("href"); el.setAttribute("aria-disabled", "true"); }
