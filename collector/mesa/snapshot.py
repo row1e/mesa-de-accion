@@ -287,27 +287,6 @@ def build():
                               for c in db.get_items(sid, "noticia", current_only=False)
                               if (c.get("fecha") or "") >= lim), key=lambda c: (c.get("fecha") or "", c["_first_seen"]), reverse=True)[:120]
 
-        # SIDPOL: últimos 13 meses por provincia y modalidad (+ total nacional)
-        sidpol = None
-        meta = db.get_item("sidpol", "meta", "dataset")
-        if meta:
-            end = datetime.date.fromisoformat(meta["periodo"] + "-01")
-            months = [(end.replace(day=1) - datetime.timedelta(days=0)).strftime("%Y-%m")]
-            d = end
-            for _ in range(12):
-                d = (d - datetime.timedelta(days=1)).replace(day=1)
-                months.insert(0, d.strftime("%Y-%m"))
-            mods = meta["modalidades"]
-            provs_s, national = {}, {m: [0] * len(months) for m in mods}
-            for p in db.get_items("sidpol", "provincia"):
-                row = {m: [p["series"].get(m, {}).get(mo, 0) for mo in months] for m in mods}
-                provs_s[p["ubigeo"]] = row
-                for m in mods:
-                    national[m] = [a + b for a, b in zip(national[m], row[m])]
-            prev_year = f"{int(meta['periodo'][:4]) - 1}{meta['periodo'][4:]}"
-            sidpol = {"periodo": meta["periodo"], "months": months, "mods": mods, "provs": provs_s, "national": national,
-                      "prevYearSameMonth": prev_year, "url": meta["url"], "dataset": "https://www.datosabiertos.gob.pe/dataset/denuncias-policiales-1"}
-
         # ── Región (código de 2 dígitos) en cada registro, para el filtro del dashboard ──
         rc = geo.region_code
         for a in avisos_out:
@@ -373,7 +352,7 @@ def build():
             "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,
             "bomberos": bomberos, "bomberosMedicas": bomberos_med, "mar": mar, "obras": obras, "viasFotos": vias_fotos[:80],
             "enfen": {"ultimo_comunicado": com[0] if com else {}}, "firmsCount": firms_n,
-            "comunicados": comunicados, "sidpol": sidpol, "regions": sorted(regions, key=lambda r: r["n"]),
+            "comunicados": comunicados, "regions": sorted(regions, key=lambda r: r["n"]),
             "fotosDia": fotos_dia[:80], "danos": danos,
         }
         data["buildMs"] = int((time.time() - t0) * 1000)

@@ -37,10 +37,7 @@ let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = 
 const REP = {lista: [], filtro: "sin_verificar", firma: ""};   // reportes de corresponsales (cargarReportes)
 
 /* ── filtro por región ──────────────────────────────────────────── */
-// Denuncias policiales (SIDPOL): fuera del tablero por ahora, no es información de emergencias. Para volver a mostrarlas:
-// true aquí y quitar `hidden` de #sidpol-sec y de su enlace en la barra (index.html).
-const MOSTRAR_DENUNCIAS = false;
-const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "obras-sec", "bom-sec", "com-sec", "sidpol-sec", "igp-sec", "serfor-sec", "ing-sec"];
+const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "obras-sec", "bom-sec", "com-sec", "igp-sec", "serfor-sec", "ing-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
 function makeView() {
@@ -48,11 +45,6 @@ function makeView() {
   if (!R) return D;
   const inR = p => typeof p === "string" && p.startsWith(R);
   const pick = obj => Object.fromEntries(Object.entries(obj).filter(([k]) => inR(k)));
-  let sidpol = D.sidpol;
-  if (sidpol) {
-    const provs = pick(sidpol.provs), national = Object.fromEntries(sidpol.mods.map(m => [m, sidpol.months.map((_, i) => d3.sum(Object.values(provs), r => r[m][i]))]));
-    sidpol = {...sidpol, provs, national};
-  }
   return {...D,
     levelsByDay: Object.fromEntries(Object.entries(D.levelsByDay).map(([d, cells]) => [d, pick(cells)])),
     avisos: D.avisos.filter(a => a.regs?.includes(R)), uv: pick(D.uv),
@@ -63,7 +55,7 @@ function makeView() {
     obras: (D.obras || []).filter(o => o.reg === R),
     mar: {...(D.mar || {}), avisos: (D.mar?.avisos || []).filter(a => (a.regs || []).includes(R)), puntos: (D.mar?.puntos || []).filter(p => p.reg === R)},
     bomberosMedicas: {...(D.bomberosMedicas || {}), total: D.bomberosMedicas?.por_reg?.[R] || 0, atendiendo: null},
-    comunicados: (D.comunicados || []).filter(c => c.regs?.includes(R)), sidpol,
+    comunicados: (D.comunicados || []).filter(c => c.regs?.includes(R)),
     fotosDia: (D.fotosDia || []).filter(f => f.reg === R),
     danos: D.danos ? {...D.danos, ...(D.danos.por_reg[R] || {totales: {}, nuevos: {}, seguimiento: {}, n_eventos: 0, n_nuevos: 0}),
       eventos: D.danos.eventos.filter(e => e.por_reg && e.por_reg[R]).map(e => ({...e, totales: e.por_reg[R]}))} : null,
@@ -704,7 +696,6 @@ function renderRail() {
       <dt>Vías (PROVIAS)</dt><dd>${(() => { const vs = V.vias.filter(v => v.prov === p.id); return vs.length ? `${vs.length}: ${[["03", "interrumpida"], ["02", "restringida"], ["04", "por confirmar"]].map(([c, t]) => [vs.filter(v => v.transito_cod === c).length, t]).filter(([n]) => n).map(([n, t]) => `${n} ${t}${n > 1 ? "s" : ""}`).join(", ")}` : "—"; })()}</dd>
       <dt>Daños ${D.danos?.dias || 7} días</dt><dd>${D.danos?.por_prov?.[p.id] ? `${danosChips(D.danos.por_prov[p.id].totales, 4)} <span class="muted">(${D.danos.por_prov[p.id].n_eventos} eventos)</span>` : "—"}</dd></dl>
       ${midisBlock(p.id)}
-      ${sidpolBlock(p.id)}
       <button type="button" class="zbtn" data-dep="${p.id.slice(0, 2)}">Acercar a ${title(p.d)}</button></div>`;
   } else provHtml = `<p class="note">Seleccione una provincia en el mapa para ver lo que dice cada fuente sobre ella y exportar su ficha en PDF.</p>`;
   $("#rail").innerHTML = provHtml + html;
@@ -1138,7 +1129,7 @@ $("#pq").addEventListener("input", () => D && filterPron());
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
   indeci: "INDECI", indeci_fotos: "INDECI fotos", igp: "IGP sismos", serfor: "SERFOR incendios", ingemmet: "INGEMMET", enfen: "ENFEN", firms: "NASA FIRMS",
   com_pnp: "PNP comunicados", com_provias: "PROVIAS notas", com_mtc: "MTC notas", com_mininter: "MININTER notas",
-  sidpol: "SIDPOL denuncias", provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras"};
+  provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras"};
 const LAT = {rows: [], counts: {}, more: false, next: null, req: 0};
 function writeHash() {
   const p = [state.region && `r=${state.region}`, state.latSource && `f=${state.latSource}`].filter(Boolean).join("&");
@@ -1170,7 +1161,7 @@ function setLatSource(src, scroll = false) {
 }
 function renderLatest() {
   const hs = Object.fromEntries(H.map(h => [h.id, h]));
-  const ids = H.filter(h => !h.internal).map(h => h.id).filter(id => id !== "indeci_fotos" && (MOSTRAR_DENUNCIAS || id !== "sidpol"));
+  const ids = H.filter(h => !h.internal).map(h => h.id).filter(id => id !== "indeci_fotos");
   $("#lat-src").innerHTML = [["", "Todas", Object.values(LAT.counts).reduce((a, b) => a + b, 0)], ...ids.map(id => [id, SHORT[id] || id, LAT.counts[id]])]
     .map(([id, label, n]) => `<button type="button" role="tab" data-src="${id}" aria-pressed="${(state.latSource || "") === id}" title="${id ? esc(hs[id]?.name || "") + " · " + (STATUS[hs[id]?.status] || "") : "Todas las fuentes"}">
       ${id ? `<i class="dot ${hs[id]?.status || ""}"></i>` : ""}${esc(label)}${n != null ? `<span class="n ${n ? "hot" : ""}" title="nuevos en 24 h">${nf.format(n)}</span>` : ""}</button>`).join("");
@@ -1375,51 +1366,6 @@ function renderComunicados() {
   $("#com-note").textContent = (state.region ? `Con región elegida se muestran los que nombran a ${regName(state.region)} en el título o la descripción (detección por texto; los comunicados no traen ubicación). ` : "") + `Comunicados y notas de los últimos 14 días. gob.pe entrega solo las 9 más recientes por institución; el colector consulta cada 15 min y conserva el historial. Las notas de PROVIAS son hoy la única vía a sus emergencias viales (su servidor no responde).`;
 }
 
-/* ── SIDPOL ─────────────────────────────────────────────────────── */
-const MONTH = ym => { const [y, m] = ym.split("-"); return `${MON[+m - 1]} ${y}`; };
-const sumRow = (row, mods) => row ? mods.reduce((acc, m) => acc.map((v, i) => v + (row[m]?.[i] || 0)), Array(V.sidpol.months.length).fill(0)) : null;
-function spark(vals, w = 110, h = 26) {
-  if (!vals?.length) return "";
-  const x = d3.scaleLinear([0, vals.length - 1], [2, w - 3]), y = d3.scaleLinear([0, d3.max(vals) || 1], [h - 2, 3]);
-  const line = d3.line((d, i) => x(i), d => y(d))(vals), area = d3.area((d, i) => x(i), h - 2, d => y(d))(vals);
-  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path class="a" d="${area}"/><path class="l" d="${line}"/><circle cx="${x(vals.length - 1)}" cy="${y(vals.at(-1))}" r="2.4"/></svg>`;
-}
-const delta = (now, before) => { if (!before) return `<span class="muted">—</span>`; const p = Math.round((now - before) / before * 100); return `<span class="delta ${p > 0 ? "up" : p < 0 ? "down" : ""}">${p > 0 ? "+" : ""}${p} %</span>`; };
-let sidMod = "Total";
-function renderSidpol() {
-  const S = V.sidpol;
-  if (!S) { $("#sid-chart").innerHTML = `<p class="muted">Aún no se descargó el dataset.</p>`; return; }
-  const mods = S.mods, last = S.months.length - 1, sel = sidMod === "Total" ? mods : [sidMod];
-  seg($("#sid-mods"), [["Total", "Total"], ...mods.map(m => [m, m.replace(" e integrantes", "")])], sidMod, v => { sidMod = v; renderSidpol(); });
-  const nat = sumRow(S.national, sel);
-  $("#sid-h3").textContent = `${sidMod === "Total" ? "Denuncias" : sidMod} por mes · ${state.region ? esc(regName(state.region)) : "todo el país"}`;
-  const w = 540, h = 230, m = {l: 48, r: 14, t: 14, b: 26};
-  const x = d3.scaleBand(S.months, [m.l, w - m.r]).padding(.18), y = d3.scaleLinear([0, d3.max(nat) || 1], [h - m.b, m.t]).nice();
-  const s = chart("#sid-chart", w, h);
-  s.append("g").attr("class", "grid").selectAll("line").data(y.ticks(4)).join("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", d => y(d)).attr("y2", d => y(d));
-  s.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSize(0).tickPadding(6).tickFormat(d => nf.format(d))).select(".domain").remove();
-  s.append("g").attr("class", "axis").attr("transform", `translate(0,${h - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(7).tickFormat((d, i) => i % 2 === 0 || i === last ? MONTH(d).replace(/ 20/, " ’") : "")).select(".domain").remove();
-  s.append("g").selectAll("rect").data(nat).join("rect").attr("x", (d, i) => x(S.months[i])).attr("width", x.bandwidth())
-    .attr("y", d => y(d)).attr("height", d => y(0) - y(d)).attr("fill", (d, i) => i === last ? css("--ink") : i === 0 ? css("--ink-3") : css("--line"))
-    .on("mousemove", (e, d) => showTip(e, `<b>${MONTH(S.months[nat.indexOf(d)])}</b><br>${nf.format(d)} denuncias`)).on("mouseleave", hideTip);
-  s.append("text").attr("class", "num").attr("x", x(S.months[last]) + x.bandwidth() / 2).attr("y", y(nat[last]) - 5).attr("text-anchor", "middle").style("font-weight", 650).text(nf.format(nat[last]));
-  $("#sid-note").innerHTML = `${MONTH(S.periodo)}: ${nf.format(nat[last])} denuncias${sidMod === "Total" ? "" : ` de ${esc(sidMod.toLowerCase())}`}, ${delta(nat[last], nat[0])} frente a ${MONTH(S.months[0])} (barra gris). Son denuncias registradas en el SIDPOL, no delitos ocurridos. <a href="${esc(S.dataset)}" target="_blank" rel="noopener">Dataset ↗</a>`;
-  const pn = Object.fromEntries(V.geo.provs.features.map(f => [f.properties.id, f.properties]));
-  const rows = Object.entries(S.provs).map(([c, r]) => [c, sumRow(r, sel)]).sort((a, b) => b[1][last] - a[1][last]).slice(0, 25);
-  $("#sid-top-h3").textContent = `Provincias con más denuncias${sidMod === "Total" ? "" : " de " + sidMod.toLowerCase()}`;
-  $("#sid-th-n").textContent = MONTH(S.periodo);
-  $("#sid-top").innerHTML = rows.map(([c, v]) => `<tr><td>${esc(title(pn[c]?.n))} <span class="muted">· ${esc(title(pn[c]?.d))}</span></td><td class="num"><b>${nf.format(v[last])}</b></td><td class="num">${delta(v[last], v[0])}</td><td>${spark(v)}</td></tr>`).join("");
-}
-function sidpolBlock(code) {
-  const S = V.sidpol, r = S?.provs[code];
-  if (!r || !MOSTRAR_DENUNCIAS) return "";
-  const last = S.months.length - 1, tot = sumRow(r, S.mods);
-  const byMod = S.mods.map(m => [m, r[m][last], r[m][0]]).filter(x => x[1] || x[2]).sort((a, b) => b[1] - a[1]);
-  return `<div class="sidblk"><p class="eyebrow">Denuncias policiales · ${MONTH(S.periodo)} · SIDPOL</p>
-    <div class="row"><div><span class="big num">${nf.format(tot[last])}</span> ${delta(tot[last], tot[0])} <span class="muted" style="font-size:12px">vs. ${MONTH(S.months[0])}</span></div>${spark(tot, 120, 30)}</div>
-    <table>${byMod.map(([m, n, b]) => `<tr><td>${esc(m.replace(" e integrantes", ""))}</td><td class="num"><b>${nf.format(n)}</b></td><td class="num">${delta(n, b)}</td><td>${spark(r[m], 70, 16)}</td></tr>`).join("")}</table></div>`;
-}
-
 /* ── orquestación ───────────────────────────────────────────────── */
 let mapReady = false;
 function renderAll() {
@@ -1432,7 +1378,7 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); if (MOSTRAR_DENUNCIAS) renderSidpol(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderBomberos(); renderReportes(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderBomberos(); renderReportes(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); cargarReportes(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });

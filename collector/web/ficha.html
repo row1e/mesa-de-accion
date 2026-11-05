@@ -40,7 +40,7 @@ a{color:inherit}
 @media print{.enfen{margin:0;padding:2mm 7mm}}
 .enfen b{color:var(--brand)}
 /* resumen */
-.tiles{display:grid;grid-template-columns:repeat(6,1fr);border:1px solid var(--line);margin:5mm 0 4mm}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);margin:5mm 0 4mm}
 .tiles div{padding:2.6mm 3mm;border-right:1px solid var(--line);break-inside:avoid}
 .tiles div:last-child{border-right:0}
 .tiles .v{font-size:17pt;font-weight:750;font-variation-settings:"wdth" 70;line-height:1.05}
@@ -84,8 +84,6 @@ tr{break-inside:avoid}
 .empty-list{font-size:8.5pt;color:var(--ink-3);margin-top:4mm;padding:2mm 3mm;border:1px dashed var(--line)}
 .src td{font-size:8pt}
 .src .u{font:400 7pt var(--mono);color:var(--ink-3);word-break:break-all}
-.spark path.l{fill:none;stroke:var(--ink-2);stroke-width:1.2}.spark path.a{fill:#EFEEE8}.spark circle{fill:var(--ink)}
-.up{color:var(--bad)}.down{color:var(--ok)}
 .dcols{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
 .dcols > div{break-inside:avoid}
 h2 + .dcols{break-before:avoid}
@@ -121,7 +119,6 @@ const fmtDay = iso => { const d = new Date(iso + "T12:00:00"); return `${DOW[d.g
 const stamp = ts => ts ? new Date(ts * 1000).toLocaleString("es-PE", {timeZone: "America/Lima", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23"}) : "—";
 const lvlNum = s => ({AMARILLO:2, NARANJA:3, ROJO:4})[s] || +String(s).replace(/\D/g,"") || 0;
 const chip = n => `<span class="lvl l${n}">${n ? ["","","Nivel 2 · amarillo","Nivel 3 · naranja","Nivel 4 · rojo"][n] : "Sin aviso"}</span>`;
-const MONTH = ym => { const [y, m] = ym.split("-"); return `${MON[+m - 1]} ${y}`; };
 const printMode = new URLSearchParams(location.search).has("print");
 if (printMode) $("#bar").hidden = true;
 $("#dl").href = `/ficha/${F.ubigeo}.pdf`;
@@ -130,11 +127,6 @@ const DEPT = F.tipo === "departamental";
 document.title = `Ficha ${DEPT ? "departamental" : "provincial"} ${title(F.nombre)} · Mesa de Acción`;
 const nivelesTxt = x => DEPT ? [4, 3, 2].filter(n => x.conteo[n]).map(n => `${x.conteo[n]} N${n}`).join(" · ") : "";
 
-function spark(vals, w = 120, h = 26) {
-  const x = d3.scaleLinear([0, vals.length - 1], [2, w - 3]), y = d3.scaleLinear([0, d3.max(vals) || 1], [h - 2, 3]);
-  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path class="a" d="${d3.area((d, i) => x(i), h - 2, d => y(d))(vals)}"/><path class="l" d="${d3.line((d, i) => x(i), d => y(d))(vals)}"/><circle cx="${x(vals.length - 1)}" cy="${y(vals.at(-1))}" r="2.2"/></svg>`;
-}
-const delta = (now, before) => { if (!before) return "—"; const p = Math.round((now - before) / before * 100); return `<span class="${p > 0 ? "up" : p < 0 ? "down" : ""}">${p > 0 ? "+" : ""}${p} %</span>`; };
 
 const DN = F.danos || {labels: {}, orden: []};
 const VIDA = new Set(["personas_fallecidas", "personas_desaparecidas", "personas_heridas"]);
@@ -142,8 +134,6 @@ const fmtN = v => typeof v === "number" && !Number.isInteger(v) ? v.toLocaleStri
 const dfig = tot => { const ks = DN.orden.filter(k => tot && tot[k]); return ks.length ? `<div class="dfig">${ks.map(k => `<div class="${VIDA.has(k) ? "vida" : ""}"><b>${fmtN(tot[k])}</b><span>${esc(DN.labels[k])}</span></div>`).join("")}</div>` : `<p class="muted" style="margin:1mm 0 0">Sin cifras.</p>`; };
 const dline = tot => { const ks = DN.orden.filter(k => tot && tot[k]); return ks.length ? `<div class="dline">${ks.map(k => `<b>${fmtN(tot[k])}</b> ${esc(DN.labels[k].toLowerCase())}`).join(" · ")}</div>` : ""; };
 const hoy = F.niveles[0] || {m: 0, a: []};
-const S = F.sidpol, last = S ? S.months.length - 1 : 0;
-const sidTotal = S ? S.months.map((_, i) => S.mods.reduce((a, m) => a + (S.series[m]?.[i] || 0), 0)) : null;
 const activos = F.alertas.filter(a => a.estado !== "Extinguido");
 const empty = [];
 if (F.indeci.length > 25) F.indeci = F.indeci.slice(0, 25);   // la ficha departamental no se vuelve un libro
@@ -164,7 +154,6 @@ ${F.enfen?.estado ? `<div class="enfen">ENFEN · estado nacional: <b>${esc(F.enf
   <div><div class="v num">${F.indeci.length}</div><div class="l">Reportes INDECI · ${F.indeci_dias} días</div></div>
   <div><div class="v num">${activos.length}</div><div class="l">Incendios activos · ${nf.format(F.focos)} focos 24 h</div></div>
   <div><div class="v num">${F.zonas.length}</div><div class="l">Zonas críticas en alerta</div></div>
-  <div><div class="v num">${S ? nf.format(sidTotal[last]) : "—"}</div><div class="l">Denuncias ${S ? MONTH(S.periodo) : ""}</div></div>
 </div>
 
 <section class="grid2">
@@ -201,11 +190,10 @@ if (DN.n_eventos) html += `<section><h2>Daños reportados · INDECI <small>últi
 else empty.push(`cifras de daños INDECI (${DN.dias || 7} días)`);
 
 // Provincias (ficha departamental)
-if (DEPT && F.tabla.length) html += `<section><h2>Provincias de ${esc(title(F.nombre))} <small>hoy · ${F.indeci_dias} días INDECI · SIDPOL ${S ? MONTH(S.periodo) : ""}</small></h2>
-  <table><thead><tr><th>Provincia</th><th>Aviso hoy</th><th class="num">UV</th><th class="num">INDECI</th><th class="num">Damnif. / afect. (7 d)</th><th class="num">Incendios activos</th><th class="num">Zonas críticas</th><th class="num">Denuncias</th><th class="num">vs. año ant.</th></tr></thead><tbody>
+if (DEPT && F.tabla.length) html += `<section><h2>Provincias de ${esc(title(F.nombre))} <small>hoy · ${F.indeci_dias} días INDECI</small></h2>
+  <table><thead><tr><th>Provincia</th><th>Aviso hoy</th><th class="num">UV</th><th class="num">INDECI</th><th class="num">Damnif. / afect. (7 d)</th><th class="num">Incendios activos</th><th class="num">Zonas críticas</th></tr></thead><tbody>
   ${F.tabla.map(r => `<tr><td><b>${esc(title(r.provincia))}</b> <span class="muted">${r.ubigeo}</span></td><td>${r.nivel ? chip(r.nivel).replace(/ · .*?</, "<") : '<span class="muted">—</span>'}</td>
-    <td class="num">${r.uv ?? "—"}</td><td class="num">${r.indeci || "—"}</td><td class="num">${r.damnificados || r.afectados ? `${nf.format(r.damnificados || 0)} / ${nf.format(r.afectados || 0)}` : "—"}</td><td class="num">${r.incendios || "—"}</td><td class="num">${r.zonas || "—"}</td>
-    <td class="num">${r.denuncias != null ? nf.format(r.denuncias) : "—"}</td><td class="num">${r.denuncias != null ? delta(r.denuncias, r.denuncias_prev) : "—"}</td></tr>`).join("")}</tbody></table>
+    <td class="num">${r.uv ?? "—"}</td><td class="num">${r.indeci || "—"}</td><td class="num">${r.damnificados || r.afectados ? `${nf.format(r.damnificados || 0)} / ${nf.format(r.afectados || 0)}` : "—"}</td><td class="num">${r.incendios || "—"}</td><td class="num">${r.zonas || "—"}</td></tr>`).join("")}</tbody></table>
   <p class="note">Descargue la ficha de cada provincia desde el dashboard (barra superior · Ficha PDF).</p></section>`;
 
 // INDECI
@@ -241,16 +229,6 @@ if (F.sismos.length) html += `<section><h2>Sismos · IGP <small>últimos 30 día
   <table><thead><tr><th>Fecha</th><th class="num">M</th><th class="num">Prof.</th><th>Referencia</th><th>Ubicación</th></tr></thead><tbody>
   ${F.sismos.map(s => `<tr><td class="num">${fmtDay(s.fecha)} ${s.hora}</td><td class="num"><b>${s.mag}</b></td><td class="num">${s.prof} km</td><td>${esc(s.ref)}</td><td class="num">${s.dentro ? "dentro" : `a ${s.dist_km} km`}</td></tr>`).join("")}</tbody></table></section>`;
 else empty.push(`sismos en 30 días (a menos de ${F.near_km} km)`);
-
-// SIDPOL
-if (S) {
-  const rows = S.mods.map(m => [m, S.series[m]]).filter(([, v]) => v[last] || v[0]).sort((a, b) => b[1][last] - a[1][last]);
-  html += `<section><h2>Denuncias policiales · SIDPOL <small>${MONTH(S.periodo)} vs. ${MONTH(S.months[0])}</small></h2>
-    <table><thead><tr><th>Modalidad</th><th class="num">${MONTH(S.periodo)}</th><th class="num">${MONTH(S.months[0])}</th><th class="num">Variación</th><th>13 meses</th></tr></thead><tbody>
-    <tr><td><b>Total</b></td><td class="num"><b>${nf.format(sidTotal[last])}</b></td><td class="num">${nf.format(sidTotal[0])}</td><td class="num">${delta(sidTotal[last], sidTotal[0])}</td><td>${spark(sidTotal)}</td></tr>
-    ${rows.map(([m, v]) => `<tr><td>${esc(m)}</td><td class="num">${nf.format(v[last])}</td><td class="num">${nf.format(v[0])}</td><td class="num">${delta(v[last], v[0])}</td><td>${spark(v, 90, 18)}</td></tr>`).join("")}</tbody></table>
-    <p class="note">Denuncias registradas en el SIDPOL (PNP), no delitos ocurridos. Fuente: <a href="${esc(S.dataset)}">${esc(S.dataset)}</a></p></section>`;
-}
 
 // Comunicados
 if (F.comunicados.length) html += `<section><h2>Comunicados que mencionan ${DEPT ? "el departamento" : "la provincia"} <small>gob.pe · 14 días</small></h2>
@@ -302,7 +280,6 @@ html += `<section><h2>Fuentes y actualización <small>último éxito de cada fue
     <p><b>Nivel por provincia.</b> Cruce de los polígonos de cada aviso SENAMHI con los límites INEI; una provincia cuenta si el aviso cubre al menos el 3 % de su área. Se muestra el nivel más alto del día.</p>
     <p><b>Fotos.</b> Anexo fotográfico de los reportes INDECI (COER, municipalidades). Los mapas de ubicación de INDECI usan base Google Earth/Airbus y no se incluyen.</p>
     <p><b>Sismos.</b> Catálogo IGP; se listan los epicentros dentro ${DEPT ? "del departamento" : "de la provincia"} o a menos de ${F.near_km} km de su límite.</p>
-    <p><b>Denuncias.</b> SIDPOL mensual (datos abiertos MININTER); refleja denuncias registradas, no la incidencia real del delito.</p>
     <p>Generado por el colector Mesa de Acción el ${F.generado_txt} h. Datos oficiales tomados de sus servidores; verificar antes de emitir.</p>
   </div></section>`;
 

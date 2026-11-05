@@ -4,7 +4,7 @@ Cada fila: {source, kind, key, received, event_time, title, subtitle, level, pla
 - received   = cuándo lo recibió el colector (first_seen)
 - event_time = fecha que le da la fuente (ocurrencia, emisión, publicación)
 Las fuentes masivas (focos, detecciones FIRMS) se agrupan por lectura cuando no se filtra por esa fuente.
-Las fuentes que se actualizan en el mismo registro (UV, pronóstico, SIDPOL) aparecen como "actualización"
+Las fuentes que se actualizan en el mismo registro (UV, pronóstico) aparecen como "actualización"
 cada vez que su contenido cambió (tabla fetches, changed=1).
 """
 import datetime
@@ -44,8 +44,7 @@ EVENT_SQL = {"aviso": "json_extract(payload,'$.emision') || printf('%05d', json_
              "parte": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')",
              "aviso_dhn": "json_extract(payload,'$.inicio') || json_extract(payload,'$.numero')", "reporte": "key"}
 UPDATES = {"senamhi_uv": ("prono_ruv.json", "Índice UV actualizado"),
-           "senamhi_pronostico": ("pronostico.html", "Pronóstico por ciudad actualizado"),
-           "sidpol": ("denuncias.csv", "Nuevo mes de denuncias SIDPOL publicado")}
+           "senamhi_pronostico": ("pronostico.html", "Pronóstico por ciudad actualizado")}
 
 
 def _t(s):

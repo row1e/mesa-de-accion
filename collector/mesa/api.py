@@ -435,8 +435,6 @@ def provincia(ubigeo: str):
         "focos_24h": sum(1 for f in d["focos"] if geo.norm(f[3]) == name),
         "zonas_criticas": [z for z in d["zonas"] if geo.norm(z.get("provincia")) == name],
         "hidro": [h for h in d["hidro"] if geo.norm(h.get("nom_provincia")) == name],
-        "denuncias_sidpol": ({"meses": d["sidpol"]["months"], "por_modalidad": d["sidpol"]["provs"].get(ubigeo)}
-                             if d.get("sidpol") else None),
     }
 
 

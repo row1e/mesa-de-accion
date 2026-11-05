@@ -136,13 +136,6 @@ def build(code):
                            "codigo": s[8], "dentro": inside, "dist_km": dist})
     sismos.sort(key=lambda s: s["fecha"] + s["hora"], reverse=True)
 
-    # ── SIDPOL: serie del ámbito (suma de sus provincias) ──
-    sid = None
-    if D.get("sidpol") and any(c in D["sidpol"]["provs"] for c in P):
-        S = D["sidpol"]
-        series = {m: [sum(S["provs"].get(c, {}).get(m, [0] * len(S["months"]))[i] for c in P) for i in range(len(S["months"]))] for m in S["mods"]}
-        sid = {"months": S["months"], "periodo": S["periodo"], "mods": S["mods"], "series": series, "dataset": S["dataset"]}
-
     # ── Comunicados: provincia = nombre en el texto; departamento = región mencionada ──
     if dept_level:
         comunicados = [c for c in D["comunicados"] if dep in (c.get("regs") or [])][:12]
@@ -165,15 +158,11 @@ def build(code):
     # ── Tabla de provincias (solo ficha departamental) ──
     tabla = []
     if dept_level:
-        last = len(D["sidpol"]["months"]) - 1 if D.get("sidpol") else 0
         for c in sc["provs"]:
-            srow = (D.get("sidpol") or {}).get("provs", {}).get(c)
-            tot = [sum(srow[m][i] for m in srow) for i in (0, last)] if srow else None
             tabla.append({"ubigeo": c, "provincia": provs[c]["nombre"], "nivel": niveles[0]["por_prov"].get(c, 0) if niveles else 0,
                           "uv": uv_by.get(c, {}).get("v", [None])[0], "indeci": sum(1 for i in indeci if i["prov"] == c),
                           "incendios": sum(1 for a in alertas if str(a.get("ubigeo") or "").zfill(6)[:4] == c and a["estado"] != "Extinguido"),
                           "zonas": sum(1 for z in zonas if geo.norm(z.get("provincia")) == geo.norm(provs[c]["nombre"])),
-                          "denuncias": tot[1] if tot else None, "denuncias_prev": tot[0] if tot else None,
                           "damnificados": ((DN.get("por_prov") or {}).get(c, {}).get("totales") or {}).get("personas_damnificadas"),
                           "afectados": ((DN.get("por_prov") or {}).get(c, {}).get("totales") or {}).get("personas_afectadas")})
 
@@ -194,7 +183,7 @@ def build(code):
             "geo": geo_out, "niveles": niveles, "avisos": avisos, "uv": uv, "uv_max": max(uv_by.values(), key=lambda u: u["v"][0], default=None) if dept_level else None,
             "pronostico": pron, "indeci": indeci, "indeci_dias": INDECI_DAYS, "alertas": alertas, "focos": len(focos),
             "focos_pts": [[f[0], f[1]] for f in focos][:600], "zonas": zonas, "hidro": hidro, "sismos": sismos, "near_km": NEAR_KM,
-            "sidpol": sid, "comunicados": comunicados, "tabla": tabla, "danos": danos, "enfen": D["enfen"].get("ultimo_comunicado", {}),
+            "comunicados": comunicados, "tabla": tabla, "danos": danos, "enfen": D["enfen"].get("ultimo_comunicado", {}),
             "midis": mid, "fuentes": fuentes}
 
 

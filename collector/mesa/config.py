@@ -75,7 +75,6 @@ INTERVALS = {
     "com_pnp": 15 * 60, "com_provias": 15 * 60, "com_mtc": 15 * 60, "com_mininter": 15 * 60,   # gob.pe, una fuente por institución
     "indeci_fotos": 5 * 60,
     "respaldo": 24 * 3600,    # copia diaria de data/ (mesa/backup.py)   # procesa hasta 15 PDF nuevos por turno (reportes de las últimas 72 h)
-    "sidpol": 24 * 3600,      # el CSV es mensual; se baja solo si cambió el enlace
     "midis": 30 * 86400,      # solo el catálogo de ubigeos; los indicadores se piden por distrito bajo demanda
 }
 REFRESH_COOLDOWN = 60          # segundos mínimos entre refrescos manuales de una misma fuente

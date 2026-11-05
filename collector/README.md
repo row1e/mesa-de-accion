@@ -76,7 +76,6 @@ El job `respaldo` (cada 24 h, visible en el tablero de fuentes) copia `data/` a 
 | `senamhi_avisos` | 15 min | Polígonos y cruce solo para aviso-días nuevos |
 | `com_pnp`, `com_provias`, `com_mtc`, `com_mininter` | 15 min | Una fuente por institución (gob.pe `/institucion/{pnp|pvn|mtc|mininter}/noticias.json`); cada una trae solo sus 9 últimas, el historial queda en la base. `provias` es aparte: solo verifica si el servidor de emergencias viales responde |
 | `indeci_fotos` | 5 min | Procesa hasta 15 PDF de reportes INDECI (últimas 72 h): fotos del anexo "VISTAS FOTOGRÁFICAS" con leyenda y fecha, mapa de ubicación (base Google Earth/Airbus: no apto para emisión), texto, código SINPAD y **cifras de daños** (`mesa/indeci_danos.py`: la tabla "3.1 Reporte de daños" leída por posición de palabras → campos estándar). Imágenes en `data/media/indeci/`, servidas en `/media/…` (~250 KB por reporte) |
-| `sidpol` | 24 h | Relee la página del dataset; baja el CSV (27 MB) solo si cambió el enlace (cambia cada mes) |
 | `senamhi_hidro`, `serfor` | 30 min | |
 | `ingemmet`, `firms`, `provias` | 1 h | `provias` solo verifica si el servidor acepta conexión |
 | `senamhi_pronostico` | 4 h | |
@@ -101,7 +100,7 @@ El job `respaldo` (cada 24 h, visible en el tablero de fuentes) copia `data/` a 
 | GET | `/api/runs?source=&limit=` | Historial de ejecuciones |
 | GET | `/api/items/{fuente}/{tipo}?current=true` | Registros normalizados (para integrar con otras aplicaciones) |
 | GET | `/api/provincia/{ubigeo}` | Lo que dicen todas las fuentes sobre una provincia |
-| GET | `/api/latest?source=&region=&limit=&before=&days=` | Últimos registros recibidos, de todas las fuentes o de una, con `received` (llegada al colector) y `event_time` (fecha de la fuente). Focos y FIRMS se agrupan por lectura si no se filtra por esa fuente; UV, pronóstico y SIDPOL aparecen como "actualización" cuando su contenido cambia. `counts24h` excluye la carga inicial (primera hora de cada fuente) |
+| GET | `/api/latest?source=&region=&limit=&before=&days=` | Últimos registros recibidos, de todas las fuentes o de una, con `received` (llegada al colector) y `event_time` (fecha de la fuente). Focos y FIRMS se agrupan por lectura si no se filtra por esa fuente; UV y pronóstico aparecen como "actualización" cuando su contenido cambia. `counts24h` excluye la carga inicial (primera hora de cada fuente) |
 | GET | `/ficha/{código}` | Ficha imprimible (A4). Código de 2 dígitos = departamento (tabla de provincias, mapa por provincia, pronóstico de todas sus ciudades); 4 dígitos = provincia. Incluye todas las fuentes, fotos INDECI y hora de último éxito de cada fuente |
 | GET | `/ficha/{código}.pdf` | La misma ficha en PDF (Chrome headless del sistema; ~4 s). Ruta de Chrome configurable con `MESA_CHROME` |
 | GET | `/api/ficha/{código}` | Datos de la ficha en JSON |
@@ -116,7 +115,7 @@ Tipos por fuente: `senamhi_avisos/aviso`, `senamhi_avisos/aviso_dia`, `senamhi_u
 
 ## Filtro por región
 
-La barra negra bajo el encabezado filtra todo el dashboard por una de las 25 regiones (24 departamentos + Callao); el enlace queda como `http://127.0.0.1:8787/#r=20` (Piura) para compartirlo. `snapshot.py` asigna la región a cada registro: por ubigeo (SERFOR, INDECI, SIDPOL, avisos por provincia), por polígono (sismos; mar adentro, por la referencia del IGP), por nombre de departamento (INGEMMET, hidrología, pronóstico) y, en los comunicados, por mención del nombre en el texto. Nacionales siempre: estado de fuentes, ENFEN e histórico de avisos.
+La barra negra bajo el encabezado filtra todo el dashboard por una de las 25 regiones (24 departamentos + Callao); el enlace queda como `http://127.0.0.1:8787/#r=20` (Piura) para compartirlo. `snapshot.py` asigna la región a cada registro: por ubigeo (SERFOR, INDECI, avisos por provincia), por polígono (sismos; mar adentro, por la referencia del IGP), por nombre de departamento (INGEMMET, hidrología, pronóstico) y, en los comunicados, por mención del nombre en el texto. Nacionales siempre: estado de fuentes, ENFEN e histórico de avisos.
 
 ## Límites actuales
 

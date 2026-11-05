@@ -32,8 +32,6 @@ SOURCES = {
                     sheet="No existía"),
     "com_mininter": dict(fn=gobpe.noticias("mininter"), org="MININTER", name="Notas de prensa MININTER", via="gob.pe JSON",
                          geo="Sin ubicación (texto)", sheet="No existía"),
-    "sidpol": dict(fn=gobpe.sidpol, org="PNP · MININTER", name="Denuncias policiales (SIDPOL)", via="CSV datos abiertos",
-                   geo="Distrito → provincia", sheet="No existía"),
     "midis": dict(fn=midis.catalogo, org="MIDIS · REDInforma", name="Catálogo de distritos (contexto social)",
                   via="JSON no documentado (el mismo que usa el sitio)", geo="Distrito (ubigeo de 6 dígitos)",
                   sheet="No existía"),

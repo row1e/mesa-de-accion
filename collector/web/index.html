@@ -320,15 +320,6 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .feed.com details{margin-top:4px;font-size:13px}
 .feed.com summary{cursor:pointer;color:var(--ink-3);font-size:12.5px}
 .feed.com .txt{margin-top:6px;color:var(--ink-2);line-height:1.55;max-height:260px;overflow:auto;border-left:2px solid var(--line);padding-left:10px}
-.spark{display:inline-block;vertical-align:middle}
-.spark path.l{fill:none;stroke:var(--ink-2);stroke-width:1.4}
-.spark path.a{fill:var(--line-2);stroke:none}
-.spark circle{fill:var(--ink)}
-.delta.up{color:var(--bad)}.delta.down{color:var(--ok)}
-.sidblk{border-top:1px solid var(--line-2);margin-top:12px;padding-top:10px}
-.sidblk .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.sidblk .big{font-size:24px;font-weight:750;font-variation-settings:"wdth" 70;line-height:1}
-.sidblk table td{padding:3px 6px;font-size:12.5px}
 /* últimos datos recibidos */
 .srcf{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
 .srcf button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:3px;padding:4px 9px;font-size:12.5px;cursor:pointer}
@@ -630,7 +621,6 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#bom-sec">Bomberos (CGBVP)</a>
     <a href="#ciud-sec">Nuestros corresponsales</a>
     <a href="#com-sec">Comunicados</a>
-    <a href="#sidpol-sec" hidden>Denuncias</a>
     <a href="#igp-sec">Sismos (IGP)</a>
     <a href="#serfor-sec">Incendios (SERFOR)</a>
     <a href="#ing-sec">Zonas críticas (INGEMMET)</a>
@@ -805,14 +795,6 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
   <section id="com-sec">
     <div class="sec-head"><div><p class="eyebrow">gob.pe · PNP · PROVIAS · MTC · MININTER</p><h2>Comunicados oficiales</h2></div><span class="src">gob.pe/institucion/{pnp|pvn|mtc|mininter}/noticias.json</span></div>
     <div class="panel"><div class="filters" id="com-filters"></div><ul class="feed com" id="com"></ul><button type="button" class="more" id="com-more" hidden></button><p class="note" id="com-note"></p></div>
-  </section>
-
-  <section id="sidpol-sec" hidden>
-    <div class="sec-head"><div><p class="eyebrow">PNP · MININTER · SIDPOL</p><h2>Denuncias policiales</h2></div><span class="src">datosabiertos.gob.pe/dataset/denuncias-policiales-1 (CSV mensual)</span></div>
-    <div class="grid2">
-      <div class="panel"><h3 id="sid-h3">Denuncias por mes</h3><div class="filters" id="sid-mods"></div><div id="sid-chart"></div><p class="note" id="sid-note"></p></div>
-      <div class="panel"><h3 id="sid-top-h3">Provincias con más denuncias</h3><div class="scroll"><table><thead><tr><th>Provincia</th><th class="num" id="sid-th-n">Mes</th><th class="num">vs. año anterior</th><th>13 meses</th></tr></thead><tbody id="sid-top"></tbody></table></div></div>
-    </div>
   </section>
 
   <section id="igp-sec">
