@@ -75,6 +75,18 @@ def _fecha_ocurrencia(rec):
         return None
 
 
+MESES_FOTO = {"ENE": 1, "FEB": 2, "MAR": 3, "ABR": 4, "MAY": 5, "JUN": 6, "JUL": 7, "AGO": 8, "SET": 9, "SEP": 9, "OCT": 10, "NOV": 11, "DIC": 12}
+
+
+def _fecha_foto(texto):
+    """Fecha del anexo fotográfico ("5 NOV 2026") → "2026-11-05"; None si no se reconoce."""
+    m = re.match(r"\s*(\d{1,2})\s+([A-Za-z]{3})[A-Za-z.]*\s+(\d{4})", texto or "")
+    try:
+        return datetime.date(int(m.group(3)), MESES_FOTO[m.group(2).upper()], int(m.group(1))).isoformat() if m else None
+    except (KeyError, ValueError):
+        return None
+
+
 def _hora_ocurrencia(texto):
     """Fecha y hora de la ocurrencia ("27/9/2026 14:00 horas") → ("2026-09-27", "14:00"); la hora puede faltar."""
     m = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?", texto or "")
@@ -334,13 +346,13 @@ def build():
                     continue
                 seen_sha.add(f.get("sha"))
                 fotos_dia.append({"url": f["url"], "w": f["w"], "h": f["h"], "caption": f.get("caption"), "fecha": f.get("fecha"),
+                                  "tomada": _fecha_foto(f.get("fecha")) or oc or (datetime.date.fromtimestamp(i["ts"]).isoformat() if i.get("ts") else None),
                                   "key": i["_key"], "reg": i.get("reg"), "evento": i.get("evento"), "distrito": i.get("distrito"),
                                   "dpto": i.get("dpto"), "num": i.get("num"), "tipo": i.get("tipo"),
                                   "provincia": i.get("provincia"), "ts": i.get("ts")})
-        # El pie de foto trae la fecha en que se tomó la imagen, que puede ser de semanas atrás
-        # (un reporte complementario de hoy sobre un evento de agosto). Lo que ordena la tira es
-        # cuándo llegó el reporte, no esa fecha; se ordena aquí y no se confía en el recorrido.
-        fotos_dia.sort(key=lambda f: f.get("ts") or 0, reverse=True)
+        # Primero lo más actual: por la fecha en que se tomó la foto (la del anexo; si no la trae, la del evento o la
+        # llegada del reporte). Un reporte complementario de hoy puede traer fotos de semanas atrás: van al final.
+        fotos_dia.sort(key=lambda f: (f.get("tomada") or "", f.get("ts") or 0), reverse=True)
 
         data = {
             "live": True, "snapshot": today, "built": datetime.datetime.now(LIMA).strftime("%Y-%m-%d %H:%M"),

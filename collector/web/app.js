@@ -1234,8 +1234,8 @@ function renderStrip() {
     || `<p class="muted" style="margin:0">${state.region ? `Sin fotos de campo de ${esc(regName(state.region))} en las últimas ${V.indeciWindowH} h.` : "Aún no hay fotos procesadas."}</p>`;
   $("#ind-strip").onclick = e => { const b = e.target.closest(".ph"); if (b) openLightbox(F, +b.dataset.i); };
   const pend = V.indeci.filter(i => i.clase === "reporte" && i.fotos == null).length;
-  $("#strip-note").textContent = `${F.length} fotos de ${new Set(F.map(f => f.key)).size} reportes, de lo más reciente a lo más antiguo por llegada del reporte`
-    + ` · la fecha bajo cada foto es cuándo se tomó, que puede ser muy anterior${pend ? ` · ${pend} reportes aún en cola` : ""}. Crédito: INDECI / COER.`;
+  $("#strip-note").textContent = `${F.length} fotos de ${new Set(F.map(f => f.key)).size} reportes recibidos en las últimas ${V.indeciWindowH} h, de la más reciente a la más antigua según cuándo se tomó`
+    + ` · un reporte de hoy puede traer fotos de semanas atrás: quedan al final${pend ? ` · ${pend} reportes aún en cola` : ""}. Crédito: INDECI / COER.`;
 }
 
 /* ── vista satelital (NASA GIBS vía el colector) ─────────────────── */
