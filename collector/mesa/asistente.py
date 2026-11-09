@@ -6,8 +6,11 @@ Cuatro garantías, cada una aplicada en código y no confiada al modelo:
    oficial (o el resumen del día) y nada más. El dossier se guarda con el borrador.
 2. Verificación de cifras. Todo número del texto generado tiene que existir en el dossier. Si no,
    se reintenta una vez indicando qué cifras sobran; si vuelve a fallar, el borrador queda
-   "bloqueado" y su texto no se entrega. Los números escritos en letras cuentan como falla, porque
-   esquivarían la verificación.
+   "bloqueado" y su texto no se entrega. Los números del 0 al 99 escritos en letras ("dos avisos") se pasan
+   a dígitos y se verifican como cualquier cifra; los demás ("mil", "cientos", "una docena") cuentan como
+   falla, porque esquivarían la verificación. El número de elementos de una lista de los datos cuenta
+   como dato ("2 avisos" si la lista trae 2), y una frase con número que está tal cual en los datos
+   (un nombre como "Dos de Mayo") no se toca.
    Límite conocido: la verificación garantiza que cada cifra EXISTE en los datos, no que se use con el
    sentido correcto. Un "2" pasa si hay un 2 en cualquier parte (incluso en una fecha). Por eso la
    revisión humana es obligatoria y no un adorno.
@@ -95,7 +98,9 @@ SISTEMA = """Redactas borradores para la mesa de prensa de un medio de radio y t
 Reglas que no admiten excepción:
 - Usa solo la información del bloque DATOS. No agregues hechos, antecedentes ni contexto que no estén ahí, aunque los conozcas.
 - Cada cifra que escribas debe aparecer tal cual en DATOS: sin redondear, sin aproximar ("más de", "casi", "cerca de") y sin hacer cálculos (sumas, restas, porcentajes, promedios).
-- Escribe todas las cantidades, fechas y horas con dígitos, nunca en letras.
+- Escribe todas las cantidades, fechas y horas con dígitos, nunca en letras: "2 avisos", no "dos avisos".
+- Contar los elementos de una lista de DATOS cuenta como dato: si la lista trae 2 avisos, puedes escribir "2 avisos". Otros conteos sí son cálculos: si DATOS no trae cuántos de ellos están en un lugar o cumplen algo, nómbralos sin decir cuántos.
+- Los nombres propios que llevan un número (Dos de Mayo, Tres Unidos) se escriben como aparecen en DATOS.
 - Si los datos no alcanzan para algo que pide la tarea, dilo en el campo "advertencia" en lugar de suponer.
 - No escribas enlaces ni la línea de fuente: se agregan automáticamente después.
 - Español de Perú, registro periodístico de servicio público: claro, preciso, sin dramatizar y sin opiniones."""
@@ -273,6 +278,66 @@ _LETRAS = re.compile(r"\b(cero|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|
                      r"dieci\w+|veinte|veinti\w+|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|"
                      r"ciento|cientos|doscient\w+|trescient\w+|cuatrocient\w+|quinient\w+|seiscient\w+|setecient\w+|"
                      r"ochocient\w+|novecient\w+|mil|miles|millon|millones|docenas?|decenas?|centenar(?:es)?|millar(?:es)?)\b")
+# Del 0 al 99 en letras → dígitos (sin tildes, como quedan tras _sin_tildes). "uno"/"una" no: casi siempre son artículos.
+_UNIDADES = {"cero": 0, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
+             "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciseis": 16, "diecisiete": 17,
+             "dieciocho": 18, "diecinueve": 19, "veinte": 20, "veintiun": 21, "veintiuno": 21, "veintiuna": 21, "veintidos": 22,
+             "veintitres": 23, "veinticuatro": 24, "veinticinco": 25, "veintiseis": 26, "veintisiete": 27, "veintiocho": 28,
+             "veintinueve": 29}
+_DECENAS = {"treinta": 30, "cuarenta": 40, "cincuenta": 50, "sesenta": 60, "setenta": 70, "ochenta": 80, "noventa": 90}
+_Y_UNO = {"un": 1, "uno": 1, "una": 1, **{k: v for k, v in _UNIDADES.items() if 2 <= v <= 9}}
+_PALABRA = re.compile(r"\w+", re.UNICODE)
+
+
+def _frases_con_numero(dossier):
+    """Pares de palabras con un número en letras que aparecen tal cual en los datos ("dos de", "tres unidos"):
+    una frase así en el texto viene de los datos (casi siempre un nombre propio) y no se convierte."""
+    pares = set()
+
+    def ver(s):
+        t = _PALABRA.findall(_sin_tildes(s))
+        for i, w in enumerate(t):
+            if w in _UNIDADES or w in _DECENAS or _LETRAS.fullmatch(w):
+                if i + 1 < len(t):
+                    pares.add((w, t[i + 1]))
+                if i:
+                    pares.add((t[i - 1], w))
+
+    def rec(o):
+        if isinstance(o, str):
+            ver(o)
+        elif isinstance(o, dict):
+            for k, v in o.items():
+                rec(k), rec(v)
+        elif isinstance(o, (list, tuple)):
+            for v in o:
+                rec(v)
+    rec(dossier)
+    return pares
+
+
+def a_digitos(texto, frases=frozenset()):
+    """Pasa a dígitos los números del 0 al 99 escritos en letras ("dos avisos" → "2 avisos", "treinta y cinco" → "35"),
+    salvo los que forman una frase presente en los datos. Devuelve el texto nuevo."""
+    toks = list(_PALABRA.finditer(texto))
+    plano = [_sin_tildes(m.group()) for m in toks]
+    out, pos, i = [], 0, 0
+    while i < len(toks):
+        w, n = plano[i], None
+        prev, nxt = (plano[i - 1] if i else None), (plano[i + 1] if i + 1 < len(toks) else None)
+        protegido = (prev, w) in frases or (w, nxt) in frases
+        if not protegido and w in _DECENAS:
+            n, fin = _DECENAS[w], i
+            if i + 2 < len(toks) and plano[i + 1] == "y" and plano[i + 2] in _Y_UNO and texto[toks[i].end():toks[i + 2].start()].strip() == "y":
+                n, fin = n + _Y_UNO[plano[i + 2]], i + 2
+        elif not protegido and w in _UNIDADES:
+            n, fin = _UNIDADES[w], i
+        if n is None:
+            i += 1
+            continue
+        out.append(texto[pos:toks[i].start()] + str(n))
+        pos, i = toks[fin].end(), fin + 1
+    return "".join(out) + texto[pos:]
 
 
 def _canon(txt):
@@ -313,6 +378,8 @@ def numeros_de(obj, acc=None):
             numeros_de(k, acc)
             numeros_de(v, acc)
     elif isinstance(obj, (list, tuple)):
+        if obj:
+            acc.add(Decimal(len(obj)))      # cuántos elementos trae la lista: "2 avisos" si hay 2
         for v in obj:
             numeros_de(v, acc)
     return acc
@@ -322,19 +389,32 @@ def _sin_tildes(s):
     return "".join(c for c in unicodedata.normalize("NFD", s.lower()) if unicodedata.category(c) != "Mn")
 
 
+def _en_frase(plano, m, frases):
+    antes, despues = _PALABRA.findall(plano[:m.start()])[-1:], _PALABRA.findall(plano[m.end():])[:1]
+    return (antes and (antes[0], m.group(1)) in frases) or (despues and (m.group(1), despues[0]) in frases)
+
+
+def a_digitos_piezas(piezas, dossier):
+    """El texto que se entrega, con los números del 0 al 99 en dígitos (salvo las frases que vienen de los datos)."""
+    frases = _frases_con_numero(dossier)
+    return [{**p, "texto": a_digitos(p["texto"], frases)} for p in piezas]
+
+
 def verificar(piezas, dossier, limites=None):
     """Compara cada cifra del texto con las del dossier. Devuelve el informe completo."""
-    permitidos = numeros_de(dossier)
+    permitidos, frases = numeros_de(dossier), _frases_con_numero(dossier)
     cifras, sobran, letras, largos = [], [], [], []
     for p in piezas:
-        texto = _URL.sub(" ", p["texto"])
+        texto = a_digitos(_URL.sub(" ", p["texto"]), frases)
         for t in _NUM.findall(texto):
             ok = bool(_canon(t) & permitidos)
             cifras.append({"cifra": t, "pieza": p["etiqueta"], "en_datos": ok})
             if not ok:
                 sobran.append(t)
         # "19 por ciento" (normal en un guion de radio) es un porcentaje, no un número escrito en letras
-        letras += [w for w in _LETRAS.findall(re.sub(r"\bpor\s+ciento\b", "%", _sin_tildes(texto), flags=re.I))]
+        plano = re.sub(r"\bpor\s+ciento\b", "%", _sin_tildes(texto), flags=re.I)
+        letras += [m.group(1) for m in _LETRAS.finditer(plano)
+                   if not _en_frase(plano, m, frases)]
         mx = (limites or {}).get(p["etiqueta"])
         if mx and len(p["texto"]) > mx:
             largos.append({"pieza": p["etiqueta"], "caracteres": len(p["texto"]), "maximo": mx})
@@ -359,7 +439,7 @@ def _llamar(tipo, dossier, correccion=None):
     tarea = f"TAREA: {nombre}.\n{instr}"
     if correccion:
         tarea += ("\n\nUn borrador anterior no pasó la verificación automática de cifras. " + correccion +
-                  " Reescribe usando solo cifras que estén en DATOS, con dígitos.")
+                  " Reescribe el texto completo con esa corrección.")
     fallback = {"betas": [FALLBACK_BETA], "fallbacks": "default"} if MODELO.startswith(CON_FALLBACK) else {}
     try:
         r = _cliente.beta.messages.parse(
@@ -523,17 +603,20 @@ def generar(tipo, alcance, ref, actor, origen=None, lugar=None):
     limites = TIPOS[tipo][3]
     try:
         red, uso = _llamar(tipo, dossier)
-        piezas = [p.model_dump() for p in red.piezas]
+        piezas = a_digitos_piezas([p.model_dump() for p in red.piezas], dossier)
         ver = verificar(piezas, dossier, limites)
         intentos = [{"verificacion_ok": ver["ok"], **uso}]
         if not ver["ok"]:
             problemas = []
             if ver["no_encontradas"]:
-                problemas.append("Estas cifras no están en DATOS: " + ", ".join(ver["no_encontradas"]) + ".")
+                problemas.append("Estas cifras no están en DATOS ni son el número de elementos de una de sus listas: "
+                                 + ", ".join(ver["no_encontradas"]) + ". Si salen de contar o calcular, nombra los elementos "
+                                 "sin decir cuántos son; si no, usa la cifra exacta de DATOS.")
             if ver["en_letras"]:
-                problemas.append("Estas palabras son números en letras: " + ", ".join(ver["en_letras"]) + ".")
+                problemas.append("Estas palabras expresan cantidades en letras: " + ", ".join(ver["en_letras"]) + ". Escribe la "
+                                 "cifra exacta de DATOS con dígitos, o quita la cantidad si DATOS no la trae.")
             red, uso = _llamar(tipo, dossier, " ".join(problemas))
-            piezas = [p.model_dump() for p in red.piezas]
+            piezas = a_digitos_piezas([p.model_dump() for p in red.piezas], dossier)
             ver = verificar(piezas, dossier, limites)
             intentos.append({"verificacion_ok": ver["ok"], **uso})
     except IAError as e:
