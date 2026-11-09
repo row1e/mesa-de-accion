@@ -317,7 +317,7 @@ def _guardar_fotos_vias(limite=40):
     return nuevas, len(urls)
 
 
-def provias_fotos(limite=40, cada=6 * 3600):
+def provias_fotos(limite=40, cada=12 * 3600):
     """Fotos de la cronología de cada emergencia vial (el visor las entrega de a una emergencia).
 
     Por turno revisa hasta `limite`: primero las nunca revisadas, luego interrumpidas y por confirmar, y entre

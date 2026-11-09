@@ -71,16 +71,20 @@ El job `respaldo` (cada 24 h, visible en el tablero de fuentes) copia `data/` a 
 
 | Fuente | Cada | Nota |
 |---|---|---|
-| `igp` | 3 min | Solo pide el catálogo anual cuando cambia el último sismo |
-| `indeci` | 5 min | Lee el feed hasta encontrar un ítem ya visto |
-| `senamhi_avisos` | 15 min | Polígonos y cruce solo para aviso-días nuevos |
-| `com_pnp`, `com_provias`, `com_mtc`, `com_mininter` | 15 min | Una fuente por institución (gob.pe `/institucion/{pnp|pvn|mtc|mininter}/noticias.json`); cada una trae solo sus 9 últimas, el historial queda en la base. `provias` es aparte: solo verifica si el servidor de emergencias viales responde |
-| `indeci_fotos` | 5 min | Procesa hasta 15 PDF de reportes INDECI (últimas 72 h): fotos del anexo "VISTAS FOTOGRÁFICAS" con leyenda y fecha, mapa de ubicación (base Google Earth/Airbus: no apto para emisión), texto, código SINPAD y **cifras de daños** (`mesa/indeci_danos.py`: la tabla "3.1 Reporte de daños" leída por posición de palabras → campos estándar). Imágenes en `data/media/indeci/`, servidas en `/media/…` (~250 KB por reporte) |
-| `senamhi_hidro`, `serfor` | 30 min | |
-| `ingemmet`, `firms`, `provias` | 1 h | `provias` solo verifica si el servidor acepta conexión |
-| `senamhi_pronostico` | 4 h | |
+| `igp` | 5 min | Solo pide el catálogo anual cuando cambia el último sismo |
+| `indeci` | 10 min | Lee el feed hasta encontrar un ítem ya visto |
+| `senamhi_avisos` | 30 min | Polígonos y cruce solo para aviso-días nuevos |
+| `com_pnp`, `com_mtc`, `com_mininter` (30 min), `com_provias` (1 h) | | Una fuente por institución (gob.pe `/institucion/{pnp|pvn|mtc|mininter}/noticias.json`); cada una trae solo sus 9 últimas, el historial queda en la base. `provias` es aparte: solo verifica si el servidor de emergencias viales responde |
+| `indeci_fotos` | 10 min | Procesa hasta 15 PDF de reportes INDECI (últimas 72 h): fotos del anexo "VISTAS FOTOGRÁFICAS" con leyenda y fecha, mapa de ubicación (base Google Earth/Airbus: no apto para emisión), texto, código SINPAD y **cifras de daños** (`mesa/indeci_danos.py`: la tabla "3.1 Reporte de daños" leída por posición de palabras → campos estándar). Imágenes en `data/media/indeci/`, servidas en `/media/…` (~250 KB por reporte) |
+| `serfor`, `provias`, `provias_fotos` | 30 min | `provias_fotos` revisa cada emergencia cada 12 h |
+| `senamhi_hidro`, `dhn_avisos` | 1 h | |
+| `firms` | 2 h | |
+| `ingemmet` | 3 h | |
+| `ana_obras`, `olas_openmeteo` | 6 h | |
+| `bomberos` | 15 min | Lista de 24 h: no se pierde nada |
+| `senamhi_pronostico` | 6 h | |
 | `senamhi_uv` | 6 h | |
-| `enfen` | 12 h | Baja el PDF solo si hay comunicado nuevo |
+| `enfen`, `dhn_pronosticos` | 12 h | Baja el PDF solo si hay comunicado nuevo |
 
 ## Estados de una fuente
 

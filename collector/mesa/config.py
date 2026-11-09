@@ -54,28 +54,31 @@ PROXY_HOSTS = tuple(h.strip().lower() for h in os.environ.get(
     "MESA_PROXY_HOSTS", "senamhi.gob.pe,midis.gob.pe,proviasnac.gob.pe,ana.gob.pe").split(",") if h.strip())
 
 # Segundos entre ejecuciones por fuente (ver 04-live-service.md para la justificación).
+# Frecuencias ajustadas el 2026-11-09 a lo que cada fuente publica de verdad (novedades medidas en 14 días en el
+# servidor), sin perder lo urgente: sismos, reportes de INDECI y avisos siguen en minutos.
 INTERVALS = {
-    "indeci": 5 * 60,
-    "igp": 3 * 60,
-    "senamhi_avisos": 15 * 60,
-    "senamhi_hidro": 30 * 60,
-    "serfor": 30 * 60,
-    "ingemmet": 60 * 60,
-    "firms": 60 * 60,
-    "senamhi_pronostico": 4 * 3600,
+    "indeci": 10 * 60,           # novedad cada ~12 min en promedio (mediana)
+    "igp": 5 * 60,               # 22 sismos en 14 días; se mantiene en minutos porque es lo más urgente
+    "senamhi_avisos": 30 * 60,   # ~1 aviso nuevo por día, casi siempre entre las 15 y las 17 h
+    "senamhi_hidro": 60 * 60,    # ~1 cambio cada día y medio
+    "serfor": 30 * 60,           # 6 de cada 10 lecturas traen focos nuevos
+    "ingemmet": 3 * 3600,        # ~1 cambio cada día y medio
+    "firms": 2 * 3600,           # el archivo de NASA se renueva por pasadas de satélite
+    "senamhi_pronostico": 6 * 3600,
     "senamhi_uv": 6 * 3600,
     "enfen": 12 * 3600,
-    "provias": 15 * 60,       # visor de emergencias viales (SGCV)
-    "dhn_avisos": 30 * 60,      # avisos especiales de oleaje y viento (la DHN emite unos pocos por semana)
-    "dhn_pronosticos": 6 * 3600, # mapas del modelo de olas: corre una vez al día (00Z)
-    "olas_openmeteo": 3 * 3600,  # modelo global de olas, referencial
-    "ana_obras": 60 * 60,        # obras de prevención de la ANA (la ANA actualiza avances a diario)
-    "bomberos": 10 * 60,      # página pública de las últimas 24 horas del CGBVP (lista 24 h: no se pierde nada; bloquea si se consulta seguido)
-    "provias_fotos": 10 * 60, # cronología y fotos, hasta 40 emergencias por turno
-    "com_pnp": 15 * 60, "com_provias": 15 * 60, "com_mtc": 15 * 60, "com_mininter": 15 * 60,   # gob.pe, una fuente por institución
-    "indeci_fotos": 5 * 60,
-    "respaldo": 24 * 3600,    # copia diaria de data/ (mesa/backup.py)   # procesa hasta 15 PDF nuevos por turno (reportes de las últimas 72 h)
-    "midis": 30 * 86400,      # solo el catálogo de ubigeos; los indicadores se piden por distrito bajo demanda
+    "provias": 30 * 60,          # visor de emergencias viales (SGCV): novedad cada ~1 h
+    "dhn_avisos": 60 * 60,       # avisos especiales de oleaje y viento: unos pocos por semana
+    "dhn_pronosticos": 12 * 3600, # mapas del modelo de olas: corre una vez al día (00Z)
+    "olas_openmeteo": 6 * 3600,  # modelo global de olas, referencial
+    "ana_obras": 6 * 3600,       # obras de prevención de la ANA: avances unas pocas veces por semana
+    "bomberos": 15 * 60,         # lista de las últimas 24 horas del CGBVP (no se pierde nada; bloquea si se consulta seguido)
+    "provias_fotos": 30 * 60,    # cronología y fotos, hasta 40 emergencias por turno (era lo que más consultas hacía)
+    "com_pnp": 30 * 60, "com_mtc": 30 * 60, "com_mininter": 30 * 60,   # gob.pe, una fuente por institución
+    "com_provias": 60 * 60,      # PROVIAS publica ~1 nota cada día
+    "indeci_fotos": 10 * 60,     # procesa los PDF que deja indeci
+    "respaldo": 24 * 3600,       # copia diaria de data/ (mesa/backup.py)
+    "midis": 30 * 86400,         # solo el catálogo de ubigeos; los indicadores se piden por distrito bajo demanda
 }
 REFRESH_COOLDOWN = 60          # segundos mínimos entre refrescos manuales de una misma fuente
 STALE_FACTOR = 3               # una fuente está "atrasada" si su último éxito supera 3× su intervalo
