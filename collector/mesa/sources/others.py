@@ -100,8 +100,23 @@ def igp():
 
 # ── ArcGIS helpers ─────────────────────────────────────────────────────────────
 def _arcgis(source, layer, fields="*", name=None):
-    return fetch_json(source, f"{layer}/query?where=1%3D1&outFields={fields}&returnGeometry=true&outSR=4326&f=geojson",
-                      name=name, timeout=180)
+    """Todos los objetos de una capa ArcGIS en GeoJSON. El servidor entrega a lo sumo su maxRecordCount (1000 en
+    INGEMMET) y no todos permiten paginar: si la respuesta llega al tope, se piden los IDs y se trae el resto por tandas."""
+    q = f"{layer}/query?where=1%3D1&outFields={fields}&returnGeometry=true&outSR=4326&f=geojson"
+    gj = fetch_json(source, q, name=name, timeout=180)
+    feats = gj.get("features") or []
+    tope = gj.get("exceededTransferLimit") or (gj.get("properties") or {}).get("exceededTransferLimit")
+    if not tope and (not feats or len(feats) % 500):
+        return gj
+    ids = sorted(fetch_json(source, f"{layer}/query?where=1%3D1&returnIdsOnly=true&f=json", keep_raw=False, timeout=180).get("objectIds") or [])
+    if len(ids) <= len(feats):
+        return gj
+    todos = []
+    for i in range(0, len(ids), 400):
+        lote = ",".join(map(str, ids[i:i + 400]))
+        todos += fetch_json(source, f"{layer}/query?objectIds={lote}&outFields={fields}&returnGeometry=true&outSR=4326&f=geojson",
+                            keep_raw=False, timeout=180).get("features") or []
+    return {**gj, "features": todos}
 
 
 SERFOR = "https://geo.serfor.gob.pe/geoservicios/rest/services/UFMS/Incendios_SAMI/MapServer"

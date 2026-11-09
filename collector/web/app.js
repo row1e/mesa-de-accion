@@ -311,7 +311,7 @@ const layerDefs = [
   { id: "olas", label: "Altura de ola · Open-Meteo", sw: `<i class="sw" style="background:var(--hidro);opacity:.75"></i>`, n: () => (V.mar?.puntos || []).length, unit: "puntos" },
   { id: "bomberos", label: "Bomberos · 24 h (CGBVP)", sw: `<i class="sw" style="width:12px;height:12px;border-radius:0;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:var(--fuego)"></i>`, n: () => V.bomberos.length },
   { id: "ciudades", label: "Ciudades de referencia", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => CIUDADES.length },
-  { id: "zonas", label: "Zonas críticas INGEMMET", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
+  { id: "zonas", label: "Zonas críticas INGEMMET (color = nivel)", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
 // Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
 // detecciones reúne y en cuántos días es la mejor medida de su tamaño que publica SERFOR (no informa hectáreas).
@@ -592,8 +592,9 @@ function renderPoints() {
   if (L.vias) layer(V.vias.filter(v => v.lon != null), "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolDiamond, d => d.transito_cod === "03" ? 110 : 64))
     .attr("fill", d => viaColor(d.transito_cod)).attr("stroke", css("--ink")).attr("stroke-width", 1.4)
     .call(on, d => `<b>${esc(d.transito)}</b><br>${esc(cap(d.tipo))}<br>${esc(d.ruta)} · ${esc(d.tramo)} · ${esc(d.sector)}<br><span style="opacity:.7">km ${esc(d.km_ini)}${d.puente ? " · puente" : ""}</span>` + tipWhen(d.fecha ? fmtWhen(d.fecha) : "—", "desde", d.dias != null ? `${d.dias} días` : "", ""), d => ({source: "provias", kind: "emergencia", key: d._key}));
-  if (L.zonas) layer(V.zonas, "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolTriangle, 34))
-    .attr("fill", css("--geo")).attr("stroke", css("--surface")).attr("stroke-width", .6)
+  if (L.zonas) layer(V.zonas.slice().sort((a, b) => lvlNum(a.nivel) - lvlNum(b.nivel)), "path", d => [d.lon, d.lat])   // nivel 4 encima
+    .attr("d", d => d3.symbol(d3.symbolTriangle, lvlNum(d.nivel) >= 4 ? 60 : 38)())
+    .attr("fill", d => css(`--n${Math.min(4, Math.max(2, lvlNum(d.nivel)))}`)).attr("stroke", css("--ink")).attr("stroke-width", 1.1)
     .call(on, d => `<b>Zona crítica · ${esc(d.nivel)}</b><br>${esc(d.paraje)} — ${esc(d.distrito)}, ${esc(d.provincia)}<br>${esc(d.peligros_g)}<br><span style="opacity:.7">Expuesto: ${esc(d.elemento)}</span>` + tipWhen(fmtTs(d._first_seen), "en alerta en la Mesa desde"), d => ({source: "ingemmet", kind: "zona_alerta", key: d._key}));
   // 12 meses debajo: anillos finos y tenues, para ver dónde se acumulan; encima los de 30 y 7 días
   if (L.sismos365) layer(recentSismos(365), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
@@ -1087,11 +1088,13 @@ $("#vias").addEventListener("keydown", e => { const r = e.target.closest("tr[dat
 function renderZonas() {
   const q = ($("#zq").value || "").toLowerCase();
   const rows = V.zonas.filter(z => !q || [z.region, z.provincia, z.distrito, z.peligros_g, z.paraje].join(" ").toLowerCase().includes(q));
-  $("#zonas").innerHTML = rows.map(z => `<tr><td>${lvlChip(lvlNum(z.nivel))}</td><td>${esc(z.region)}</td><td>${esc(z.provincia)} · ${esc(z.distrito)}</td><td>${esc(z.paraje)}</td><td>${esc(z.peligros_g)}</td><td class="muted">${esc(z.elemento)}</td></tr>`).join("");
+  $("#zonas").innerHTML = rows.map(z => `<tr class="clk" data-key="${esc(z._key)}" tabindex="0" title="Ver la ficha y el punto en el mapa satelital"><td>${lvlChip(lvlNum(z.nivel))}</td><td>${esc(z.region)}</td><td>${esc(z.provincia)} · ${esc(z.distrito)}</td><td>${esc(z.paraje)}</td><td>${esc(z.peligros_g)}</td><td class="muted">${esc(z.elemento)}</td></tr>`).join("");
   const avs = [...new Set(V.zonas.map(z => z.nro_aviso))];
   $("#zonas-note").textContent = `${rows.length} de ${V.zonas.length} zonas${avs.length ? `, del cruce de INGEMMET con el aviso SENAMHI #${avs.join(", #")}` : ""}.`;
 }
 $("#zq").addEventListener("input", () => D && renderZonas());
+$("#zonas").addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "ingemmet", kind: "zona_alerta", key: tr.dataset.key}); });
+$("#zonas").addEventListener("keydown", e => { if (e.key === "Enter") e.target.closest("tr[data-key]")?.click(); });
 let pd = [], pdays = [];
 function renderPron() {
   pd = d3.groups(V.pronostico, p => p.ciudad + "|" + p.departamento);
