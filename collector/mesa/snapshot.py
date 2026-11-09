@@ -37,10 +37,10 @@ def health():
             status = "actualizando"
         elif not h.get("last_run"):
             status = "pendiente"
-        elif fails and (not last_ok or (fails >= 2 and now - last_ok > max(config.FALLA_S, interval * config.STALE_FACTOR))):
-            status = "fallando"       # nunca funcionó, o lleva tiempo sin poder actualizar
-        elif fails or (last_ok and now - last_ok > interval * config.STALE_FACTOR):
-            status = "atrasada"       # un error reciente con datos aún recientes también cae aquí, con el error a la vista
+        elif fails and not last_ok:
+            status = "fallando"       # nunca funcionó
+        elif last_ok and now - last_ok > max(config.ATRASO_S, interval * config.STALE_FACTOR):
+            status = "fallando" if fails >= 2 else "atrasada"   # datos viejos: rojo si además no logra actualizarse
         else:
             status = "ok"
         out.append({"id": sid, **{k: meta[k] for k in ("org", "name", "via", "geo", "sheet")}, "internal": meta.get("internal", False), "status": status,

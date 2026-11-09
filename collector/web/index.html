@@ -909,7 +909,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
   </section>
   <section id="fuentes">
     <div class="sec-head"><div><p class="eyebrow">Colector local</p><h2>Estado de las fuentes</h2></div></div>
-    <p class="lede">Cada fuente se consulta sola a su propio ritmo. “Atrasada” significa que sus datos no son los más recientes: el último intento dio error o su último éxito supera tres veces su intervalo. “Fallando” significa que no logra actualizarse: falla seguido y sus datos tienen más de 6 horas (o más de tres veces su intervalo, si es mayor), o nunca funcionó. El botón ↻ fuerza una lectura (máximo una por minuto por fuente).</p>
+    <p class="lede">Cada fuente se consulta sola a su propio ritmo. Una fuente sigue “Al día” mientras sus datos tengan menos de 12 horas (o de tres veces su intervalo, si es mayor), aunque el último intento haya fallado: el error queda a la vista en amarillo. “Atrasada” significa que sus datos pasaron ese límite. “Fallando” significa que además no logra actualizarse (falla seguido) o que nunca funcionó. El botón ↻ fuerza una lectura (máximo una por minuto por fuente).</p>
     <div class="board"><table>
       <thead><tr><th>Institución</th><th>Fuente</th><th>Estado</th><th>Último éxito</th><th>Registros</th><th>Último mensaje</th><th></th></tr></thead>
       <tbody id="board"></tbody>

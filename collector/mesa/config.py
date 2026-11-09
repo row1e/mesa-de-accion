@@ -81,7 +81,7 @@ INTERVALS = {
     "midis": 30 * 86400,         # solo el catálogo de ubigeos; los indicadores se piden por distrito bajo demanda
 }
 REFRESH_COOLDOWN = 60          # segundos mínimos entre refrescos manuales de una misma fuente
-STALE_FACTOR = 3               # una fuente está "atrasada" si su último éxito supera 3× su intervalo
-FALLA_S = 6 * 3600             # "fallando" solo si además falla seguido y sus datos tienen más de esto (o de 3× su intervalo)
+ATRASO_S = 12 * 3600           # una fuente está "atrasada" si su último éxito tiene más de esto (o de 3× su intervalo, si es mayor);
+STALE_FACTOR = 3               # un error suelto con datos recientes no la atrasa: sigue "al día" con el error a la vista
 MIN_SHARE = 0.03               # fracción mínima del área provincial cubierta por un aviso para contarla
 INDECI_PAGES_FIRST_RUN = 6     # páginas del feed a leer en el primer arranque (≈ 84 ítems)
