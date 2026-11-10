@@ -377,6 +377,7 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .srcline .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
 .srcline .dot.fallando,.srcline .dot.sin_acceso{background:var(--bad)}.srcline .dot.atrasada{background:var(--warn)}
 .srcline .dot.actualizando,.srcline .dot.pendiente{background:var(--ink-3)}
+.srcline{flex-wrap:wrap}.srcline .aviso{color:var(--bad);font-weight:600}
 .srcf button .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
 .srcf button .dot.fallando,.srcf button .dot.sin_acceso{background:var(--bad)}
 .srcf button .dot.atrasada{background:var(--warn)}
@@ -799,6 +800,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 
   <section id="igp-sec">
     <div class="sec-head"><div><p class="eyebrow">IGP · Centro Sismológico Nacional</p><h2>Sismos reportados en el año</h2></div><span class="src">ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/{año}</span></div>
+    <p class="srcline" data-srcline="igp"></p>
     <div class="grid2">
       <div class="panel"><h3>Magnitud por fecha</h3><div id="sismo-chart"></div></div>
       <div class="panel"><h3>Magnitud 5,0 o mayor</h3><div class="scroll"><table><thead><tr><th>Fecha</th><th>M</th><th>Prof.</th><th>Referencia</th></tr></thead><tbody id="sismos"></tbody></table></div></div>
@@ -807,6 +809,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 
   <section id="serfor-sec">
     <div class="sec-head"><div><p class="eyebrow">SERFOR · Unidad de Monitoreo Satelital</p><h2>Incendios forestales</h2></div><span class="src">geo.serfor.gob.pe/geoservicios/rest/services/UFMS/Incendios_SAMI/MapServer</span></div>
+    <p class="srcline" data-srcline="serfor"></p>
     <p class="sec-enlace"><a href="/incendios" class="nav-inc">Ver el historial de incendios día por día ↗</a> <span>Mapa y gráfico de cómo evolucionaron los focos de calor y los reportes.</span></p>
     <div class="grid2">
       <div class="panel"><h3>Alertas de incendio por departamento y estado</h3><div id="alert-chart"></div></div>
@@ -816,10 +819,12 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 
   <section id="ing-sec">
     <div class="sec-head"><div><p class="eyebrow">INGEMMET · Perú Alerta</p><h2>Zonas críticas bajo aviso</h2></div><span class="src">geocatmin.ingemmet.gob.pe/arcgis/rest/services/SERV_PERU_ALERTA/MapServer/0</span></div>
+    <p class="srcline" data-srcline="ingemmet"></p>
     <div class="panel"><input type="search" id="zq" placeholder="Filtrar por región, provincia, distrito o peligro"><div class="scroll"><table><thead><tr><th>Nivel</th><th>Región</th><th>Provincia · Distrito</th><th>Paraje</th><th>Peligro</th><th>Elementos expuestos</th></tr></thead><tbody id="zonas"></tbody></table></div><p class="note" id="zonas-note"></p></div>
   </section>
   <section id="indeci-sec">
     <div class="sec-head"><div><p class="eyebrow">INDECI · COEN</p><h2>Reportes de emergencia</h2></div><span class="src">portal.indeci.gob.pe/emergencias/feed/ · anexo fotográfico de cada PDF</span></div>
+    <p class="srcline" data-srcline="indeci"></p>
     <div class="panel danos-panel" id="danos"></div>
     <div class="panel strip-panel">
       <div class="strip-head"><h3>Imágenes de campo · últimas 24 h</h3><span class="note" id="strip-note"></span></div>

@@ -22,6 +22,22 @@ def invalidate():
 runner.on_run(invalidate)
 
 
+def aviso_falla(sid, org, msg):
+    """El error técnico de una fuente, dicho para la mesa: qué pasa y de quién es el problema. None si no se reconoce."""
+    m, quien = msg or "", (org or "la fuente").split("·")[0].strip()
+    if re.search(r"nodename nor servname|Name or service not known|Errno -[23]\b|Temporary failure in name resolution|getaddrinfo", m):
+        return f"El sitio de {quien} no responde: su dirección no existe en internet en este momento. Es un problema de la institución; la Mesa reintenta sola."
+    if config.RELE_HUB and ("ninguna Mesa del relé" in m or ("Connection refused" in m and any(h in m for h in config.PROXY_HOSTS))):
+        return f"{quien} solo responde a conexiones desde el Perú y no hay una Mesa instalada conectada para consultarla."
+    if re.search(r"timed out|TimeoutError|Read timed out", m):
+        return f"El sitio de {quien} no responde (se agotó el tiempo de espera)."
+    if re.search(r"HTTP 5\d\d", m):
+        return f"El servidor de {quien} está dando error; suele ser pasajero."
+    if re.search(r"HTTP (403|418|429)\b|Acceso Prohibido|no eres humano", m):
+        return f"El sitio de {quien} está bloqueando las consultas."
+    return None
+
+
 def health():
     nxt = runner.next_runs()
     now = time.time()
@@ -46,6 +62,7 @@ def health():
         out.append({"id": sid, **{k: meta[k] for k in ("org", "name", "via", "geo", "sheet")}, "internal": meta.get("internal", False), "status": status,
                     "interval_s": interval, "last_run": h.get("last_run"), "last_ok": last_ok,
                     "last_error": h.get("last_error"), "message": h.get("last_message"), "failures": fails,
+                    "aviso": aviso_falla(sid, meta["org"], h.get("last_message")) if fails else None,
                     "items": stored.get(sid), "last_run_items": h.get("items"), "next_run": nxt.get(sid)})
     return out
 

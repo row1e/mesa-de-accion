@@ -182,7 +182,7 @@ $("#refresh-all").addEventListener("click", e => refresh("all", e.currentTarget)
 function renderSrcLines() {
   document.querySelectorAll("[data-srcline]").forEach(el => {
     const h = H.find(x => x.id === el.dataset.srcline);
-    el.innerHTML = h ? `<i class="dot ${h.status}"></i>${esc(STATUS[h.status] || h.status)} · actualizado ${ago(h.last_ok)} · ${every(h.interval_s)}` : "";
+    el.innerHTML = h ? `<i class="dot ${h.status}"></i>${esc(STATUS[h.status] || h.status)} · actualizado ${ago(h.last_ok)} · ${every(h.interval_s)}${h.aviso ? ` · <span class="aviso">${esc(h.aviso)}</span>` : ""}` : "";
     el.title = h ? `${h.org} · ${h.name}${h.last_ok ? " · " + stampFull(h.last_ok) : ""}` : "";
   });
 }
@@ -199,7 +199,7 @@ function renderHealth() {
     <td><span class="chip st-${h.status}">${STATUS[h.status] || h.status}</span></td>
     <td class="num when">${when(h.last_ok)}${h.failures && h.last_error ? `<div class="sub ${h.status === "fallando" ? "bad" : "warn"}">último error: ${stamp(h.last_error)} · ${plural(h.failures, "intento fallido", "intentos fallidos seguidos")}</div>` : ""}<div class="muted sub">${every(h.interval_s)} · próxima ${h.next_run ? stamp(h.next_run).split(" ").pop() : "—"} (${until(h.next_run)})</div></td>
     <td class="num">${h.items != null ? nf.format(h.items) : "—"}</td>
-    <td class="msg ${!h.failures ? "muted" : h.status === "fallando" ? "bad" : "warn"}">${esc(h.message || "")}</td>
+    <td class="msg ${!h.failures ? "muted" : h.status === "fallando" ? "bad" : "warn"}">${h.aviso ? `<b>${esc(h.aviso)}</b><br>` : ""}${esc(h.message || "")}</td>
     <td><button type="button" class="rbtn" data-src="${h.id}" aria-label="Actualizar ${esc(h.name)}" ${h.status === "actualizando" ? "disabled" : ""}>↻</button></td></tr>`).join("");
 }
 $("#board").addEventListener("click", e => {
