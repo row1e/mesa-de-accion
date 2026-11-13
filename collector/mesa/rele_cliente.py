@@ -4,7 +4,7 @@ los sitios que bloquean IPs de nubes. Ver rele_hub.py.
 Solo hace GET/POST por HTTPS a los dominios de config.PROXY_HOSTS (SENAMHI, PROVIAS, MIDIS, ANA), sin cookies ni
 credenciales: aunque el servidor pidiera otra cosa, se rechaza. Se identifica con el código de licencia de esta Mesa.
 
-Se activa con MESA_RELE_SERVIDOR (p. ej. https://mesa.ondaai.com); el instalador lo deja puesto. Sin licencia vigente
+Se activa con MESA_RELE_SERVIDOR (p. ej. https://mesadeaccion.irtp.gob.pe); el instalador lo deja puesto. Sin licencia vigente
 o sin servidor, no hace nada.
 """
 import base64

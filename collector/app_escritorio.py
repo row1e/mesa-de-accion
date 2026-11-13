@@ -38,7 +38,7 @@ if getattr(sys, "frozen", False) or sys.stdout is None:
     sys.stdout = sys.stderr = LOG          # app de ventana: no hay consola; uvicorn y logging escriben aquí
 
 # ── Mac: lo que en Windows hace el instalador (configuración inicial e inicio con la sesión) ─────────────────────
-RELE = "https://mesa.ondaai.com"
+RELE = "https://mesadeaccion.irtp.gob.pe"
 AGENTE = pathlib.Path.home() / "Library" / "LaunchAgents" / "pe.mesadeaccion.app.plist"
 
 

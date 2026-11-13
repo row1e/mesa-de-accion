@@ -62,7 +62,7 @@ jobs:
           curl -sf http://127.0.0.1:8787/ | grep -q 'marca-logo'
           [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/api/health)" = "403" ]
           curl -sf http://127.0.0.1:8787/fuentes/indeci.png -o /dev/null
-          grep -q "MESA_RELE_SERVIDOR=https://mesa.ondaai.com" "$P/base/config.env"
+          grep -q "MESA_RELE_SERVIDOR=https://mesadeaccion.irtp.gob.pe" "$P/base/config.env"
           pkill -f "Mesa de Acción.app" || true
           echo "La Mesa respondió y exige licencia"
 

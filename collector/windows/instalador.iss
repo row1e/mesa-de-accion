@@ -8,7 +8,7 @@
   #define AppVer "0.0.0"
 #endif
 #ifndef RELE
-  #define RELE "https://mesa.ondaai.com"
+  #define RELE "https://mesadeaccion.irtp.gob.pe"
 #endif
 
 [Setup]
