@@ -369,6 +369,44 @@ def _f_reporte(it, ex):
             "fields": publico}
 
 
+UV_CATEGORIAS = ((11, "extremo"), (8, "muy alto"), (6, "alto"), (3, "moderado"), (0, "bajo"))
+
+
+def _uv_cat(v):
+    return next((n for m, n in UV_CATEGORIAS if v is not None and v >= m), "—")
+
+
+def _dia(iso):
+    try:
+        d = datetime.date.fromisoformat(iso)
+    except (TypeError, ValueError):
+        return iso or "—"
+    return f"{['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'][d.weekday()]} {d.day:02d}/{d.month:02d}"
+
+
+def _f_uv(it, ex):
+    from . import geo
+    p = geo.provinces().get(it.get("code")) or {}
+    vals = it.get("v") or []
+    facts = [[f"Índice UV {_dia(d)}", f"{v} ({_uv_cat(v)})" + (f" · hora pico {h}" if h else "")]
+             for d, v, h in zip(it.get("dias") or [], vals, it.get("h") or [])]
+    facts += [["Zona SENAMHI", it.get("zona")], ["Emitido", it.get("emitido") or "—"]]
+    return {"title": f"Índice UV · {(p.get('nombre') or it.get('zona') or '').title()}",
+            "subtitle": f"{(p.get('nombre') or '').title()}, {(p.get('dpto') or '').title()}".strip(", ") or it.get("zona"),
+            "level": None, "facts": facts,      # la escala UV no es un nivel de aviso: va en los datos, no como chip N1–N4
+            "text": "Escala de SENAMHI: 0 a 2 bajo, 3 a 5 moderado, 6 a 7 alto, 8 a 10 muy alto, 11 o más extremo.",
+            "links": [{"label": "Pronóstico del índice UV (SENAMHI)", "url": "https://www.senamhi.gob.pe/?p=pronostico-indice-uv"}],
+            "fields": {k: v for k, v in it.items() if not k.startswith("_")}}
+
+
+def _f_pronostico(it, ex):
+    return {"title": f"Pronóstico · {(it.get('ciudad') or '').title()}", "subtitle": (it.get("departamento") or "").title(), "level": None,
+            "facts": [[d.get("dia") or "—", f"máx. {d.get('tmax')} °C · mín. {d.get('tmin')} °C · {d.get('descripcion') or ''}".strip(" ·")]
+                      for d in it.get("dias") or []],
+            "links": [{"label": "Pronóstico por ciudades (SENAMHI)", "url": "https://www.senamhi.gob.pe/?p=pronostico-meteorologico"}],
+            "fields": {k: v for k, v in it.items() if not k.startswith("_") and k != "dias"}}
+
+
 def _f_hidro(it, ex):
     raw = it.get("raw") or {}
     links = [{"label": "Mapa de avisos hidrológicos (SENAMHI)", "url": "https://www.senamhi.gob.pe/?p=aviso-hidrologico"}]
@@ -452,6 +490,7 @@ FORMAT = {
     **{(sid, "noticia"): _f_noticia for sid in ("com_pnp", "com_provias", "com_mtc", "com_mininter")},
     ("igp", "sismo"): _f_sismo, ("serfor", "alerta"): _f_alerta, ("serfor", "foco"): _f_foco,
     ("ingemmet", "zona_alerta"): _f_zona, ("senamhi_hidro", "aviso_estacion"): _f_hidro, ("indeci", "item"): _f_indeci,
+    ("senamhi_uv", "uv_zona"): _f_uv, ("senamhi_pronostico", "ciudad"): _f_pronostico,
     ("senamhi_avisos", "aviso"): _f_aviso, ("firms", "deteccion"): _f_firms, ("provias", "emergencia"): _f_provias,
     ("bomberos", "parte"): _f_bomberos, ("dhn_avisos", "aviso_dhn"): _f_aviso_dhn, ("olas_openmeteo", "punto"): _f_ola_punto, ("ana_obras", "obra"): _f_obra_ana, ("corresponsales", "reporte"): _f_reporte,
 }

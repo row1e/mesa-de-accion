@@ -242,7 +242,7 @@ def build():
         # UV
         uv, uv_unmatched = {}, []
         for z in db.get_items("senamhi_uv", "uv_zona"):
-            rec = {"z": z["zona"], "v": z["v"], "h": z["h"], "dias": z["dias"]}
+            rec = {"z": z["zona"], "v": z["v"], "h": z["h"], "dias": z["dias"], "key": z["_key"]}
             if z["code"] in pinfo:
                 if z["code"] not in uv or z["v"][0] > uv[z["code"]]["v"][0]:
                     uv[z["code"]] = rec

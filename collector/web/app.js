@@ -506,7 +506,8 @@ function showProvince() {   // lleva el bloque de la provincia al tope del panel
 
 /* ── ficha de detalle ───────────────────────────────────────────── */
 const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Monitoreo satelital", ingemmet: "INGEMMET · Perú Alerta",
-  senamhi_hidro: "SENAMHI · Hidrología", senamhi_avisos: "SENAMHI · Avisos meteorológicos", indeci: "INDECI · COEN", firms: "NASA FIRMS",
+  senamhi_hidro: "SENAMHI · Hidrología", senamhi_avisos: "SENAMHI · Avisos meteorológicos", senamhi_uv: "SENAMHI · Índice UV",
+  senamhi_pronostico: "SENAMHI · Pronóstico por ciudad", corresponsales: "Reporte de corresponsal", indeci: "INDECI · COEN", firms: "NASA FIRMS",
   enfen: "ENFEN · Comisión Multisectorial", com_pnp: "PNP · Comunicados (gob.pe)", com_provias: "PROVIAS Nacional · Notas de prensa (gob.pe)",
   provias: "PROVIAS Nacional · Emergencias viales", bomberos: "CGBVP · Bomberos · Emergencias 24 horas", dhn_avisos: "DHN · Avisos especiales de oleaje y viento",
   olas_openmeteo: "Open-Meteo Marine · modelo referencial", ana_obras: "ANA · Obras de prevención (puntos críticos 2026)", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
@@ -751,7 +752,7 @@ function renderEnfen() {
     ${uc.url ? `<p class="note"><a href="${esc(uc.url)}" target="_blank" rel="noopener">Abrir el PDF del comunicado</a></p>` : ""}</div>`;
 }
 function renderAvisos() {
-  $("#avisos").innerHTML = V.avisos.map(a => `<tr><td class="num">${a.nro}</td><td>${lvlChip(lvlNum(a.nivel))}</td><td>${esc(title(a.titulo))}<div class="muted" style="font-size:12px">${a.dptos_texto.length} departamentos · ${a.estado}</div></td><td class="num" style="white-space:nowrap">${fmtDay(a.inicio)} → ${fmtDay(a.fin)}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">Sin avisos vigentes.</td></tr>`;
+  $("#avisos").innerHTML = V.avisos.map(a => `<tr class="clk" data-key="${esc(a.key)}" tabindex="0"><td class="num">${a.nro}</td><td>${lvlChip(lvlNum(a.nivel))}</td><td>${esc(title(a.titulo))}<div class="muted" style="font-size:12px">${a.dptos_texto.length} departamentos · ${a.estado}</div></td><td class="num" style="white-space:nowrap">${fmtDay(a.inicio)} → ${fmtDay(a.fin)}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">Sin avisos vigentes.</td></tr>`;
   const years = Object.keys(V.avisosHist), keys = ["AMARILLO","NARANJA","ROJO"];
   const w = 520, h = 34 * years.length + 34, m = {l: 44, r: 50, t: 6, b: 24};
   const max = d3.max(years, y => d3.sum(keys, k => V.avisosHist[y][k])) || 1;
@@ -1101,7 +1102,7 @@ function renderPron() {
   pdays = [...new Set(V.pronostico.map(p => p.dia))].slice(0, 3);
   pdays.forEach((d, i) => $("#pd" + i).textContent = d.replace(/^(\p{L}+),\s*(\d+) de (\p{L}+)/u, (m, a, b) => `${a.slice(0,3)} ${+b}`));
   filterPron();
-  $("#hidro").innerHTML = V.hidro.map(h => `<tr><td>${lvlChip(Math.min(4, lvlNum(h.color_text)))}</td><td><b>${esc(title(h.nom_estacion))}</b><div class="muted" style="font-size:12px">${esc(title(h.titulo))}</div></td><td>${esc(title(h.nom_distrito))}, ${esc(title(h.nom_provincia))}<div class="muted" style="font-size:12px">${esc(title(h.nom_departamento))} · cuenca ${esc(title(h.nom_cuenca))}</div></td></tr>`).join("") || `<tr><td colspan="3" class="muted">Sin avisos hidrológicos vigentes.</td></tr>`;
+  $("#hidro").innerHTML = V.hidro.map(h => `<tr class="clk" data-key="${esc(h._key)}" tabindex="0"><td>${lvlChip(Math.min(4, lvlNum(h.color_text)))}</td><td><b>${esc(title(h.nom_estacion))}</b><div class="muted" style="font-size:12px">${esc(title(h.titulo))}</div></td><td>${esc(title(h.nom_distrito))}, ${esc(title(h.nom_provincia))}<div class="muted" style="font-size:12px">${esc(title(h.nom_departamento))} · cuenca ${esc(title(h.nom_cuenca))}</div></td></tr>`).join("") || `<tr><td colspan="3" class="muted">Sin avisos hidrológicos vigentes.</td></tr>`;
   uvdays = uvDays.slice(0, 3);
   [0, 1, 2].forEach(i => { $("#uvd" + i).textContent = uvdays[i] ? fmtDay(uvdays[i]) : ""; $("#uvd" + i).hidden = !uvdays[i]; });   // SENAMHI publica 2 o 3 días
   filterUv();
@@ -1115,7 +1116,7 @@ function filterUv() {
   const rows = Object.entries(V.uv).map(([c, u]) => ({c, u, n: title(pn[c]?.n), d: title(pn[c]?.d)}))
     .filter(r => !q || `${r.n} ${r.d}`.toLowerCase().includes(q))
     .sort((a, b) => (b.u.v[0] ?? -1) - (a.u.v[0] ?? -1) || a.n.localeCompare(b.n));
-  $("#uvt").innerHTML = rows.map(r => `<tr><td>${esc(r.n)}</td><td class="muted">${esc(r.d)}</td>${uvdays.map((_, i) => `<td class="num">${uvChip(r.u.v[i])}${r.u.h[i] ? ` <span class="muted">(${esc(r.u.h[i])})</span>` : ""}</td>`).join("")}</tr>`).join("")
+  $("#uvt").innerHTML = rows.map(r => `<tr class="clk" data-key="${esc(r.u.key)}" tabindex="0"><td>${esc(r.n)}</td><td class="muted">${esc(r.d)}</td>${uvdays.map((_, i) => `<td class="num">${uvChip(r.u.v[i])}${r.u.h[i] ? ` <span class="muted">(${esc(r.u.h[i])})</span>` : ""}</td>`).join("")}</tr>`).join("")
     || `<tr><td colspan="5" class="muted">${q ? "Ninguna provincia coincide." : "Sin datos de índice UV."}</td></tr>`;
 }
 $("#uvq").addEventListener("input", () => D && filterUv());
@@ -1123,10 +1124,16 @@ function filterPron() {
   const q = ($("#pq").value || "").toLowerCase();
   $("#pron").innerHTML = pd.filter(([k]) => !q || k.toLowerCase().includes(q)).map(([k, v]) => {
     const [c, dp] = k.split("|"), by = Object.fromEntries(v.map(p => [p.dia, p]));
-    return `<tr><td>${esc(title(c))}</td><td class="muted">${esc(title(dp))}</td>${pdays.map(d => by[d] ? `<td class="num" title="${esc(by[d].descripcion)}">${by[d].tmax}° <span class="muted">${by[d].tmin}°</span></td>` : "<td>—</td>").join("")}</tr>`;
+    return `<tr class="clk" data-key="${esc(k)}" tabindex="0"><td>${esc(title(c))}</td><td class="muted">${esc(title(dp))}</td>${pdays.map(d => by[d] ? `<td class="num" title="${esc(by[d].descripcion)}">${by[d].tmax}° <span class="muted">${by[d].tmin}°</span></td>` : "<td>—</td>").join("")}</tr>`;
   }).join("");
 }
 $("#pq").addEventListener("input", () => D && filterPron());
+// Cada fila de la sección SENAMHI abre su ficha (con datos completos y redacción con IA)
+[["#avisos", "senamhi_avisos", "aviso"], ["#hidro", "senamhi_hidro", "aviso_estacion"], ["#uvt", "senamhi_uv", "uv_zona"], ["#pron", "senamhi_pronostico", "ciudad"]]
+  .forEach(([sel, source, kind]) => {
+    $(sel).addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source, kind, key: tr.dataset.key}); });
+    $(sel).addEventListener("keydown", e => { if (e.key === "Enter") e.target.closest("tr[data-key]")?.click(); });
+  });
 
 /* ── últimos datos recibidos (por fuente) ───────────────────────── */
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
