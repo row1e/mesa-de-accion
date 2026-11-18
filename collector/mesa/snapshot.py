@@ -307,6 +307,9 @@ def build():
             o["avance_7d"] = round(o["avance_km_pct"] - base[1], 2) if base and base[1] is not None and o.get("avance_km_pct") is not None else None
             o["dias_para_fin"] = (datetime.date.fromisoformat(o["fin"]) - datetime.date.fromisoformat(today)).days if o.get("fin") else None
             obras.append(o)
+        # INDECI · geoservicios: recursos declarados ante el FEN e historial SINPAD por año
+        from .sources import indeci_geo
+        recursos, sinpad = indeci_geo.para_tablero()
         com = db.get_items("enfen", "comunicado", current_only=False, order="key DESC", limit=1)
         firms_n = len(db.get_items("firms", "deteccion"))
 
@@ -379,7 +382,7 @@ def build():
             "indeci": indeci, "indeciWindowH": INDECI_WINDOW_H,
             "indeciUnlocated": sum(1 for i in indeci if i.get("clase") == "reporte" and not i.get("prov")),
             "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,
-            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "mar": mar, "obras": obras, "viasFotos": vias_fotos[:80],
+            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "mar": mar, "obras": obras, "recursos": recursos, "sinpad": sinpad, "viasFotos": vias_fotos[:80],
             "enfen": {"ultimo_comunicado": com[0] if com else {}}, "firmsCount": firms_n,
             "comunicados": comunicados, "regions": sorted(regions, key=lambda r: r["n"]),
             "fotosDia": fotos_dia[:80], "danos": danos,

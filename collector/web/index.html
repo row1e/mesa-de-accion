@@ -209,9 +209,18 @@ tr:last-child td{border-bottom:0}
 
 /* generic grid */
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:22px}
+/* Recursos (INDECI) e historial SINPAD */
+.rec-top,.sp-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px 14px}
+.sp-head h3{margin:0 0 8px}
+#rec-mapa{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:3px;padding:4px 10px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+#rec-mapa[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.recsw{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.spbar{fill:var(--ink-3)} .spbar.pico{fill:var(--n4)} .spbar.parcial{fill:url(#sp-hatch)}
+.splbl{font:600 11px var(--f-mono);fill:var(--ink)} .splbl.pico{fill:var(--n4)}
 @media (max-width:520px){.grid2{grid-template-columns:1fr}}
 .panel{background:var(--surface);border:1px solid var(--line);padding:16px 18px;min-width:0}
 .panel .scroll{max-height:420px;overflow:auto;margin:0 -18px -16px;border-top:1px solid var(--line-2)}
+.panel .scroll + .note{margin-top:28px}
 .panel .scroll table td,.panel .scroll table th{padding:7px 12px}
 .note{font-size:12.5px;color:var(--ink-3);margin:10px 0 0}
 svg text{fill:var(--ink-2);font-family:var(--f-display);font-size:11px}
@@ -619,6 +628,8 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#vias-sec">Vías (PROVIAS)</a>
     <a href="#mar-sec">Mar (DHN)</a>
     <a href="#obras-sec">Obras (ANA)</a>
+    <a href="#recursos-sec">Recursos (INDECI)</a>
+    <a href="#sinpad-sec">Historial SINPAD</a>
     <a href="#bom-sec">Bomberos (CGBVP)</a>
     <a href="#ciud-sec">Nuestros corresponsales</a>
     <a href="#com-sec">Comunicados</a>
@@ -747,6 +758,27 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
       <input type="search" id="oq" placeholder="Filtrar por río, sector, distrito, provincia o responsable">
       <div class="scroll"><table><thead><tr><th>Obra</th><th>Estado</th><th class="num">Avance</th><th class="num">Fin programado</th><th class="num">Último avance</th><th>Responsable</th></tr></thead><tbody id="obras"></tbody></table></div>
       <p class="note" id="obras-note"></p>
+    </div>
+  </section>
+  <section id="recursos-sec">
+    <div class="sec-head"><div><p class="eyebrow">INDECI · Geoservicios</p><h2>Recursos declarados para la respuesta</h2></div><span class="src" id="rec-src">geosinpad.indeci.gob.pe · capas del visor del INDECI</span></div>
+    <p class="srcline" data-srcline="indeci_recursos"></p>
+    <p class="lede">Maquinaria, albergues, zonas seguras, helipuntos y puntos de agua que cada entidad declaró ante El Niño: Vivienda por distrito, los gobiernos regionales por provincia, MINDEF y MTC por departamento. <b>Es lo declarado, no lo disponible hoy</b>: el tablero del INDECI cuenta 6 190 recursos asignados y solo 2 986 para despliegue.</p>
+    <div class="thesis vias-cnt" id="rec-cnt"></div>
+    <div class="panel" style="margin-top:16px">
+      <div class="rec-top"><div class="filters" id="rec-f"></div><button type="button" class="zbtn" id="rec-mapa" aria-pressed="false">Ver en el mapa</button></div>
+      <input type="search" id="rq" placeholder="Filtrar por nombre, distrito, provincia, entidad o tipo de máquina">
+      <div class="scroll"><table><thead><tr><th>Recurso</th><th>Tipo</th><th>Lugar</th><th class="num">Unidades / aforo</th><th>Entidad</th></tr></thead><tbody id="rec"></tbody></table></div>
+      <p class="note" id="rec-note"></p>
+    </div>
+  </section>
+  <section id="sinpad-sec">
+    <div class="sec-head"><div><p class="eyebrow">INDECI · SINPAD</p><h2>Historial de emergencias y daños</h2></div><span class="src" id="sp-src">Copia del SINPAD en los geoservicios del INDECI</span></div>
+    <p class="srcline" data-srcline="sinpad_historial"></p>
+    <p class="lede" id="sp-lede">Cada emergencia registrada en el SINPAD con las cifras de su ficha EDAN, sumadas por año. Sirve para poner en contexto la temporada: cuánto golpeó El Niño Costero de 2017, cuánto lleva este año.</p>
+    <div class="grid2">
+      <div class="panel"><div class="sp-head"><h3 id="sp-title">Por año</h3><div class="filters" id="sp-m"></div></div><div id="sp-chart"></div><p class="note" id="sp-note"></p></div>
+      <div class="panel"><h3 id="sp-tab-t">Dónde golpeó más</h3><div class="scroll"><table><thead id="sp-thead"></thead><tbody id="sp-tab"></tbody></table></div><p class="note" id="sp-tab-note"></p></div>
     </div>
   </section>
   <section id="bom-sec">
