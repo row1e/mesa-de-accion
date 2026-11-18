@@ -85,6 +85,8 @@ El job `respaldo` (cada 24 h, visible en el tablero de fuentes) copia `data/` a 
 | `senamhi_pronostico` | 6 h | |
 | `senamhi_uv` | 6 h | |
 | `enfen`, `dhn_pronosticos` | 12 h | Baja el PDF solo si hay comunicado nuevo |
+| `indeci_recursos` | 24 h | Geoservicios del INDECI (`geosinpad.indeci.gob.pe`, ArcGIS abierto): maquinaria declarada ante el FEN por Vivienda (por distrito), gobiernos regionales (por provincia) y MINDEF/MTC/Vivienda (por departamento); albergues, zonas seguras, helipuntos y agua (Piura, Lima/Callao). Es lo **declarado**, no lo disponible. ~30 s |
+| `sinpad_historial` | 7 días | Copia del SINPAD en los mismos geoservicios (~200 mil emergencias con cifras EDAN), agregada por distrito y año. El INDECI la refresca cada pocos meses: la "fecha de corte" es la emergencia más reciente. Pagina por rangos de OBJECTID (el desplazamiento falla al azar). ~7 min |
 
 ## Estados de una fuente
 

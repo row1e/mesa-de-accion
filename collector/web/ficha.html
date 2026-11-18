@@ -272,6 +272,49 @@ if (MI && !MI.error && MI.tipo === "provincia") {
     <p class="note">Fuente: <a href="${esc(MI.enlace)}">${esc(MI.atribucion)}</a>.</p></section>`;
 }
 
+// Recursos declarados ante el FEN (geoservicios del INDECI)
+const RC = F.recursos;
+const lugarTxt = DEPT ? "el departamento" : "la provincia";
+if (RC && !RC.error && (RC.n_maquinas || RC.n_maquinas_region || Object.keys(RC.puntos).length)) {
+  const tiposTxt = d => d.slice(0, 6).map(([t, k]) => `${nf.format(k)} ${esc(t)}`).join(" · ");
+  const ptos = Object.entries(RC.puntos);
+  html += `<section><h2>Recursos declarados para la respuesta · INDECI <small>${RC.fechas ? `capas del ${fmtDay(RC.fechas[0])} ${RC.fechas[0].slice(0, 4)}${RC.fechas[1] !== RC.fechas[0] ? ` al ${fmtDay(RC.fechas[1])} ${RC.fechas[1].slice(0, 4)}` : ""}` : "sin fecha publicada"}</small></h2>
+    <div class="dfig">
+      <div><b>${nf.format(RC.n_maquinas + (DEPT ? RC.n_maquinas_region : 0))}</b><span>máquinas y vehículos en ${lugarTxt}</span></div>
+      ${DEPT ? "" : `<div><b>${nf.format(RC.n_maquinas_region)}</b><span>declarados para todo el departamento</span></div>`}
+      ${ptos.map(([t, v]) => `<div><b>${nf.format(v.n)}</b><span>${esc(RC.tipos[t].toLowerCase())}${v.aforo ? ` · aforo ${nf.format(v.aforo)}` : ""}</span></div>`).join("")}
+    </div>
+    ${RC.maquinaria.length ? `<table style="margin-top:3mm"><thead><tr><th>Entidad</th><th>Ámbito</th><th class="num">Unidades</th><th>Tipos</th></tr></thead><tbody>
+      ${RC.maquinaria.slice(0, 14).map(m => `<tr><td>${esc(m.entidad)}</td><td>${esc(title(m.dist || m.prov_nombre || ""))} <span class="muted">${esc(m.nivel)}</span></td>
+        <td class="num">${nf.format(m.cantidad)}</td><td>${tiposTxt(m.detalle)}</td></tr>`).join("")}</tbody></table>` : ""}
+    ${RC.maquinaria_region.length ? `<table style="margin-top:3mm"><thead><tr><th>Maquinaria declarada para el departamento</th><th class="num">Unidades</th><th>Tipos</th></tr></thead><tbody>
+      ${RC.maquinaria_region.map(m => `<tr><td>${esc(m.entidad)}${m.unidades ? `<br><span class="muted">${esc(m.unidades)}</span>` : ""}</td>
+        <td class="num">${nf.format(m.cantidad)}</td><td>${tiposTxt(m.detalle)}</td></tr>`).join("")}</tbody></table>` : ""}
+    ${RC.puntos_lista.length ? `<table style="margin-top:3mm"><thead><tr><th>Lugar</th><th>Tipo</th><th>Distrito</th><th class="num">Aforo</th></tr></thead><tbody>
+      ${RC.puntos_lista.slice(0, 15).map(r => `<tr><td>${esc(title(r.nombre))}</td><td>${esc(r.etiqueta)}</td><td>${esc(title(r.dist || ""))}</td>
+        <td class="num">${r.aforo ? nf.format(r.aforo) : "—"}${r.carpas ? ` <span class="muted">· ${r.carpas} carpas</span>` : ""}</td></tr>`).join("")}</tbody></table>` : ""}
+    <p class="note">${esc(RC.nota)} Fuente: <a href="${esc(RC.visor)}">visor del INDECI</a> (capas de Vivienda, MINDEF, MTC y gobiernos regionales).</p></section>`;
+}
+
+// Historial SINPAD por año
+const HI = F.historial;
+if (HI && !HI.error && HI.n) {
+  const K = ["personas_damnificadas", "personas_afectadas", "personas_fallecidas", "viviendas_destruidas", "viviendas_afectadas", "cultivo_afectado_ha"];
+  const anios = Object.keys(HI.por_anio);
+  const distNom = ub => ((MI && MI.distritos) || []).find(x => x.ubigeo === ub)?.distrito || `distrito ${ub}`;
+  html += `<section><h2>Historial de emergencias · SINPAD <small>${HI.desde}–${HI.fecha_corte.slice(0, 4)} · ${nf.format(HI.n)} emergencias · corte ${fmtDay(HI.fecha_corte)} ${HI.fecha_corte.slice(0, 4)}</small></h2>
+    <div class="dfig">${K.filter(k => HI.totales[k]).map(k => `<div class="${k === "personas_fallecidas" ? "vida" : ""}"><b>${fmtN(HI.totales[k])}</b><span>${esc(HI.labels[k])}</span></div>`).join("")}</div>
+    <table style="margin-top:3mm"><thead><tr><th>Año</th><th class="num">Emergencias</th><th class="num">Damnificados</th><th class="num">Afectados</th><th class="num">Fallecidos</th><th class="num">Viv. destruidas</th><th class="num">Viv. afectadas</th></tr></thead><tbody>
+    ${anios.map(y => { const c = HI.por_anio[y], v = k => c[k] ? fmtN(c[k]) : "—";
+      return `<tr${y === HI.peor_anio ? ' style="font-weight:700"' : ""}><td>${y}${y === HI.peor_anio ? " ▲" : ""}${y === HI.fecha_corte.slice(0, 4) ? ` <span class="muted">hasta ${fmtDay(HI.fecha_corte)}</span>` : ""}</td>
+        <td class="num">${c.n}</td><td class="num">${v("personas_damnificadas")}</td><td class="num">${v("personas_afectadas")}</td><td class="num">${v("personas_fallecidas")}</td>
+        <td class="num">${v("viviendas_destruidas")}</td><td class="num">${v("viviendas_afectadas")}</td></tr>`; }).join("")}</tbody></table>
+    ${HI.peores.length ? `<h3 style="margin-top:3mm">Emergencias con más personas damnificadas y afectadas</h3><table><thead><tr><th>Fecha</th><th>Fenómeno</th><th>Cifras</th><th class="num">Código SINPAD</th></tr></thead><tbody>
+      ${HI.peores.slice(0, 6).map(p => `<tr><td class="num">${fmtDay(p.fecha)} ${p.fecha.slice(0, 4)}</td><td>${esc(title(p.fenomeno))}<br><span class="muted">${esc(title(distNom(p.ubigeo)))}</span></td>
+        <td>${HI.orden.filter(k => p.cifras[k]).slice(0, 5).map(k => `<b>${fmtN(p.cifras[k])}</b> ${esc(HI.labels[k])}`).join(" · ")}</td><td class="num">${p.sinpad || "—"}</td></tr>`).join("")}</tbody></table>` : ""}
+    <p class="note">▲ Año con más personas damnificadas y afectadas. ${esc(HI.nota)} Tipos más frecuentes: ${HI.fenomenos.slice(0, 4).map(([f, k]) => `${esc(title(f))} (${k})`).join(" · ")}.</p></section>`;
+}
+
 // Fuentes y método
 html += `<section><h2>Fuentes y actualización <small>último éxito de cada fuente (hora de Lima)</small></h2>
   <table class="src"><thead><tr><th>Institución</th><th>Fuente</th><th>Último éxito</th><th>Estado</th></tr></thead><tbody>

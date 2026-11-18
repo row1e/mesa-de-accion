@@ -174,6 +174,17 @@ def build(code):
     except Exception as e:  # noqa: BLE001 — la ficha se emite igual sin este bloque
         mid = {"error": f"{type(e).__name__}: {e}"}
 
+    # ── INDECI · geoservicios: recursos declarados ante el FEN e historial SINPAD por año ──
+    from .sources import indeci_geo as _ig
+    try:
+        recursos = _ig.recursos_de(provs=None if dept_level else P, reg=dep)
+    except Exception as e:  # noqa: BLE001
+        recursos = {"error": f"{type(e).__name__}: {e}"}
+    try:
+        historial = _ig.historial_de(provs=None if dept_level else P, reg=dep)
+    except Exception as e:  # noqa: BLE001
+        historial = {"error": f"{type(e).__name__}: {e}"}
+
     health = {h["id"]: h for h in snapshot.health()}
     fuentes = [{"id": sid_, "org": m["org"], "name": m["name"], "last_ok": health.get(sid_, {}).get("last_ok"),
                 "status": health.get(sid_, {}).get("status")} for sid_, m in SOURCES.items() if not m.get("internal")]
@@ -184,7 +195,7 @@ def build(code):
             "pronostico": pron, "indeci": indeci, "indeci_dias": INDECI_DAYS, "alertas": alertas, "focos": len(focos),
             "focos_pts": [[f[0], f[1]] for f in focos][:600], "zonas": zonas, "hidro": hidro, "sismos": sismos, "near_km": NEAR_KM,
             "comunicados": comunicados, "tabla": tabla, "danos": danos, "enfen": D["enfen"].get("ultimo_comunicado", {}),
-            "midis": mid, "fuentes": fuentes}
+            "midis": mid, "recursos": recursos, "historial": historial, "fuentes": fuentes}
 
 
 def html(ubigeo):
