@@ -262,10 +262,13 @@ def _dossier_briefing_lugar(code):
         "bomberos_24h": _bomberos(lambda p: p.get("prov") in sc["provs"] or (not p.get("prov") and sc["tipo"] == "departamental" and p.get("reg") == code)),
         "mar_dhn": _mar(set(sc["provs"])),
         "obras_prevencion_ana": _obras_ana(set(sc["provs"])),
+        "recursos_declarados_indeci": _recursos(F.get("recursos")),
+        "historial_sinpad": _historial(F.get("historial")),
         "enfen_nacional": {k: F["enfen"].get(k) for k in ("numero", "estado", "fecha") if F["enfen"].get(k)},
     }
     salud = {h["id"]: h for h in snapshot.health()}
-    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias", "bomberos", "dhn_avisos", "ana_obras")
+    fuentes = ("senamhi_avisos", "senamhi_hidro", "senamhi_pronostico", "senamhi_uv", "indeci", "igp", "serfor", "ingemmet", "enfen", "provias", "bomberos", "dhn_avisos", "ana_obras",
+               "indeci_recursos", "sinpad_historial")
     cita = [{"institucion": SOURCES[s]["org"], "documento": SOURCES[s]["name"], "hora_dato": _iso(salud.get(s, {}).get("last_ok")),
              "url": None} for s in fuentes if s in SOURCES]
     return dossier, cita, f"Briefing {nombre} {now.strftime('%d/%m %H:%M')}"
@@ -463,6 +466,35 @@ def _llamar(tipo, dossier, correccion=None):
         raise IAError("El modelo no devolvió una redacción completa. Intente de nuevo.", 502)
     uso = {"modelo": r.model, "entrada": r.usage.input_tokens, "salida": r.usage.output_tokens}
     return r.parsed_output, uso
+
+
+def _recursos(R):
+    """Recursos declarados ante el FEN (geoservicios del INDECI), en corto para el modelo."""
+    if not R or R.get("error"):
+        return {"aplica": False}
+    if not (R["n_maquinas"] or R["n_maquinas_region"] or R["puntos"]):
+        return {"aplica": False, "nota": "Los geoservicios del INDECI no registran recursos declarados en este lugar."}
+    return {"fuente": "INDECI, geoservicios (recursos declarados por cada entidad ante el FEN)", "advertencia": R["nota"],
+            "fechas_de_las_capas": R.get("fechas"),
+            "maquinaria_en_el_lugar": {"unidades": R["n_maquinas"],
+                                       "por_entidad": [{"entidad": m["entidad"], "nivel": m["nivel"], "lugar": m.get("dist") or m.get("prov_nombre"),
+                                                        "unidades": m["cantidad"], "tipos": m["detalle"][:6]} for m in R["maquinaria"][:8]]},
+            "maquinaria_del_departamento": {"unidades": R["n_maquinas_region"], "nota": "declarada para todo el departamento, sin reparto por provincia",
+                                            "por_entidad": [{"entidad": m["entidad"], "unidades": m["cantidad"]} for m in R["maquinaria_region"]]},
+            "albergues_zonas_seguras_y_otros": {R["tipos"][k]: v for k, v in R["puntos"].items()}}
+
+
+def _historial(H):
+    """Historial SINPAD del lugar por año (copia periódica del INDECI), en corto para el modelo."""
+    if not H or H.get("error") or not H.get("n"):
+        return {"aplica": False}
+    clave = ("personas_damnificadas", "personas_afectadas", "personas_fallecidas", "viviendas_destruidas", "viviendas_afectadas")
+    return {"fuente": "INDECI, SINPAD (copia en sus geoservicios)", "fecha_de_corte": H["fecha_corte"], "desde": H["desde"],
+            "advertencia": "No incluye emergencias posteriores a la fecha de corte; lo reciente está en indeci_ultimos_dias.",
+            "emergencias": H["n"], "por_anio": {y: {k: c[k] for k in ("n", *clave) if c.get(k)} for y, c in H["por_anio"].items()},
+            "anio_con_mas_damnificados_y_afectados": H["peor_anio"],
+            "peores_emergencias": [{"fecha": p["fecha"], "fenomeno": p["fenomeno"], "ubigeo": p["ubigeo"], "codigo_sinpad": p["sinpad"],
+                                    **{k: p["cifras"][k] for k in clave if p["cifras"].get(k)}} for p in H["peores"][:5]]}
 
 
 def _obras_ana(provs=None, limite=8):
