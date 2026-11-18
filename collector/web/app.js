@@ -37,7 +37,7 @@ let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = 
 const REP = {lista: [], filtro: "sin_verificar", firma: ""};   // reportes de corresponsales (cargarReportes)
 
 /* ── filtro por región ──────────────────────────────────────────── */
-const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "obras-sec", "bom-sec", "com-sec", "igp-sec", "serfor-sec", "ing-sec"];
+const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "obras-sec", "recursos-sec", "sinpad-sec", "bom-sec", "com-sec", "igp-sec", "serfor-sec", "ing-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
 function makeView() {
@@ -53,6 +53,7 @@ function makeView() {
     focos: D.focos.filter(f => f[5] === R), alertas: D.alertas.filter(a => a.reg === R), zonas: D.zonas.filter(z => z.reg === R), vias: (D.vias || []).filter(v => v.reg === R),
     bomberos: (D.bomberos || []).filter(b => b.reg === R),
     obras: (D.obras || []).filter(o => o.reg === R),
+    recursos: D.recursos ? {...D.recursos, puntos: D.recursos.puntos.filter(r => r.reg === R), maquinaria: D.recursos.maquinaria.filter(r => r.reg === R)} : null,
     mar: {...(D.mar || {}), avisos: (D.mar?.avisos || []).filter(a => (a.regs || []).includes(R)), puntos: (D.mar?.puntos || []).filter(p => p.reg === R)},
     bomberosMedicas: {...(D.bomberosMedicas || {}), total: D.bomberosMedicas?.por_reg?.[R] || 0, atendiendo: null},
     comunicados: (D.comunicados || []).filter(c => c.regs?.includes(R)),
@@ -255,7 +256,7 @@ function initMap() {
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
   olaH: 0, marZona: null, marH: "24",
-  layers: { reportes: true, obras: true, oleaje: true, viento: false, olas: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
+  layers: { reportes: true, obras: true, recursos: false, oleaje: true, viento: false, olas: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -295,6 +296,19 @@ function marProvs(tipo, dia = marDia()) {
 const OBRA_E = [["Vencida", "--n4"], ["En Ejecución", "--sismo"], ["Por Ejecutar", "--ink-3"], ["Concluida", "--ok"]];
 const obraColor = e => css((OBRA_E.find(([t]) => t === e) || [, "--ink-3"])[1]);
 const obraNombre = e => ({"En Ejecución": "en ejecución", "Por Ejecutar": "por ejecutar", Vencida: "vencida", Concluida: "concluida"})[e] || e;
+// Recursos declarados ante el FEN (INDECI): color y símbolo por tipo; la maquinaria, un triángulo por provincia
+const REC_T = {maquinaria: ["--geo", "symbolTriangle"], albergue: ["--ok", "symbolSquare"], zona_segura: ["--n1", "symbolCircle"],
+  helipunto: ["--sismo", "symbolWye"], agua: ["--hidro", "symbolCircle"], refugio_ie: ["--uv3", "symbolSquare"]};
+const recColor = t => css((REC_T[t] || ["--ink-3"])[0]);
+const recSym = t => d3[(REC_T[t] || [, "symbolCircle"])[1]];
+const recTipo = t => (D?.recursos?.tipos || {})[t] || t;
+const REC_N = {albergue: ["albergue", "albergues"], zona_segura: ["zona segura", "zonas seguras"], helipunto: ["helipunto", "helipuntos"],
+  agua: ["punto de agua", "puntos de agua"], refugio_ie: ["II.EE. refugio", "II.EE. refugio"], maquinaria: ["máquina", "máquinas"]};
+const recCuenta = (t, k) => `${nf.format(k)} ${(REC_N[t] || [t, t])[k === 1 ? 0 : 1]}`;
+function recMaqProv() {   // maquinaria de distrito y provincia sumada por provincia (lo departamental no se puede ubicar)
+  return d3.rollups((V.recursos?.maquinaria || []).filter(m => m.prov && V.provCentroids[m.prov]), v => ({n: d3.sum(v, m => m.cantidad), items: v}), m => m.prov)
+    .map(([prov, x]) => ({prov, ...x})).sort((a, b) => b.n - a.n);
+}
 const layerDefs = [
   { id: "indeci", label: "Emergencias INDECI", sw: `<i class="sw sq" style="background:var(--indeci)"></i>`, n: () => new Set(V.indeci.filter(i => i.prov).map(i => i.prov)).size, unit: "prov." },
   { id: "alertas", label: "Incendios forestales (SERFOR)", sw: `<i class="sw" style="background:var(--fuego);outline:1px solid var(--ink)"></i>`, n: () => incendios().length },
@@ -305,6 +319,7 @@ const layerDefs = [
   { id: "hidro", label: "Estaciones hidrológicas", sw: `<i class="sw" style="background:var(--hidro)"></i>`, n: () => V.hidro.length },
   { id: "vias", label: "Emergencias viales PROVIAS", sw: `<i class="sw" style="background:var(--n2);transform:rotate(45deg);border-radius:1px;outline:1.5px solid var(--ink)"></i>`, n: () => V.vias.length },
   { id: "reportes", label: "Reportes de corresponsales", sw: `<i class="sw" style="background:var(--brand);border:1.5px solid var(--ink);border-radius:2px"></i>`, n: () => REP.lista.filter(r => r.lat != null && r.estado !== "descartado" && (!state.region || r.reg === state.region)).length },
+  { id: "recursos", label: "Recursos declarados · INDECI", sw: `<i class="sw" style="background:var(--ok);border-radius:1px;border:1.5px solid var(--ink)"></i>`, n: () => (V.recursos?.puntos || []).length + recMaqProv().length },
   { id: "obras", label: "Obras de prevención · ANA", sw: `<i class="sw" style="background:var(--sismo);border:1.5px solid var(--ink)"></i>`, n: () => (V.obras || []).length },
   { id: "oleaje", label: "Oleaje · avisos DHN", sw: `<i class="sw sq" style="background:repeating-linear-gradient(45deg,var(--n3) 0 2px,transparent 2px 4px)"></i>`, n: () => Object.keys(marProvs("oleaje")).filter(p => !state.region || p.startsWith(state.region)).length, unit: "prov." },
   { id: "viento", label: "Viento · avisos DHN", sw: `<i class="sw sq" style="background:repeating-linear-gradient(-45deg,var(--n2) 0 2px,transparent 2px 4px)"></i>`, n: () => Object.keys(marProvs("viento")).filter(p => !state.region || p.startsWith(state.region)).length, unit: "prov." },
@@ -331,6 +346,7 @@ const incR = n => Math.min(18, 3 + Math.sqrt(n) * 1.15);
 function renderLayers() {
   $("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span></label>`).map((h, i) => layerDefs[i].id === "alertas"
     ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>`
+    : layerDefs[i].id === "recursos" ? h + `<p class="lnote">${Object.entries(REC_T).map(([t, [c]]) => `<span class="recsw" style="--c:var(${c})"></span>${esc((REC_N[t] || [t, t])[1])}`).join(" · ")}. La maquinaria se suma por provincia (triángulo, tamaño según unidades). Declarado, no necesariamente disponible.</p>`
     : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
     : layerDefs[i].id === "oleaje" ? h + `<p class="lnote">Trama sobre las provincias costeras con aviso el día elegido: amarillo ligero, naranja moderado, rojo fuerte.</p>`
     : layerDefs[i].id === "olas" ? h + `<div class="lnote olah" id="ola-h">${OLA_V.map((t, k) => `<button type="button" data-h="${k}" aria-pressed="${state.olaH === k}">${k === 0 ? "0–24 h" : k === 1 ? "24–48 h" : "48–72 h"}</button>`).join("")}<span>Modelo global, referencial: no es la DHN.</span></div>` : h).join("");
@@ -510,7 +526,7 @@ const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Mon
   senamhi_pronostico: "SENAMHI · Pronóstico por ciudad", corresponsales: "Reporte de corresponsal", indeci: "INDECI · COEN", firms: "NASA FIRMS",
   enfen: "ENFEN · Comisión Multisectorial", com_pnp: "PNP · Comunicados (gob.pe)", com_provias: "PROVIAS Nacional · Notas de prensa (gob.pe)",
   provias: "PROVIAS Nacional · Emergencias viales", bomberos: "CGBVP · Bomberos · Emergencias 24 horas", dhn_avisos: "DHN · Avisos especiales de oleaje y viento",
-  olas_openmeteo: "Open-Meteo Marine · modelo referencial", ana_obras: "ANA · Obras de prevención (puntos críticos 2026)", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
+  olas_openmeteo: "Open-Meteo Marine · modelo referencial", ana_obras: "ANA · Obras de prevención (puntos críticos 2026)", indeci_recursos: "INDECI · Recursos declarados ante el FEN", sinpad_historial: "INDECI · SINPAD (historial)", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
 const refId = r => r && `${r.source}|${r.kind}|${r.key}`;
 let detailReq = 0;
 function closeDetail() {
@@ -653,6 +669,19 @@ function renderPoints() {
       + `<br>${obraNombre(o.estado)} · avance ${o.avance_km_pct ?? 0} %${o.tipo === "barrera" ? " de la barrera" : " del tramo"}${o.fin ? ` · fin ${fmtDM(o.fin)}` : ""}`
       + `<br><span style="opacity:.7">peligro ${esc((o.nivel_peligro || "").toLowerCase())} · ${esc(o.responsable || "")}</span>` + tipWhen(o.fec_avance ? fmtDay(o.fec_avance) : "—", "último avance ANA"),
       o => ({source: "ana_obras", kind: "obra", key: o._key}));
+  if (L.recursos) {
+    layer(recMaqProv(), "path", d => V.provCentroids[d.prov]).attr("d", d3.symbol(d3.symbolTriangle, d => 40 + Math.sqrt(d.n) * 22))
+      .attr("fill", recColor("maquinaria")).attr("fill-opacity", .8).attr("stroke", css("--ink")).attr("stroke-width", .9)
+      .call(on, d => `<b>Maquinaria declarada · ${nf.format(d.n)} unidades</b><br>${esc(provName(d.prov))}`
+        + d.items.slice(0, 4).map(m => `<span class="ti">${esc(m.entidad)}${m.nivel === "distrito" ? ` — ${esc(title(m.dist))}` : ""}: ${nf.format(m.cantidad)}</span>`).join("")
+        + (d.items.length > 4 ? `<span class="ti">y ${d.items.length - 4} registros más</span>` : "") + `<span style="opacity:.7">Ubicado en el centro de la provincia</span>`,
+        d => ({source: "indeci_recursos", kind: "recurso", key: d.items[0]._key}));
+    layer(V.recursos?.puntos || [], "path", r => [r.lon, r.lat]).attr("d", d3.symbol().type(r => recSym(r.tipo)).size(r => r.tipo === "albergue" && r.aforo >= 500 ? 95 : 52))
+      .attr("fill", r => recColor(r.tipo)).attr("stroke", css("--ink")).attr("stroke-width", 1)
+      .call(on, r => `<b>${esc(r.etiqueta)} · ${esc(title(r.nombre))}</b><br>${esc(title(r.dist || ""))}${r.dist ? ", " : ""}${esc(provName(r.prov))}`
+        + (r.aforo ? `<br>aforo ${nf.format(r.aforo)} personas${r.carpas ? ` · ${r.carpas} carpas` : ""}` : "") + `<br><span style="opacity:.7">${esc(r.entidad)} · declarado ante el FEN</span>`,
+        r => ({source: "indeci_recursos", kind: "recurso", key: r._key}));
+  }
   if (L.reportes) layer(REP.lista.filter(r => r.lat != null && r.estado !== "descartado" && (!state.region || r.reg === state.region)), "path", r => [r.lon, r.lat])
     .attr("d", d3.symbol(d3.symbolSquare, 70)).attr("fill", r => r.estado === "verificado" ? css("--ok") : css("--brand")).attr("stroke", css("--ink")).attr("stroke-width", 1.2)
     .call(on, r => `<b>Reporte de corresponsal · ${esc(r.tipo_nombre)}</b> · ${r.estado === "verificado" ? "verificado" : "sin verificar"}<br>${esc((r.descripcion || "").slice(0, 140))}<br><span style="opacity:.7">${esc(r.lugar || r.departamento || "")}</span>` + tipWhen(when(r._first_seen), "recibido"),
@@ -694,6 +723,11 @@ function renderRail() {
       <dt>Incendios</dt><dd>${al.length ? d3.rollups(al, v => v.length, a => a.estado).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") : "—"}</dd>
       <dt>Zonas críticas</dt><dd>${zn.length || "—"}</dd>
       <dt>Obras ANA</dt><dd>${(() => { const os = (V.obras || []).filter(o => o.prov === p.id); return os.length ? d3.rollups(os, v => v.length, o => o.estado).map(([e, k]) => `${k} ${obraNombre(e)}${k > 1 && e !== "En Ejecución" && e !== "Por Ejecutar" ? "s" : ""}`).join(", ") : "—"; })()}</dd>
+      <dt>Recursos INDECI</dt><dd>${(() => { const ms = (V.recursos?.maquinaria || []).filter(m => m.prov === p.id), ps = (V.recursos?.puntos || []).filter(r => r.prov === p.id);
+        const partes = [ms.length ? `${nf.format(d3.sum(ms, m => m.cantidad))} máquinas` : "", ...d3.rollups(ps, v => v.length, r => r.tipo).map(([t, k]) => recCuenta(t, k))].filter(Boolean);
+        return partes.length ? `${partes.join(" · ")} <a href="#recursos-sec" class="muted">ver</a>` : "—"; })()}</dd>
+      <dt>SINPAD</dt><dd>${(() => { const s = D.sinpad?.por_prov?.[p.id]; if (!s) return "—"; const pk = d3.greatest(Object.entries(s), ([, v]) => v[2]);
+        return pk && pk[1][2] ? `peor año ${pk[0]}: ${nf.format(pk[1][2])} damnificados <span class="muted">(corte ${fmtDay(D.sinpad.fecha_corte)})</span>` : "—"; })()}</dd>
       <dt>Mar (DHN)</dt><dd>${(() => { const r = ["oleaje", "viento"].map(t => [t, marProvs(t)[p.id]]).filter(([, v]) => v); return r.length ? r.map(([t, v]) => `${t} ${MAR_PAL[t][v.n]} <a href="#" data-mar="${esc(v.a._key)}">N° ${esc(v.a.numero)}</a>`).join(" · ") : "—"; })()}</dd>
       <dt>Vías (PROVIAS)</dt><dd>${(() => { const vs = V.vias.filter(v => v.prov === p.id); return vs.length ? `${vs.length}: ${[["03", "interrumpida"], ["02", "restringida"], ["04", "por confirmar"]].map(([c, t]) => [vs.filter(v => v.transito_cod === c).length, t]).filter(([n]) => n).map(([n, t]) => `${n} ${t}${n > 1 ? "s" : ""}`).join(", ")}` : "—"; })()}</dd>
       <dt>Daños ${D.danos?.dias || 7} días</dt><dd>${D.danos?.por_prov?.[p.id] ? `${danosChips(D.danos.por_prov[p.id].totales, 4)} <span class="muted">(${D.danos.por_prov[p.id].n_eventos} eventos)</span>` : "—"}</dd></dl>
@@ -908,6 +942,85 @@ function renderObras() {
 }
 $("#oq").addEventListener("input", () => D && renderObras());
 $("#obras").addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "ana_obras", kind: "obra", key: tr.dataset.key}); });
+// ── Recursos declarados ante el FEN (INDECI · geoservicios) ─────────────────
+let recF = "";
+function renderRecursos() {
+  const R = V.recursos || {puntos: [], maquinaria: []}, ps = R.puntos, ms = R.maquinaria;
+  const enLugar = state.region ? ` en ${esc(regName(state.region))}` : "";
+  const nT = t => ps.filter(r => r.tipo === t).length, aforo = t => d3.sum(ps.filter(r => r.tipo === t), r => r.aforo || 0);
+  $("#rec-src").textContent = `geosinpad.indeci.gob.pe · capas ${R.fechas ? `del ${fmtDay(R.fechas[0])} al ${fmtDay(R.fechas[1])}` : "sin fecha"}`;
+  $("#rec-cnt").innerHTML = [[d3.sum(ms, m => m.cantidad), "máquinas y vehículos declarados" + enLugar, "--geo"],
+    [nT("albergue"), `albergues${aforo("albergue") ? ` · aforo ${nf.format(aforo("albergue"))}` : ""}`, "--ok"], [nT("zona_segura"), "zonas seguras", "--n1"],
+    [nT("helipunto"), "helipuntos", "--sismo"], [nT("agua"), "puntos de agua (EPS, pozos)", "--hidro"], [nT("refugio_ie"), "II.EE. refugio", "--uv3"]]
+    .map(([k, t, v]) => `<div><div class="big num" style="color:var(${v})">${nf.format(k)}</div><p>${t}</p></div>`).join("");
+  const filas = [...ms.map(m => ({...m, tipo: "maquinaria", etiqueta: "Maquinaria", nombre: m.entidad})), ...ps];
+  const filtros = [["", `Todos (${filas.length})`], ...Object.keys(REC_T).map(t => [t, `${recTipo(t)} (${filas.filter(r => r.tipo === t).length})`]).filter(([t]) => filas.some(r => r.tipo === t))];
+  seg($("#rec-f"), filtros, recF, v => { recF = v; renderRecursos(); });
+  $("#rec-mapa").setAttribute("aria-pressed", String(!!state.layers.recursos));
+  const q = ($("#rq").value || "").toLowerCase();
+  const lugar = r => r.nivel === "departamento" ? `todo ${title(r.dep || regName(r.reg))}` : [title(r.dist || ""), provName(r.prov) || title(r.prov_nombre || "")].filter(Boolean).join(", ");
+  const rows = filas.filter(r => (!recF || r.tipo === recF) && (!q || [r.nombre, r.dist, r.prov_nombre, provName(r.prov), r.entidad, r.etiqueta, ...(r.detalle || []).map(d => d[0])].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => (a.tipo === "maquinaria" ? -1 : 0) - (b.tipo === "maquinaria" ? -1 : 0) || (b.cantidad || 0) - (a.cantidad || 0) || (b.aforo || 0) - (a.aforo || 0));
+  $("#rec").innerHTML = rows.slice(0, 300).map(r => `<tr class="clk" data-key="${esc(r._key)}" tabindex="0">
+    <td><b>${esc(r.tipo === "maquinaria" ? `Maquinaria de ${r.entidad}` : title(r.nombre))}</b>${r.tipo === "maquinaria" && r.detalle?.length ? `<div class="muted" style="font-size:12px">${r.detalle.slice(0, 4).map(([t, k]) => `${nf.format(k)} ${esc(t)}`).join(" · ")}</div>` : ""}</td>
+    <td><span class="recsw" style="--c:var(${(REC_T[r.tipo] || ["--ink-3"])[0]})"></span>${esc(r.tipo === "maquinaria" ? `por ${r.nivel}` : r.etiqueta)}</td>
+    <td>${esc(lugar(r))}</td>
+    <td class="num">${r.tipo === "maquinaria" ? nf.format(r.cantidad) : r.aforo ? `${nf.format(r.aforo)} pers.${r.carpas ? `<div class="muted" style="font-size:12px">${r.carpas} carpas</div>` : ""}` : "—"}</td>
+    <td class="muted" style="font-size:12px">${esc(r.entidad || "")}${r.fecha_capa ? `<div>capa del ${fmtDay(r.fecha_capa)}</div>` : ""}</td></tr>`).join("")
+    || `<tr><td colspan="5" class="muted">${q || recF ? "Ningún recurso coincide." : `Los geoservicios del INDECI no registran recursos declarados${enLugar}.`}</td></tr>`;
+  $("#rec-note").textContent = `${Math.min(rows.length, 300)} de ${rows.length} registros${rows.length > 300 ? " (afine con el filtro o la búsqueda)" : ""}. La maquinaria viene por distrito (Vivienda), por provincia (gobiernos regionales) o para todo el departamento (MINDEF, MTC, Vivienda), según cómo la publica cada entidad. Albergues, zonas seguras y helipuntos solo existen para Piura y Lima/Callao en estas capas. Clic en una fila para ver el detalle y la capa de origen.`;
+}
+$("#rq").addEventListener("input", () => D && renderRecursos());
+$("#rec").addEventListener("click", e => { const tr = e.target.closest("tr[data-key]"); if (tr) openDetail({source: "indeci_recursos", kind: "recurso", key: tr.dataset.key}); });
+$("#rec-mapa").addEventListener("click", () => {
+  state.layers.recursos = !state.layers.recursos; renderLayers(); renderPoints(); renderRecursos();
+  if (state.layers.recursos) $("#mapa").scrollIntoView({behavior: "smooth", block: "start"});
+});
+// ── Historial SINPAD por año ───────────────────────────────────────────────
+const SP_M = [[2, "Damnificados"], [3, "Afectados"], [0, "Emergencias"], [5, "Viv. destruidas"], [4, "Fallecidos"]];
+let spM = 2;
+function renderSinpad() {
+  const S = D.sinpad;
+  if (!S) { $("#sp-chart").innerHTML = `<p class="muted">El historial aún no se ha descargado.</p>`; return; }
+  const R = state.region, serie = R ? (S.por_reg[R] || {}) : S.nacional, corte = S.fecha_corte, yC = corte.slice(0, 4);
+  const nombre = R ? regName(R) : "Perú";
+  seg($("#sp-m"), SP_M.map(([i, t]) => [i, t]), spM, v => { spM = +v; renderSinpad(); });
+  const anios = Object.keys(serie).sort(), vals = anios.map(y => serie[y][spM]);
+  const pico = anios[d3.maxIndex(vals)];
+  const etiqueta = SP_M.find(([i]) => i === spM)[1].toLowerCase();
+  $("#sp-title").textContent = `${nombre} · ${etiqueta} por año`;
+  $("#sp-src").textContent = `Copia del SINPAD · corte ${fmtDay(corte)} ${yC}`;
+  const w = 560, h = 260, m = {l: 50, r: 10, t: 22, b: 26};
+  const x = d3.scaleBand(anios, [m.l, w - m.r]).padding(.18), y = d3.scaleLinear([0, d3.max(vals) || 1], [h - m.b, m.t]).nice();
+  const s = chart("#sp-chart", w, h);
+  s.append("defs").append("pattern").attr("id", "sp-hatch").attr("width", 5).attr("height", 5).attr("patternUnits", "userSpaceOnUse").attr("patternTransform", "rotate(45)")
+    .append("rect").attr("width", 2.2).attr("height", 5).attr("fill", css("--ink-3"));
+  s.append("g").attr("class", "grid").selectAll("line").data(y.ticks(4)).join("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", d => y(d)).attr("y2", d => y(d));
+  s.append("g").attr("class", "axis").attr("transform", `translate(0,${h - m.b})`).call(d3.axisBottom(x).tickValues(anios.filter((a, i) => i % 2 === 0 || a === pico || a === yC)).tickFormat(a => "'" + a.slice(2)).tickSize(0).tickPadding(8)).select(".domain").remove();
+  s.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSize(0).tickPadding(6).tickFormat(d3.format("~s"))).select(".domain").remove();
+  s.append("g").selectAll("rect").data(anios).join("rect").attr("class", a => `spbar${a === pico ? " pico" : ""}${a === yC ? " parcial" : ""}`)
+    .attr("x", a => x(a)).attr("width", x.bandwidth()).attr("y", a => y(serie[a][spM])).attr("height", a => y(0) - y(serie[a][spM]))
+    .on("mousemove", (e, a) => { const v = serie[a]; showTip(e, `<b>${a}${a === yC ? ` · hasta el ${fmtDay(corte)}` : ""}</b><br>${nf.format(v[0])} emergencias (${nf.format(v[1])} por lluvias, huaicos, inundaciones u oleaje)<br>${nf.format(v[2])} damnificados · ${nf.format(v[3])} afectados<br>${nf.format(v[4])} fallecidos · ${nf.format(v[5])} viviendas destruidas · ${nf.format(v[6])} afectadas`); })
+    .on("mouseleave", hideTip);
+  s.append("text").attr("class", "splbl pico").attr("x", x(pico) + x.bandwidth() / 2).attr("y", y(serie[pico][spM]) - 6).attr("text-anchor", "middle").text(d3.format(".3~s")(serie[pico][spM]));
+  if (serie[yC]) s.append("text").attr("class", "splbl").attr("x", x(yC) + x.bandwidth() / 2).attr("y", y(serie[yC][spM]) - 6).attr("text-anchor", "middle").text(d3.format(".3~s")(serie[yC][spM]));
+  const tot = d3.sum(vals);
+  $("#sp-note").innerHTML = `En rojo, el año con más ${esc(etiqueta)} (${pico}: ${nf.format(serie[pico][spM])}). ${yC} va rayado: llega solo hasta el ${fmtDay(corte)}, la fecha de corte de la copia que publica el INDECI; lo posterior está en los reportes de emergencia. Total ${anios[0]}–${yC}: ${nf.format(tot)}.`;
+  // tabla: departamentos (vista nacional) o provincias (vista de un departamento), por la métrica elegida en el año pico y en el actual
+  const fuente = R ? Object.entries(S.por_prov).filter(([p]) => p.startsWith(R)) : Object.entries(S.por_reg);
+  const nom = R ? p => provName(p) || p : r => regName(r) || r;
+  const filas = fuente.map(([k, s2]) => ({k, pico: s2[pico]?.[spM] || 0, act: s2[yC]?.[spM] || 0, tot: d3.sum(Object.values(s2), v => v[spM])})).sort((a, b) => b.tot - a.tot).slice(0, 12);
+  $("#sp-tab-t").textContent = `${R ? "Provincias" : "Departamentos"} con más ${etiqueta}`;
+  $("#sp-thead").innerHTML = `<tr><th>${R ? "Provincia" : "Departamento"}</th><th class="num">${anios[0]}–${yC}</th><th class="num">${pico}</th><th class="num">${yC}*</th></tr>`;
+  $("#sp-tab").innerHTML = filas.map(f => `<tr${R ? ` class="clk" data-prov="${f.k}" tabindex="0"` : ` class="clk" data-reg="${f.k}" tabindex="0"`}><td>${esc(nom(f.k))}</td><td class="num"><b>${nf.format(f.tot)}</b></td><td class="num">${nf.format(f.pico)}</td><td class="num">${f.act ? nf.format(f.act) : "—"}</td></tr>`).join("")
+    || `<tr><td colspan="4" class="muted">Sin registros.</td></tr>`;
+  $("#sp-tab-note").textContent = `* ${yC} hasta el ${fmtDay(corte)}. ${R ? "Clic en una provincia para marcarla en el mapa." : "Clic en un departamento para filtrar el tablero."} Cifras de la ficha EDAN de cada emergencia en el SINPAD; los registros anteriores a ${S.desde} no se muestran por escasos.`;
+}
+$("#sp-tab").addEventListener("click", e => {
+  const tr = e.target.closest("tr"); if (!tr) return;
+  if (tr.dataset.reg) setRegion(tr.dataset.reg);
+  else if (tr.dataset.prov) { state.sel = tr.dataset.prov; renderAll(); $("#mapa").scrollIntoView({behavior: "smooth", block: "start"}); }
+});
 // ── Nuestros corresponsales: reportes enviados desde /reportar (ver mesa/reportes.py) ──
 async function cargarReportes() {
   try {
@@ -1139,7 +1252,7 @@ $("#pq").addEventListener("input", () => D && filterPron());
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
   indeci: "INDECI", indeci_fotos: "INDECI fotos", igp: "IGP sismos", serfor: "SERFOR incendios", ingemmet: "INGEMMET", enfen: "ENFEN", firms: "NASA FIRMS",
   com_pnp: "PNP comunicados", com_provias: "PROVIAS notas", com_mtc: "MTC notas", com_mininter: "MININTER notas",
-  provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras"};
+  provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras", indeci_recursos: "INDECI recursos", sinpad_historial: "SINPAD historial"};
 const LAT = {rows: [], counts: {}, more: false, next: null, req: 0};
 function writeHash() {
   const p = [state.region && `r=${state.region}`, state.latSource && `f=${state.latSource}`].filter(Boolean).join("&");
@@ -1388,7 +1501,7 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderBomberos(); renderReportes(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderRecursos(); renderSinpad(); renderBomberos(); renderReportes(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); cargarReportes(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });

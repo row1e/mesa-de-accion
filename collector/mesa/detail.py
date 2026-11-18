@@ -340,6 +340,31 @@ def _f_obra_ana(it, ex):
             "fields": {k: v for k, v in it.items() if not k.startswith("_") and k != "hist"}}
 
 
+def _f_recurso(it, ex):
+    """Recurso declarado ante el FEN (geoservicios del INDECI): maquinaria por ámbito o un punto (albergue, zona segura…)."""
+    from .sources.indeci_geo import BASE, TIPOS, VISOR
+    nf = lambda n: f"{n:,}".replace(",", " ")   # noqa: E731
+    lugar = ", ".join(x for x in (it.get("dist"), it.get("prov_nombre"), it.get("dep")) if x) or "—"
+    if it.get("tipo") == "maquinaria":
+        facts = [["Entidad", it.get("entidad")], ["Ámbito", f"{it.get('nivel')} · {lugar}"], ["Unidades declaradas", nf(it.get("cantidad") or 0)],
+                 ["Por tipo", " · ".join(f"{nf(k)} {t}" for t, k in it.get("detalle") or []) or "—"]]
+        if it.get("unidades"):
+            facts.append(["Unidades militares", it["unidades"]])
+        titulo = it.get("nombre")
+    else:
+        facts = [["Tipo", it.get("etiqueta") or TIPOS.get(it.get("tipo"))], ["Entidad", it.get("entidad")], ["Lugar", lugar],
+                 ["Dirección", it.get("direccion") or "—"]]
+        if it.get("aforo"):
+            facts.append(["Aforo", f"{nf(it['aforo'])} personas" + (f" · {it['carpas']} carpas" if it.get("carpas") else "")])
+        facts.append(["Coordenadas", f"{it.get('lat')}, {it.get('lon')}"])
+        titulo = f"{it.get('etiqueta')} · {it.get('nombre')}"
+    facts += [["Fecha de la capa", it.get("fecha_capa") or "el servidor no la publica"],
+              ["Advertencia", "Recurso declarado por la entidad ante el FEN; no confirma que esté disponible hoy."]]
+    return {"title": titulo, "subtitle": f"INDECI · geoservicios · {it.get('entidad')}", "level": None, "facts": facts,
+            "links": [{"label": "Visor del INDECI", "url": VISOR}, {"label": "Capa de origen (ArcGIS)", "url": f"{BASE}/{it.get('capa')}"}],
+            "fields": {k: v for k, v in it.items() if not k.startswith("_")}}
+
+
 def _f_reporte(it, ex):
     """Ficha de un reporte de corresponsal. Nunca incluye el teléfono, la IP ni el navegador (it["privado"]); el nombre,
     solo si quien reporta aceptó que se mencione."""
@@ -492,5 +517,5 @@ FORMAT = {
     ("ingemmet", "zona_alerta"): _f_zona, ("senamhi_hidro", "aviso_estacion"): _f_hidro, ("indeci", "item"): _f_indeci,
     ("senamhi_uv", "uv_zona"): _f_uv, ("senamhi_pronostico", "ciudad"): _f_pronostico,
     ("senamhi_avisos", "aviso"): _f_aviso, ("firms", "deteccion"): _f_firms, ("provias", "emergencia"): _f_provias,
-    ("bomberos", "parte"): _f_bomberos, ("dhn_avisos", "aviso_dhn"): _f_aviso_dhn, ("olas_openmeteo", "punto"): _f_ola_punto, ("ana_obras", "obra"): _f_obra_ana, ("corresponsales", "reporte"): _f_reporte,
+    ("bomberos", "parte"): _f_bomberos, ("dhn_avisos", "aviso_dhn"): _f_aviso_dhn, ("olas_openmeteo", "punto"): _f_ola_punto, ("ana_obras", "obra"): _f_obra_ana, ("indeci_recursos", "recurso"): _f_recurso, ("corresponsales", "reporte"): _f_reporte,
 }

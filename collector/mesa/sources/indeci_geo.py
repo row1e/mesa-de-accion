@@ -334,3 +334,44 @@ def historial_de(provs=None, reg=None, desde_anio=2015):
             "labels": LABELS, "orden": ORDEN, "fuente": SINPAD.rsplit("/query", 1)[0],
             "nota": ("Copia del SINPAD que publica el INDECI en sus geoservicios; se refresca cada pocos meses, así que lo más reciente "
                      "va en los reportes de emergencia. Cifras de la ficha EDAN de cada emergencia, sumadas por año.")}
+
+
+# ── Para el tablero (snapshot) ───────────────────────────────────────────────────────────────────────────────
+
+TABLERO_DESDE = "2010"
+SINPAD_KEYS = ("personas_damnificadas", "personas_afectadas", "personas_fallecidas", "viviendas_destruidas", "viviendas_afectadas")
+
+
+def para_tablero():
+    """Lo que dibuja el tablero: recursos (puntos y maquinaria, compactos) e historial SINPAD por año a tres
+    escalas (nacional, departamento, provincia). Todo sale de la base: no consulta al INDECI."""
+    items = db.get_items("indeci_recursos", "recurso", order="key")
+    puntos = [{k: r.get(k) for k in ("_key", "tipo", "etiqueta", "nombre", "lon", "lat", "prov", "reg", "dist", "aforo", "carpas", "entidad")}
+              for r in items if r["nivel"] == "punto"]
+    maq = [{k: r.get(k) for k in ("_key", "nivel", "entidad", "prov", "reg", "dist", "prov_nombre", "dep", "cantidad", "fecha_capa")}
+           | {"detalle": (r.get("detalle") or [])[:6]} for r in items if r["tipo"] == "maquinaria"]
+    fechas = sorted({r["fecha_capa"] for r in items if r.get("fecha_capa")})
+
+    corte = db.get_item("sinpad_historial", "distrito", "_corte")
+    sinpad = None
+    if corte:
+        nac = collections.defaultdict(collections.Counter)
+        por_reg = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
+        por_prov = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
+        for d in db.get_items("sinpad_historial", "distrito", order="key"):
+            if not d.get("ubigeo"):
+                continue
+            for y, c in d["por_anio"].items():
+                if y < TABLERO_DESDE:   # antes de 2010 el registro es escaso: el gráfico engañaría
+                    continue
+                fila = {k: c.get(k, 0) for k in ("n", "n_fen", *SINPAD_KEYS)}
+                nac[y].update(fila)
+                por_reg[d["reg"]][y].update(fila)
+                por_prov[d["prov"]][y].update(fila)
+        # [n, n_fen, damnificados, afectados, fallecidos, viv. destruidas, viv. afectadas] por año: compacto para el navegador
+        comp = lambda serie: {y: [int(round(c.get(k, 0))) for k in ("n", "n_fen", *SINPAD_KEYS)] for y, c in sorted(serie.items())}  # noqa: E731
+        sinpad = {"fecha_corte": corte.get("fecha_corte"), "n": corte.get("n"), "desde": TABLERO_DESDE, "campos": ["n", "n_fen", *SINPAD_KEYS],
+                  "nacional": comp(nac), "por_reg": {r: comp(s) for r, s in por_reg.items()},
+                  "por_prov": {p: comp(s) for p, s in por_prov.items()}}
+    return {"puntos": puntos, "maquinaria": maq, "fechas": [fechas[0], fechas[-1]] if fechas else None, "tipos": TIPOS,
+            "visor": VISOR}, sinpad
