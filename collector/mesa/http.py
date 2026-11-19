@@ -1,6 +1,7 @@
 """HTTP con reintentos, registro en `fetches` y guardado del crudo solo cuando cambia (por hash)."""
 import gzip
 import hashlib
+import http.client
 import ssl
 import json
 import time
@@ -53,7 +54,54 @@ _RELE = urllib.request.build_opener(urllib.request.ProxyHandler({"http": config.
                                     urllib.request.HTTPSHandler(context=SSL_CONTEXT)) if config.PROXY else None
 
 
+# Certificados VENCIDOS que se siguen aceptando, fijados por la huella SHA-256 del certificado exacto (no del dominio).
+# Solo se usan si la verificación normal falla por vencimiento: cuando la institución lo renueve, la conexión vuelve
+# sola a la verificación normal y la entrada queda sin efecto (borrarla entonces). Un certificado distinto, aunque
+# sea del mismo dominio, se rechaza: esto no abre la puerta a un intermediario, solo tolera la fecha.
+CERT_VENCIDO_FIJADO = {
+    # *.serfor.gob.pe, venció el 2026-11-18 23:59 UTC (Sectigo); SERFOR aún no lo renueva.
+    "geo.serfor.gob.pe": "4ecfbed7c5b4d37fc1bd3e55591e017dce341f426ec3d0e7cc7da46d7b15817c",
+}
+
+
+class _ConexionFijada(http.client.HTTPSConnection):
+    def connect(self):
+        super().connect()
+        der = self.sock.getpeercert(binary_form=True)
+        if hashlib.sha256(der).hexdigest() != CERT_VENCIDO_FIJADO.get(self.host):
+            self.close()
+            raise ssl.SSLError(f"certificado de {self.host} vencido y distinto del fijado: no se acepta")
+
+
+class _ManejadorFijado(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE        # la huella fijada reemplaza a la cadena y a la fecha
+        return self.do_open(_ConexionFijada, req, context=ctx)
+
+
+_FIJADO = urllib.request.build_opener(_ManejadorFijado())
+
+
+def _vencido(e):
+    r = getattr(e, "reason", e)
+    # Linux (OpenSSL): verify_code 10 = X509_V_ERR_CERT_HAS_EXPIRED. macOS (truststore): sin código, "is expired".
+    return isinstance(r, ssl.SSLCertVerificationError) and (
+        getattr(r, "verify_code", None) == 10 or "expired" in str(r).lower())
+
+
 def abrir(req, timeout):
+    try:
+        return _abrir(req, timeout)
+    except urllib.error.URLError as e:
+        host = (urllib.parse.urlsplit(req.full_url).hostname or "").lower()
+        if host in CERT_VENCIDO_FIJADO and _vencido(e):
+            return _FIJADO.open(req, timeout=timeout)
+        raise
+
+
+def _abrir(req, timeout):
     """urlopen para los dominios bloqueados para nubes: primero una Mesa del relé web conectada (servidor con
     MESA_RELE_HUB), si no el relé SSH (MESA_PROXY; HTTPS cifrado de punta a punta con CONNECT), si no directo."""
     if config.RELE_HUB and _bloqueado(req.full_url):
