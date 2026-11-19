@@ -115,6 +115,39 @@ El job `respaldo` (cada 24 h, visible en el tablero de fuentes) copia `data/` a 
 
 Tipos por fuente: `senamhi_avisos/aviso`, `senamhi_avisos/aviso_dia`, `senamhi_uv/uv_zona`, `senamhi_pronostico/ciudad`, `senamhi_hidro/aviso_estacion`, `indeci/item`, `igp/sismo`, `serfor/foco`, `serfor/alerta`, `ingemmet/zona_alerta`, `enfen/comunicado`, `firms/deteccion`, `com_pnp/noticia` (y `com_provias`, `com_mtc`, `com_mininter`), `sidpol/provincia` (serie mensual por modalidad), `sidpol/meta`.
 
+## API de integración (otras plataformas)
+
+Para que otra plataforma (p. ej. una vista para tomadores de decisión) lea lo que reúne la Mesa sin la contraseña del
+tablero: rutas `/api/integracion/*` con un token de solo lectura por cliente (`Authorization: Bearer <token>`).
+Solo fuentes oficiales públicas: los reportes de corresponsales (datos personales) y las emergencias médicas de los
+bomberos quedan fuera siempre.
+
+| Ruta | Devuelve |
+|---|---|
+| `GET /api/integracion/cambios?desde=&fuentes=&deps=&limite=` | Registros cuyo contenido o vigencia cambió después del cursor (`items.changed_at`, no `last_seen`). Sin `desde`, la carga completa. Paginar con `siguiente` hasta `hay_mas=false` y guardar el cursor. `fuentes` = `fuente` o `fuente/tipo`; `deps` = departamentos (lo nacional va siempre). `vigente=false` = dejó de publicarse |
+| `GET /api/integracion/avisos/{año}/{nro}/{mapa}` | GeoJSON del aviso-día del SENAMHI desde el crudo guardado (el SENAMHI no responde a IPs de nubes) |
+| `GET /api/integracion/detalle/{fuente}/{tipo}/{clave}` | La misma ficha enriquecida de `/api/detail` (fotos, cronología, PDF, satélite), con las imágenes en `/api/integracion/media/…` |
+| `GET /api/integracion/media/{ruta}` | Imágenes que cita el detalle |
+| `GET /api/integracion/danos?dias=&deps=` | Eventos INDECI con cifras de daños, uno por evento (su último reporte), con el `ubigeo` del distrito resuelto con el catálogo del MIDIS |
+| `GET /api/integracion/salud` | Estado y última lectura buena de cada fuente |
+
+Crear un token (se muestra una sola vez; el servidor guarda solo la huella SHA-256):
+
+```bash
+.venv/bin/python run.py token una-sola-vista
+```
+
+La línea `MESA_INTEGRACION_TOKENS=nombre:huella` va al entorno del servicio (varias separadas por comas). Revocar = quitarla y reiniciar.
+
+En el servidor, Caddy debe dejar pasar estas rutas sin la contraseña del tablero (la app valida el token), igual que el relé:
+
+```
+@integracion path /api/integracion/*
+handle @integracion {
+	reverse_proxy 127.0.0.1:8787
+}
+```
+
 ## Cifras de daños INDECI
 
 `snapshot.danos_resumen()` suma los daños de los últimos 7 días **sin duplicar eventos**: un evento (código SINPAD o evento+distrito+departamento) cuenta una sola vez con su reporte más reciente, porque cada reporte trae cifras acumuladas. Separa eventos **nuevos** (fecha de ocurrencia dentro de la ventana, tomada de "HECHOS") de **anteriores aún en seguimiento**. Si la tabla trae subtotales `DPTO.`/`PROV.` (eventos que abarcan varias regiones, p. ej. un sismo), cada región y provincia recibe su propio subtotal.

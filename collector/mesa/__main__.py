@@ -3,6 +3,7 @@
 `python -m mesa run <fuente|all>` ejecuta fuentes una vez, sin servidor (útil para depurar).
 """
 import logging
+import re
 import sys
 
 import uvicorn
@@ -13,6 +14,17 @@ from . import config, db, runner
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logging.getLogger("apscheduler").setLevel(logging.WARNING)
+    if len(sys.argv) > 2 and sys.argv[1] == "token":
+        # token de integración para otra plataforma: se muestra una sola vez; en el servidor se guarda solo la huella
+        import secrets
+        from .integracion import huella
+        nombre = sys.argv[2]
+        if not re.fullmatch(r"[a-z0-9_-]{2,40}", nombre):
+            sys.exit("el nombre va en minúsculas, sin espacios (p. ej. una-sola-vista)")
+        tok = secrets.token_urlsafe(32)
+        print(f"Token para {nombre} (entregarlo por un canal seguro; no se vuelve a mostrar):\n  {tok}\n")
+        print(f"Agregar al entorno del servicio (separar con comas si ya hay otros):\n  MESA_INTEGRACION_TOKENS={nombre}:{huella(tok)}")
+        return
     db.init()
     if len(sys.argv) > 1 and sys.argv[1] == "run":
         from .sources import SOURCES

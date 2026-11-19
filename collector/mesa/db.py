@@ -68,10 +68,23 @@ def conn():
 
 def init():
     conn().executescript(SCHEMA)
+    _migrar_changed_at()
     from .sources import gobpe          # migración única: fuente combinada "comunicados" → una por institución
     gobpe.migrate_combined()
     from . import incendios             # migración única: registros de SERFOR repetidos por OBJECTID
     incendios.migrar()
+
+
+def _migrar_changed_at():
+    """items.changed_at: cuándo cambió por última vez el contenido o la vigencia de un registro (last_seen se mueve en
+    cada lectura aunque nada cambie). Es el cursor de /api/integracion/cambios. Los registros previos parten de last_seen;
+    los pocos escritores fuera de upsert_items (migraciones) la dejan en NULL y se leen con COALESCE(changed_at, last_seen)."""
+    c = conn()
+    cols = {r["name"] for r in c.execute("PRAGMA table_info(items)")}
+    if "changed_at" not in cols:
+        c.execute("ALTER TABLE items ADD COLUMN changed_at REAL")
+        c.execute("UPDATE items SET changed_at=last_seen")
+    c.execute("CREATE INDEX IF NOT EXISTS items_changed ON items(changed_at, source, kind, key)")
 
 
 @contextlib.contextmanager
@@ -97,16 +110,18 @@ def upsert_items(source, kind, records, snapshot=False):
         for key, payload in records.items():
             data = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
             if key in existing:
-                c.execute("UPDATE items SET last_seen=?, current=1, payload=? WHERE source=? AND kind=? AND key=?",
-                          (now, data, source, kind, key))
+                # changed_at solo avanza si cambió el contenido o el registro vuelve a estar vigente
+                c.execute("UPDATE items SET changed_at=CASE WHEN payload IS NOT ? OR current=0 THEN ? ELSE changed_at END, "
+                          "last_seen=?, current=1, payload=? WHERE source=? AND kind=? AND key=?",
+                          (data, now, now, data, source, kind, key))
             else:
                 new += 1
-                c.execute("INSERT INTO items(source,kind,key,first_seen,last_seen,current,payload) VALUES(?,?,?,?,?,1,?)",
-                          (source, kind, key, now, now, data))
+                c.execute("INSERT INTO items(source,kind,key,first_seen,last_seen,current,payload,changed_at) "
+                          "VALUES(?,?,?,?,?,1,?,?)", (source, kind, key, now, now, data, now))
         if snapshot:
             gone = existing - set(records)
-            c.executemany("UPDATE items SET current=0 WHERE source=? AND kind=? AND key=?",
-                          [(source, kind, k) for k in gone])
+            c.executemany("UPDATE items SET current=0, changed_at=? WHERE source=? AND kind=? AND key=? AND current=1",
+                          [(now, source, kind, k) for k in gone])
     return len(records), new
 
 

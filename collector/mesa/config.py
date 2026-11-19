@@ -50,6 +50,9 @@ PROXY = os.environ.get("MESA_PROXY", "").strip()
 # instalada, MESA_RELE_SERVIDOR es la dirección de ese servidor (ver rele_hub.py y rele_cliente.py).
 RELE_HUB = os.environ.get("MESA_RELE_HUB", "") == "1"
 RELE_SERVIDOR = os.environ.get("MESA_RELE_SERVIDOR", "").strip()
+# API de integración (/api/integracion/*): otras plataformas leen los datos con un token de solo lectura.
+# MESA_INTEGRACION_TOKENS = "nombre:sha256,nombre2:sha256" (se guarda la huella, nunca el token; ver `run.py token <nombre>`).
+INTEGRACION_TOKENS = dict(t.split(":", 1) for t in os.environ.get("MESA_INTEGRACION_TOKENS", "").split(",") if ":" in t)
 PROXY_HOSTS = tuple(h.strip().lower() for h in os.environ.get(
     "MESA_PROXY_HOSTS", "senamhi.gob.pe,midis.gob.pe,proviasnac.gob.pe,ana.gob.pe").split(",") if h.strip())
 
