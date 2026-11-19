@@ -11,6 +11,8 @@ from . import asistente, config, db, detail, ficha, geo, latest, licencia, runne
 from .sources import SOURCES, midis
 
 app = FastAPI(title="Mesa de Acción · Colector", version="0.1")
+from .integracion import router as _integracion  # noqa: E402
+app.include_router(_integracion)
 # El snapshot pasa de 3 MB en JSON; comprimido baja a una fracción (detrás de Caddy, este ya no recomprime)
 from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
 app.add_middleware(GZipMiddleware, minimum_size=2000)
