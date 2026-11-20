@@ -1,5 +1,5 @@
 """Registro de fuentes: id → (función, etiqueta, institución, acceso, nivel geográfico, qué había en la hoja)."""
-from . import ana, bomberos, dhn, gobpe, indeci_geo, midis, others, senamhi
+from . import ana, bomberos, declaratorias, dhn, gobpe, indeci_geo, midis, others, senamhi
 
 SOURCES = {
     "senamhi_avisos": dict(fn=senamhi.avisos, org="SENAMHI", name="Avisos meteorológicos", via="HTML + WFS GeoServer",
@@ -55,4 +55,7 @@ SOURCES = {
                             via="ArcGIS REST (geosinpad)", geo="Distrito, provincia, departamento o coordenadas", sheet="No existía"),
     "sinpad_historial": dict(fn=indeci_geo.sinpad, org="INDECI · SINPAD", name="Historial de emergencias y daños (EDAN)",
                              via="ArcGIS REST (geosinpad, copia periódica)", geo="Distrito (ubigeo)", sheet="No existía"),
+    "declaratorias": dict(fn=declaratorias.declaratorias, org="PCM · El Peruano", name="Declaratorias de estado de emergencia",
+                          via="Búsqueda de El Peruano (turbo-stream) + anexo del PDF", geo="Distrito (anexo → ubigeo)",
+                          sheet="No existía"),
 }

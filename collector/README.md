@@ -88,6 +88,8 @@ El job `respaldo` (cada 24 h, visible en el tablero de fuentes) copia `data/` a 
 | `indeci_recursos` | 24 h | Geoservicios del INDECI (`geosinpad.indeci.gob.pe`, ArcGIS abierto): maquinaria declarada ante el FEN por Vivienda (por distrito), gobiernos regionales (por provincia) y MINDEF/MTC/Vivienda (por departamento); albergues, zonas seguras, helipuntos y agua (Piura, Lima/Callao). Es lo **declarado**, no lo disponible. ~30 s |
 | `sinpad_historial` | 7 días | Copia del SINPAD en los mismos geoservicios (~200 mil emergencias con cifras EDAN), agregada por distrito y año. El INDECI la refresca cada pocos meses: la "fecha de corte" es la emergencia más reciente. Pagina por rangos de OBJECTID (el desplazamiento falla al azar). ~7 min |
 
+| `declaratorias` | 6 h | Decretos supremos de la PCM con «Estado de Emergencia» en El Peruano (búsqueda por fechas y entidad PCM = 2066, Normas Legales y Edición Extraordinaria; método del monitor regulatorio de PeruAcuerda). Clasifica el motivo (desastre · criminalidad · otro, con el artículo 1 si la sumilla no lo dice). De los de desastre lee del PDF el plazo, el inicio, si es prórroga y de qué decreto, y el **Anexo** de distritos, resuelto con el catálogo del MIDIS. Tipos: `decreto` (uno por número) y `distrito` (cobertura vigente por ubigeo: decreto, desde, hasta, días restantes). La primera lectura va 200 días atrás; luego relee desde la última con 3 días de solape, una consulta cada 5 s. El catálogo del MIDIS recorta nombres tras una tilde («Morropo») y no trae distritos creados después de 2015: se compara con tolerancia dentro de la provincia y lo que no se resuelve queda en `sin_resolver` y en el mensaje |
+
 ## Estados de una fuente
 
 - **Al día**: el último intento salió bien, dentro de 3× su intervalo.
