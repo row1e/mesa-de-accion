@@ -310,6 +310,8 @@ def build():
         # INDECI · geoservicios: recursos declarados ante el FEN e historial SINPAD por año
         from .sources import indeci_geo
         recursos, sinpad = indeci_geo.para_tablero()
+        from .sources import declaratorias as _decl
+        declaratorias = _decl.para_tablero()
         com = db.get_items("enfen", "comunicado", current_only=False, order="key DESC", limit=1)
         firms_n = len(db.get_items("firms", "deteccion"))
 
@@ -382,7 +384,7 @@ def build():
             "indeci": indeci, "indeciWindowH": INDECI_WINDOW_H,
             "indeciUnlocated": sum(1 for i in indeci if i.get("clase") == "reporte" and not i.get("prov")),
             "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,
-            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "mar": mar, "obras": obras, "recursos": recursos, "sinpad": sinpad, "viasFotos": vias_fotos[:80],
+            "bomberos": bomberos, "bomberosMedicas": bomberos_med, "mar": mar, "obras": obras, "recursos": recursos, "sinpad": sinpad, "declaratorias": declaratorias, "viasFotos": vias_fotos[:80],
             "enfen": {"ultimo_comunicado": com[0] if com else {}}, "firmsCount": firms_n,
             "comunicados": comunicados, "regions": sorted(regions, key=lambda r: r["n"]),
             "fotosDia": fotos_dia[:80], "danos": danos,
