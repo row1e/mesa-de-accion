@@ -83,6 +83,7 @@ INTERVALS = {
     "respaldo": 24 * 3600,       # copia diaria de data/ (mesa/backup.py)
     "indeci_recursos": 24 * 3600,   # maquinaria, albergues y zonas seguras declarados: cambian por semanas
     "sinpad_historial": 7 * 86400,  # copia del SINPAD que el INDECI refresca cada pocos meses; leerla toma ~5 min
+    "declaratorias": 6 * 3600,   # decretos de emergencia de la PCM: unos pocos por semana; se relee con 3 días de solape
     "midis": 30 * 86400,         # solo el catálogo de ubigeos; los indicadores se piden por distrito bajo demanda
 }
 REFRESH_COOLDOWN = 60          # segundos mínimos entre refrescos manuales de una misma fuente
