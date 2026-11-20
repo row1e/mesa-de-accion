@@ -303,7 +303,7 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 .detail dl{display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:5px 12px;margin:0;font-size:13.5px}
 .detail dt{color:var(--ink-3)}
 .detail dd{margin:0;overflow-wrap:anywhere}
-.detail .body{font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.detail .body{font-size:13.5px;color:var(--ink-2);line-height:1.55;white-space:pre-line}
 .detail .imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
 .detail .imgs a,.detail .imgs button{display:block;width:100%;padding:0;text-align:left;cursor:zoom-in;border:1px solid var(--line);background:var(--surface);text-decoration:none;font-size:11.5px;color:var(--ink-2)}
 .detail .imgs img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
@@ -351,6 +351,9 @@ footer{margin-top:56px;padding-top:14px;border-top:1px solid var(--line);font-si
 /* emergencias viales (PROVIAS) */
 .vias-ev{margin:0 0 12px;padding:9px 12px;border-left:4px solid var(--n4);background:var(--bad-bg);color:var(--bad);font-size:14px;font-weight:600}
 .vias-cnt{margin-top:0}
+.dee-dias{display:inline-block;font-size:11.5px;font-weight:600;border-radius:4px;padding:0 6px;margin-left:4px;background:var(--line-2);color:var(--ink-2)}
+.dee-dias.pronto{background:var(--n4);color:#fff}
+.dee-cr{list-style:none;padding:0;margin:8px 0 0}.dee-cr li{padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer}.dee-cr li:hover{background:var(--surface-2)}
 .tr{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;white-space:nowrap}
 .tr::before{content:"";width:10px;height:10px;transform:rotate(45deg);background:var(--c)}
 #vias tr.clk{cursor:pointer}#vias tr.clk:hover{background:var(--surface-2)}
@@ -631,6 +634,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
     <a href="#vias-sec">Vías (PROVIAS)</a>
     <a href="#mar-sec">Mar (DHN)</a>
     <a href="#obras-sec">Obras (ANA)</a>
+    <a href="#dee-sec">Estados de emergencia</a>
     <a href="#recursos-sec">Recursos (INDECI)</a>
     <a href="#sinpad-sec">Historial SINPAD</a>
     <a href="#bom-sec">Bomberos (CGBVP)</a>
@@ -762,6 +766,17 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
       <div class="scroll"><table><thead><tr><th>Obra</th><th>Estado</th><th class="num">Avance</th><th class="num">Fin programado</th><th class="num">Último avance</th><th>Responsable</th></tr></thead><tbody id="obras"></tbody></table></div>
       <p class="note" id="obras-note"></p>
     </div>
+  </section>
+  <section id="dee-sec">
+    <div class="sec-head"><div><p class="eyebrow">PCM · El Peruano</p><h2>Estados de emergencia</h2></div><span class="src" id="dee-src">Decretos supremos publicados en El Peruano</span></div>
+    <p class="srcline" data-srcline="declaratorias"></p>
+    <p class="lede">Los distritos con estado de emergencia vigente por desastre, según los decretos supremos de la PCM y su anexo de distritos. Una declaratoria dura 60 días y se prorroga con otro decreto: <b>la que vence sin prórroga deja a sus distritos sin cobertura</b>. Las de criminalidad u orden interno van aparte y no cuentan.</p>
+    <div class="thesis vias-cnt" id="dee-cnt"></div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="panel"><h3 id="dee-vig-t">Decretos vigentes</h3><div class="scroll"><table><thead><tr><th>Decreto</th><th>Por qué</th><th class="num">Distritos</th><th>Hasta</th></tr></thead><tbody id="dee-vig"></tbody></table></div><p class="note" id="dee-vig-note"></p></div>
+      <div class="panel"><h3 id="dee-cob-t">Cobertura</h3><div class="scroll"><table><thead id="dee-cob-h"></thead><tbody id="dee-cob"></tbody></table></div><p class="note" id="dee-cob-note"></p></div>
+    </div>
+    <details class="panel" style="margin-top:16px"><summary id="dee-cr-t">Por criminalidad u orden interno</summary><ul class="dee-cr" id="dee-cr"></ul></details>
   </section>
   <section id="recursos-sec">
     <div class="sec-head"><div><p class="eyebrow">INDECI · Geoservicios</p><h2>Recursos declarados para la respuesta</h2></div><span class="src" id="rec-src">geosinpad.indeci.gob.pe · capas del visor del INDECI</span></div>

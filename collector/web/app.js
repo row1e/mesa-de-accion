@@ -40,7 +40,7 @@ const verMas = (mostrados, total) => total > mostrados
   ? `<li class="mas"><button type="button" class="more" data-mas>Ver ${Math.min(POR_PAGINA, total - mostrados)} más · ${total} en total</button></li>` : "";
 
 /* ── filtro por región ──────────────────────────────────────────── */
-const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "obras-sec", "recursos-sec", "sinpad-sec", "bom-sec", "com-sec", "igp-sec", "serfor-sec", "ing-sec"];
+const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "obras-sec", "dee-sec", "recursos-sec", "sinpad-sec", "bom-sec", "com-sec", "igp-sec", "serfor-sec", "ing-sec"];
 const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
 const regName = code => title(D?.regions?.find(r => r.id === code)?.n || "");
 function makeView() {
@@ -529,7 +529,7 @@ const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Mon
   senamhi_pronostico: "SENAMHI · Pronóstico por ciudad", corresponsales: "Reporte de corresponsal", indeci: "INDECI · COEN", firms: "NASA FIRMS",
   enfen: "ENFEN · Comisión Multisectorial", com_pnp: "PNP · Comunicados (gob.pe)", com_provias: "PROVIAS Nacional · Notas de prensa (gob.pe)",
   provias: "PROVIAS Nacional · Emergencias viales", bomberos: "CGBVP · Bomberos · Emergencias 24 horas", dhn_avisos: "DHN · Avisos especiales de oleaje y viento",
-  olas_openmeteo: "Open-Meteo Marine · modelo referencial", ana_obras: "ANA · Obras de prevención (puntos críticos 2026)", indeci_recursos: "INDECI · Recursos declarados ante el FEN", sinpad_historial: "INDECI · SINPAD (historial)", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
+  olas_openmeteo: "Open-Meteo Marine · modelo referencial", ana_obras: "ANA · Obras de prevención (puntos críticos 2026)", indeci_recursos: "INDECI · Recursos declarados ante el FEN", sinpad_historial: "INDECI · SINPAD (historial)", declaratorias: "PCM · Estados de emergencia (El Peruano)", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
 const refId = r => r && `${r.source}|${r.kind}|${r.key}`;
 let detailReq = 0;
 function closeDetail() {
@@ -729,6 +729,8 @@ function renderRail() {
       <dt>Recursos INDECI</dt><dd>${(() => { const ms = (V.recursos?.maquinaria || []).filter(m => m.prov === p.id), ps = (V.recursos?.puntos || []).filter(r => r.prov === p.id);
         const partes = [ms.length ? `${nf.format(d3.sum(ms, m => m.cantidad))} máquinas` : "", ...d3.rollups(ps, v => v.length, r => r.tipo).map(([t, k]) => recCuenta(t, k))].filter(Boolean);
         return partes.length ? `${partes.join(" · ")} <a href="#recursos-sec" class="muted">ver</a>` : "—"; })()}</dd>
+      <dt>Emergencia</dt><dd>${(() => { const e = D.declaratorias?.por_prov?.[p.id]; if (!D.declaratorias) return "—"; if (!e) return "Sin declaratoria por desastre vigente";
+        const dias = deeDias(e.hasta); return `${e.n}${e.total ? ` de ${e.total}` : ""} distritos · hasta ${fmtDay(e.hasta)} ${deeChip(dias)} <a href="#" data-dee="${esc(e.decretos[0] || "")}" class="muted">DS ${esc(e.decretos.join(", "))}</a>`; })()}</dd>
       <dt>SINPAD</dt><dd>${(() => { const s = D.sinpad?.por_prov?.[p.id]; if (!s) return "—"; const pk = d3.greatest(Object.entries(s), ([, v]) => v[2]);
         return pk && pk[1][2] ? `peor año ${pk[0]}: ${nf.format(pk[1][2])} damnificados <span class="muted">(corte ${fmtDay(D.sinpad.fecha_corte)})</span>` : "—"; })()}</dd>
       <dt>Mar (DHN)</dt><dd>${(() => { const r = ["oleaje", "viento"].map(t => [t, marProvs(t)[p.id]]).filter(([, v]) => v); return r.length ? r.map(([t, v]) => `${t} ${MAR_PAL[t][v.n]} <a href="#" data-mar="${esc(v.a._key)}">N° ${esc(v.a.numero)}</a>`).join(" · ") : "—"; })()}</dd>
@@ -978,6 +980,54 @@ $("#rec").addEventListener("click", e => { const tr = e.target.closest("tr[data-
 $("#rec-mapa").addEventListener("click", () => {
   state.layers.recursos = !state.layers.recursos; renderLayers(); renderPoints(); renderRecursos();
   if (state.layers.recursos) $("#mapa").scrollIntoView({behavior: "smooth", block: "start"});
+});
+// ── Estados de emergencia (decretos de la PCM en El Peruano, fuente declaratorias) ──
+const deeDias = iso => iso ? Math.round((new Date(iso + "T12:00:00") - new Date(new Date().toLocaleDateString("en-CA", {timeZone: "America/Lima"}) + "T12:00:00")) / 864e5) : null;
+const deeChip = d => d == null ? "" : `<span class="dee-dias ${d <= (D.declaratorias?.pronto_dias || 15) ? "pronto" : ""}">${d < 0 ? "vencida" : d === 0 ? "vence hoy" : `${d} día${d === 1 ? "" : "s"}`}</span>`;
+function renderDeclaratorias() {
+  const E = D.declaratorias, R = state.region;
+  if (!E) { $("#dee-vig").innerHTML = `<tr><td colspan="4" class="muted">Las declaratorias aún no se han leído.</td></tr>`; $("#dee-cnt").innerHTML = ""; return; }
+  const enLugar = R ? ` en ${esc(regName(R))}` : "";
+  const vig = E.vigentes.map(v => ({...v, nR: R ? (v.por_reg[R] || 0) : v.n})).filter(v => v.nR);
+  const nDist = R ? (E.por_reg[R]?.n || 0) : E.n_distritos;
+  const prox = vig.reduce((m, v) => v.dias != null && (m == null || v.dias < m.dias) ? v : m, null);
+  $("#dee-src").textContent = `El Peruano · leído hasta el ${E.leido_hasta ? fmtDay(E.leido_hasta) : "—"}`;
+  $("#dee-cnt").innerHTML = [[nDist, `distritos con estado de emergencia por desastre${enLugar}`, nDist ? "--n4" : "--ok"],
+    [vig.length, vig.length === 1 ? "decreto vigente" : "decretos vigentes", "--ink-2"],
+    [prox ? prox.dias : "—", prox ? `días para que venza el DS ${esc(prox.numero)} (${fmtDay(prox.fin)})` : "sin vencimientos", prox && prox.dias <= E.pronto_dias ? "--n4" : "--n2"]]
+    .map(([k, t2, c]) => `<div><div class="big num" style="color:var(${c})">${typeof k === "number" ? nf.format(k) : k}</div><p>${t2}</p></div>`).join("");
+  $("#dee-vig-t").textContent = `Decretos vigentes${R ? ` en ${regName(R)}` : ""}`;
+  $("#dee-vig").innerHTML = vig.map(v => `<tr class="clk" data-dee="${esc(v.numero)}" tabindex="0">
+      <td><b>DS ${esc(v.numero)}</b><div class="muted" style="font-size:12px">${v.tipo === "prorroga" ? `prórroga${v.prorroga_de.length ? ` del ${esc(v.prorroga_de.join(", "))}` : ""}` : "declaratoria"} · publicado ${fmtDay(v.publicado)}</div></td>
+      <td>${esc(v.causa || "")}${v.fenomeno ? `<div class="muted" style="font-size:12px">${esc(v.fenomeno)}</div>` : ""}</td>
+      <td class="num">${nf.format(v.nR)}${R && v.n !== v.nR ? `<div class="muted" style="font-size:12px">de ${nf.format(v.n)}</div>` : ""}</td>
+      <td>${v.fin ? fmtDay(v.fin) : "—"} ${deeChip(v.dias)}</td></tr>`).join("")
+    || `<tr><td colspan="4" class="muted">Ningún decreto de emergencia por desastre vigente${enLugar}.</td></tr>`;
+  $("#dee-vig-note").textContent = `Vencen en ${E.pronto_dias} días o menos: en rojo. El plazo corre desde el día que indica el decreto (o el siguiente a su publicación). Clic en un decreto para ver sus distritos y el texto oficial.`;
+  // cobertura: departamentos (nacional) o provincias del departamento elegido
+  const filas = R ? Object.entries(E.por_prov).filter(([p]) => p.startsWith(R)).map(([k, x]) => ({k, ...x, nom: provName(k) || k}))
+                  : Object.entries(E.por_reg).map(([k, x]) => ({k, ...x, nom: regName(k) || k}));
+  filas.sort((a, b) => (a.hasta || "").localeCompare(b.hasta || "") || b.n - a.n);
+  $("#dee-cob-t").textContent = R ? `Provincias de ${regName(R)}` : "Departamentos";
+  $("#dee-cob-h").innerHTML = `<tr><th>${R ? "Provincia" : "Departamento"}</th><th class="num">Distritos</th><th>Cubierto hasta</th></tr>`;
+  $("#dee-cob").innerHTML = filas.map(f => `<tr class="clk" ${R ? `data-prov="${f.k}"` : `data-reg="${f.k}"`} tabindex="0"><td>${esc(f.nom)}</td>
+      <td class="num">${nf.format(f.n)}${f.total ? `<span class="muted"> de ${f.total}</span>` : ""}</td><td>${f.hasta ? fmtDay(f.hasta) : "—"} ${deeChip(deeDias(f.hasta))}</td></tr>`).join("")
+    || `<tr><td colspan="3" class="muted">Sin cobertura vigente${enLugar}.</td></tr>`;
+  $("#dee-cob-note").textContent = R ? "Distritos cubiertos de cada provincia y la fecha en que vence la primera de sus declaratorias. Clic para marcarla en el mapa."
+                                     : "Clic en un departamento para filtrar el tablero. «Cubierto hasta» es el primer vencimiento entre sus distritos.";
+  const cr = E.crimen.filter(c => !R || (c.regs || []).includes(R));
+  $("#dee-cr-t").textContent = `Por criminalidad u orden interno · ${cr.length} decreto${cr.length === 1 ? "" : "s"} en los últimos 60 días${enLugar}`;
+  $("#dee-cr").innerHTML = cr.map(c => `<li data-dee="${esc(c.key)}"><b>DS ${esc(c.numero || "")}</b> <span class="muted">· ${fmtDay(c.publicado)}</span><div style="font-size:13px">${esc(c.sumilla || "")}</div></li>`).join("")
+    || `<li class="muted">Ninguno${enLugar}.</li>`;
+}
+["#dee-vig", "#dee-cr", "#rail"].forEach(sel => $(sel).addEventListener("click", e => {
+  const el = e.target.closest("[data-dee]"); if (!el || !el.dataset.dee) return;
+  e.preventDefault(); openDetail({source: "declaratorias", kind: "decreto", key: el.dataset.dee});
+}));
+$("#dee-cob").addEventListener("click", e => {
+  const tr = e.target.closest("tr"); if (!tr) return;
+  if (tr.dataset.reg) setRegion(tr.dataset.reg);
+  else if (tr.dataset.prov) { state.sel = tr.dataset.prov; renderAll(); $("#mapa").scrollIntoView({behavior: "smooth", block: "start"}); }
 });
 // ── Historial SINPAD por año ───────────────────────────────────────────────
 const SP_M = [[2, "Damnificados"], [3, "Afectados"], [0, "Emergencias"], [5, "Viv. destruidas"], [4, "Fallecidos"]];
@@ -1257,7 +1307,7 @@ $("#pq").addEventListener("input", () => D && filterPron());
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
   indeci: "INDECI", indeci_fotos: "INDECI fotos", igp: "IGP sismos", serfor: "SERFOR incendios", ingemmet: "INGEMMET", enfen: "ENFEN", firms: "NASA FIRMS",
   com_pnp: "PNP comunicados", com_provias: "PROVIAS notas", com_mtc: "MTC notas", com_mininter: "MININTER notas",
-  provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras", indeci_recursos: "INDECI recursos", sinpad_historial: "SINPAD historial"};
+  provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras", indeci_recursos: "INDECI recursos", sinpad_historial: "SINPAD historial", declaratorias: "Estados de emergencia"};
 const LAT = {rows: [], counts: {}, more: false, next: null, req: 0};
 function writeHash() {
   const p = [state.region && `r=${state.region}`, state.latSource && `f=${state.latSource}`].filter(Boolean).join("&");
@@ -1515,7 +1565,7 @@ function renderAll() {
   if (state.uvDay >= uvDays.length) state.uvDay = 0;
   renderRegionBar(); renderHealth(); renderThesis(); renderLayers(); renderMapAll();
   if (first && state.region) { const f = D.geo.deps.features.find(f => f.properties.id === state.region); if (f) zoomToFeature(f); }
-  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderRecursos(); renderSinpad(); renderBomberos(); renderReportes(); renderPron();
+  renderEnfen(); renderAvisos(); renderIndeci(); renderDanos(); renderStrip(); renderComunicados(); renderSismos(); renderSerfor(); renderZonas(); renderVias(); renderMar(); renderObras(); renderDeclaratorias(); renderRecursos(); renderSinpad(); renderBomberos(); renderReportes(); renderPron();
   $("#f-built").textContent = `Snapshot ${V.built} · armado en ${V.buildMs} ms`;
 }
 loadSnapshot().then(() => { lastSig = sigOf(H); loadLatest(); cargarReportes(); }).catch(() => { $("#conn").className = "conn off"; $("#conn").textContent = "Sin conexión con el colector"; });

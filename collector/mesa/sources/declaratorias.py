@@ -32,7 +32,7 @@ SOLAPE = 3                   # días que se releen en cada vuelta (publicaciones
 VENTANA = 31                 # días por consulta
 PAUSA = 5.0                  # segundos entre consultas a El Peruano
 MAX_PAGINAS = 50
-LECTOR_V = 3                 # subir al mejorar la lectura: los decretos leídos con otra versión se vuelven a procesar
+LECTOR_V = 4                 # subir al mejorar la lectura: los decretos leídos con otra versión se vuelven a procesar
 
 MESES = {m: i for i, m in enumerate(["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
                                      "septiembre", "octubre", "noviembre", "diciembre"], 1)}
@@ -299,9 +299,9 @@ def leer_anexo(texto, cat):
     distritos numerados; los nombres largos pueden venir partidos en dos líneas."""
     i = texto.upper().rfind("ANEXO")
     if i < 0:
-        return [], []
+        return [], [], {}
     dep = prov = None
-    pend, ubigeos, sueltos = [], [], []
+    pend, ubigeos, sueltos, nombres = [], [], [], {}
     distrito_pend = None                     # distrito numerado que aún no se resolvió (puede seguir en la línea siguiente)
 
     def resolver_distrito(nombre):
@@ -326,6 +326,7 @@ def leer_anexo(texto, cat):
             ub = resolver_distrito(nombre)
             if ub:
                 ubigeos.append(ub)
+                nombres[ub] = nombre
                 distrito_pend = None
             else:
                 distrito_pend = nombre
@@ -334,6 +335,7 @@ def leer_anexo(texto, cat):
             ub = resolver_distrito(f"{distrito_pend} {ln}")
             if ub:
                 ubigeos.append(ub)
+                nombres[ub] = f"{distrito_pend} {ln}"
                 distrito_pend = None
                 continue
         pend = (pend + [ln])[-3:]
@@ -361,7 +363,7 @@ def leer_anexo(texto, cat):
                 break
     if distrito_pend:
         sueltos.append(distrito_pend)
-    return list(dict.fromkeys(ubigeos)), sueltos
+    return list(dict.fromkeys(ubigeos)), sueltos, nombres
 
 
 # Nombre propio: palabras con mayúscula inicial, unidas solo por «de/del/la/las/los» seguidos de otra mayúscula.
@@ -374,7 +376,7 @@ def leer_en_texto(art1, cat):
     """Decretos chicos sin Anexo: «… en los distritos de A, B y C de la provincia de P, y en el distrito de D de la provincia
     de Q, del departamento de R …». Se toma cada grupo «distrito(s) … provincia» y el departamento que le sigue."""
     t = re.sub(r"\s+", " ", art1)
-    ubigeos, sueltos = [], []
+    ubigeos, sueltos, nombres = [], [], {}
     patron = re.compile(r"(?i:distritos?)\s+(?:de\s+)?(.+?)\s+(?i:de la provincia)\s+(?P<ydep>(?i:y departamento)\s+)?"
                         r"(?:(?i:constitucional)\s+)?(?:de\s+|del\s+)?(?P<prov>" + _NOMBRE + r")")
     for m in patron.finditer(t):
@@ -394,7 +396,9 @@ def leer_en_texto(art1, cat):
                 continue
             ub = cat.dist(prov, nombre)
             (ubigeos if ub else sueltos).append(ub or nombre)
-    return list(dict.fromkeys(ubigeos)), sueltos
+            if ub:
+                nombres[ub] = nombre
+    return list(dict.fromkeys(ubigeos)), sueltos, nombres
 
 
 def _html_texto(url, op):
@@ -436,10 +440,10 @@ def leer_decreto(h, cat):
     texto = _pdf_texto(rec["pdf"], numero or h["op"])
     rec.update(leer_articulo1(texto, publicado))
     rec["motivo"] = motivo(sumilla, rec["articulo1"])
-    rec["distritos"], rec["sin_resolver"] = leer_anexo(texto, cat)
+    rec["distritos"], rec["sin_resolver"], rec["nombres"] = leer_anexo(texto, cat)
     if not rec["distritos"]:
         # sin Anexo: los distritos van en el texto del artículo 1
-        rec["distritos"], rec["sin_resolver"] = leer_en_texto(rec["articulo1"], cat)
+        rec["distritos"], rec["sin_resolver"], rec["nombres"] = leer_en_texto(rec["articulo1"], cat)
         rec["lectura"] = "texto del artículo 1"
     if not rec["distritos"] and not (rec["tipo"] == "prorroga" and rec["prorroga_de"]):
         rec["error"] = "no se pudo leer el anexo de distritos"
@@ -556,3 +560,62 @@ def declaratorias():
     if errores:
         msg += f"; sin anexo legible: {', '.join(errores[:5])}"
     return len(todos), len(nuevos), msg
+
+
+# ── para el tablero (snapshot) ───────────────────────────────────────────────────────────────────────────
+
+PRONTO = 15                  # días: una declaratoria que vence en menos se marca para decidir su prórroga
+
+
+def para_tablero():
+    """Declaratorias por desastre vigentes hoy, su cobertura por departamento y provincia, las que vencen pronto y las
+    recientes por criminalidad (sin anexo de distritos: se listan, no se mapean)."""
+    hoy = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-5))).date()
+    decs = db.get_items(SRC, "decreto", current_only=False)
+    if not decs:
+        return None
+    cob = db.get_items(SRC, "distrito")
+    total_prov = defaultdict(int)
+    for r in db.get_items("midis", "distrito"):
+        if r.get("ubigeo"):
+            total_prov[r["ubigeo"][:4]] += 1
+    vig_num = defaultdict(lambda: defaultdict(int))     # número → reg → distritos cubiertos por ese decreto hoy
+    por_prov, por_reg = {}, {}
+    for c in cob:
+        if not c.get("vigente"):
+            continue
+        ub, hasta = c["ubigeo"], c.get("cubierto_hasta")
+        p = por_prov.setdefault(ub[:4], {"n": 0, "total": total_prov.get(ub[:4]), "hasta": hasta, "decretos": set()})
+        p["n"] += 1
+        p["hasta"] = min(p["hasta"], hasta) if p["hasta"] and hasta else p["hasta"] or hasta
+        r = por_reg.setdefault(ub[:2], {"n": 0, "hasta": hasta, "decretos": set()})
+        r["n"] += 1
+        r["hasta"] = min(r["hasta"], hasta) if r["hasta"] and hasta else r["hasta"] or hasta
+        for v in c.get("vigentes") or []:
+            vig_num[v["numero"]][ub[:2]] += 1
+            p["decretos"].add(v["numero"])
+            r["decretos"].add(v["numero"])
+    for x in (*por_prov.values(), *por_reg.values()):
+        x["decretos"] = sorted(x["decretos"])
+    por_numero = {d.get("numero"): d for d in decs if d.get("numero")}
+    vigentes = []
+    for num, regs in vig_num.items():
+        d = por_numero.get(num) or {}
+        dias = (datetime.date.fromisoformat(d["fin"]) - hoy).days if d.get("fin") else None
+        vigentes.append({"numero": num, "key": num, "tipo": d.get("tipo"), "causa": d.get("causa"), "fenomeno": d.get("fenomeno"),
+                         "inicio": d.get("inicio"), "fin": d.get("fin"), "dias": dias, "publicado": d.get("publicado"),
+                         "n": sum(regs.values()), "por_reg": dict(regs), "prorroga_de": d.get("prorroga_de") or [],
+                         "url": d.get("url"), "pdf": d.get("pdf")})
+    vigentes.sort(key=lambda v: (v["fin"] or "9999", -v["n"]))
+    desde = (hoy - datetime.timedelta(days=60)).isoformat()
+    crimen = sorted(({"numero": d.get("numero"), "key": d.get("numero") or f"op-{d['op']}", "publicado": d.get("publicado"),
+                      "sumilla": d.get("sumilla"), "url": d.get("url"), "regs": geo.regions_mentioned(d.get("sumilla") or "")}
+                     for d in decs if d.get("motivo") == "criminalidad" and (d.get("publicado") or "") >= desde),
+                    key=lambda d: d["publicado"], reverse=True)
+    estado = db.get_item(SRC, "estado", "cursor") or {}
+    return {"hoy": hoy.isoformat(), "vigentes": vigentes, "por_prov": por_prov, "por_reg": por_reg,
+            "n_distritos": sum(r["n"] for r in por_reg.values()), "pronto_dias": PRONTO,
+            "pronto": [v for v in vigentes if v["dias"] is not None and v["dias"] <= PRONTO],
+            "crimen": crimen[:20], "leido_hasta": estado.get("leido_hasta"),
+            "nota": ("Declaratorias de estado de emergencia por desastre publicadas en El Peruano (decretos supremos de la "
+                     "PCM), con los distritos de su anexo. Las de criminalidad u orden interno se listan aparte y no cuentan.")}

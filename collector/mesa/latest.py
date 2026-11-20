@@ -32,7 +32,8 @@ def _ocurrencia(rec, it=None):
 FEED_KINDS = [("senamhi_avisos", "aviso"), ("senamhi_hidro", "aviso_estacion"), ("indeci", "item"), ("igp", "sismo"),
               ("serfor", "alerta"), ("serfor", "foco"), ("ingemmet", "zona_alerta"), ("enfen", "comunicado"),
               ("com_pnp", "noticia"), ("com_provias", "noticia"), ("com_mtc", "noticia"), ("com_mininter", "noticia"),
-              ("firms", "deteccion"), ("provias", "emergencia"), ("bomberos", "parte"), ("dhn_avisos", "aviso_dhn"), ("corresponsales", "reporte")]
+              ("firms", "deteccion"), ("provias", "emergencia"), ("bomberos", "parte"), ("dhn_avisos", "aviso_dhn"), ("corresponsales", "reporte"),
+              ("declaratorias", "decreto")]
 # expresión SQL con la fecha propia de cada tipo: desempata registros recibidos en el mismo lote (p. ej. la carga inicial)
 EVENT_SQL = {"aviso": "json_extract(payload,'$.emision') || printf('%05d', json_extract(payload,'$.nro'))",
              "aviso_estacion": "json_extract(payload,'$.fecha_hora')", "item": "json_extract(payload,'$.ts')",
@@ -42,7 +43,8 @@ EVENT_SQL = {"aviso": "json_extract(payload,'$.emision') || printf('%05d', json_
              "comunicado": "key", "noticia": "json_extract(payload,'$.fecha')",
              "deteccion": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')", "zona_alerta": "key", "emergencia": "json_extract(payload,'$.fecha')",
              "parte": "json_extract(payload,'$.fecha') || json_extract(payload,'$.hora')",
-             "aviso_dhn": "json_extract(payload,'$.inicio') || json_extract(payload,'$.numero')", "reporte": "key"}
+             "aviso_dhn": "json_extract(payload,'$.inicio') || json_extract(payload,'$.numero')", "reporte": "key",
+             "decreto": "json_extract(payload,'$.publicado') || key"}
 UPDATES = {"senamhi_uv": ("prono_ruv.json", "Índice UV actualizado"),
            "senamhi_pronostico": ("pronostico.html", "Pronóstico por ciudad actualizado")}
 
@@ -126,7 +128,31 @@ def summarize(source, kind, it):
     if kind == "deteccion":
         return base | {"title": "Detección VIIRS (NASA FIRMS)", "subtitle": f"Confianza {it.get('conf')} · FRP {it.get('frp')} MW",
                        "event_time": f"{it['fecha']} {it['hora'][:2]}:{it['hora'][2:]} UTC", "reg": geo.region_of_point(it["lon"], it["lat"])}
+    if kind == "decreto":
+        return base | _decreto(it)
     return base | {"title": it["_key"], "subtitle": kind}
+
+
+MOTIVO = {"desastre": "por desastre", "criminalidad": "por criminalidad u orden interno", "otro": ""}
+
+
+def _decreto(it):
+    """Un decreto de estado de emergencia (fuente declaratorias): una fila por decreto, no por distrito."""
+    # el tipo solo se lee del texto en los de desastre; en los demás lo dice la sumilla («Decreto Supremo que prorroga…»)
+    prorroga = it.get("tipo") == "prorroga" or (not it.get("tipo") and re.search(r"\bprorroga", it.get("sumilla") or "", re.I))
+    accion = "Prórroga del estado de emergencia" if prorroga else "Estado de emergencia"
+    regs = sorted({u[:2] for u in it.get("distritos") or []}) or geo.regions_mentioned(it.get("sumilla") or "")
+    if it.get("motivo") == "desastre":
+        partes = [f"{it.get('causa') or 'desastre'}: {it.get('fenomeno')}" if it.get("fenomeno") else it.get("causa"),
+                  f"{len(it.get('distritos') or [])} distritos" if it.get("distritos") else None,
+                  f"del {it['inicio']} al {it['fin']}" if it.get("inicio") and it.get("fin") else None]
+        sub = " · ".join(p for p in partes if p)
+    else:
+        sub = it.get("sumilla") or ""
+    return {"title": f"{accion} {MOTIVO.get(it.get('motivo'), '')} · DS {it.get('numero') or it['_key']}".replace("  ", " "),
+            "subtitle": sub[:300], "event_time": it.get("publicado"), "regs": regs,
+            "place": ", ".join(geo.region_name(r) for r in regs[:4]) + (f" y {len(regs) - 4} más" if len(regs) > 4 else "") if regs else "Nacional",
+            "level": 3 if it.get("motivo") == "desastre" else None}
 
 
 BACKFILL_WINDOW = 3600   # lo recibido en la primera hora de una fuente es su carga histórica

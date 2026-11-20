@@ -10,7 +10,7 @@ import html
 import re
 import urllib.parse
 
-from . import config, db, indeci_pdf
+from . import config, db, geo, indeci_pdf
 from .http import fetch, fetch_json, fetch_text
 from .sources.others import SERFOR, foto_via_local
 
@@ -302,6 +302,52 @@ def _f_aviso_dhn(it, ex):
             "facts": facts, "text": it.get("texto"), "links": links, "fields": {k: v for k, v in it.items() if not k.startswith("_") and k != "texto"}}
 
 
+def _f_decreto(it, ex):
+    """Ficha de un decreto de estado de emergencia (fuente declaratorias): plazo, días restantes y sus distritos por
+    departamento y provincia, con el nombre oficial del anexo (el catálogo del MIDIS recorta algunos)."""
+    import datetime
+    from collections import defaultdict
+    hoy = datetime.date.today().isoformat()
+    accion = "Prórroga del estado de emergencia" if it.get("tipo") == "prorroga" else "Declaratoria de estado de emergencia"
+    vigente = bool(it.get("inicio") and it.get("fin") and it["inicio"] <= hoy <= it["fin"])
+    dias = (datetime.date.fromisoformat(it["fin"]) - datetime.date.today()).days if it.get("fin") else None
+    estado = (f"Vigente · vence en {dias} días ({it['fin']})" if vigente else
+              f"Vencida el {it['fin']}" if it.get("fin") and it["fin"] < hoy else
+              f"Empieza el {it['inicio']}" if it.get("inicio") and it["inicio"] > hoy else None)
+    provs = geo.provinces()
+    nombres = it.get("nombres") or {}
+    arbol = defaultdict(lambda: defaultdict(list))
+    for ub in it.get("distritos") or []:
+        arbol[ub[:2]][ub[:4]].append((nombres.get(ub) or ub).title())
+    lineas = []
+    for reg in sorted(arbol):
+        n_reg = sum(len(v) for v in arbol[reg].values())
+        lineas.append(f"{geo.region_name(reg).upper()} — {n_reg} distrito{'s' if n_reg != 1 else ''}")
+        for prov in sorted(arbol[reg]):
+            ds = sorted(arbol[reg][prov])
+            lineas.append(f"  {(provs.get(prov) or {}).get('nombre', prov).title()} ({len(ds)}): {', '.join(ds)}")
+    texto = "\n".join(lineas)
+    if it.get("sin_resolver"):
+        texto += (f"\n\nNombres del anexo que no se pudieron ubicar ({len(it['sin_resolver'])}): {', '.join(it['sin_resolver'][:40])}"
+                  + ("…" if len(it["sin_resolver"]) > 40 else ""))
+    if it.get("motivo") != "desastre":
+        texto = it.get("articulo1") or it.get("sumilla") or ""
+    facts = [["Motivo", {"desastre": "Desastre", "criminalidad": "Criminalidad u orden interno"}.get(it.get("motivo"), "Otro")],
+             ["Causa", it.get("causa")], ["Fenómeno", it.get("fenomeno")], ["Estado", estado],
+             ["Plazo", f"{it['plazo_dias']} días calendario" if it.get("plazo_dias") else None],
+             ["Desde", it.get("inicio")], ["Hasta", it.get("fin")], ["Publicado", it.get("publicado")],
+             ["Prorroga", ", ".join(f"DS {p}" for p in it.get("prorroga_de") or []) or None],
+             ["Distritos", f"{len(it.get('distritos') or [])} en {len(arbol)} departamento{'s' if len(arbol) != 1 else ''}" if it.get("distritos") else None],
+             ["Lectura", it.get("lectura")], ["Aviso", it.get("error")]]
+    links = [{"label": "El Peruano · texto oficial", "url": it["url"]}] if it.get("url") else []
+    if it.get("pdf"):
+        links.append({"label": "Decreto con anexo (PDF)", "url": it["pdf"]})
+    return {"title": f"{accion} · DS {it.get('numero') or it['_key']}", "subtitle": it.get("sumilla"),
+            "level": 3 if it.get("motivo") == "desastre" and vigente else None,
+            "facts": [f for f in facts if f[1]], "text": texto, "links": links,
+            "fields": {k: v for k, v in it.items() if not k.startswith("_") and k not in ("articulo1", "nombres", "distritos")}}
+
+
 def _f_ola_punto(it, ex):
     nombres = ("Próximas 24 h", "De 24 a 48 h", "De 48 a 72 h")
     facts = [[n, f"{v['ola_max_m']} m (máx. a las {v['hora_max'][11:]} del {v['hora_max'][8:10]}/{v['hora_max'][5:7]}) · de {v['direccion']}° · período {v['periodo_s']} s"
@@ -518,4 +564,5 @@ FORMAT = {
     ("senamhi_uv", "uv_zona"): _f_uv, ("senamhi_pronostico", "ciudad"): _f_pronostico,
     ("senamhi_avisos", "aviso"): _f_aviso, ("firms", "deteccion"): _f_firms, ("provias", "emergencia"): _f_provias,
     ("bomberos", "parte"): _f_bomberos, ("dhn_avisos", "aviso_dhn"): _f_aviso_dhn, ("olas_openmeteo", "punto"): _f_ola_punto, ("ana_obras", "obra"): _f_obra_ana, ("indeci_recursos", "recurso"): _f_recurso, ("corresponsales", "reporte"): _f_reporte,
+    ("declaratorias", "decreto"): _f_decreto,
 }

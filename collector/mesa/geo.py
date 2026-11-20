@@ -84,6 +84,16 @@ def region_code(name):
     return names.get(n) or names.get(re.sub(r"^(REGION|DPTO\.?|DEP\.?)\s+", "", n))
 
 
+@functools.lru_cache(maxsize=1)
+def _region_names():
+    return {f["properties"]["id"]: f["properties"]["n"].title() for f in boundaries()[0]["features"]}
+
+
+def region_name(code):
+    """Nombre del departamento (código de 2 dígitos), con mayúscula inicial; el código si no se conoce."""
+    return _region_names().get(code, code)
+
+
 def region_of_point(lon, lat):
     from shapely.geometry import Point
     pt = Point(lon, lat)
