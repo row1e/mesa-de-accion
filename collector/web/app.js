@@ -1331,7 +1331,7 @@ function lbShow() {
   const f = LB.list[LB.i];
   $("#lb-img").src = f.url; $("#lb-img").alt = fotoTitle(f);
   $("#lb-cap").innerHTML = `${esc(fotoTitle(f))}<span class="cr">${esc(f.credit || "Foto: INDECI / COER — anexo fotográfico del reporte")}${f.fecha ? " · " + esc(f.fecha) : ""} · ${LB.i + 1} de ${LB.list.length}</span>`
-    + (f.ref || f.key ? `<button type="button" data-open>${f.ref ? "Ver la ficha de la emergencia" : "Ver el reporte completo"}</button>` : "");
+    + (f.ref || f.key ? `<button type="button" data-open>${f.abrir || (f.ref ? "Ver la ficha de la emergencia" : "Ver el reporte completo")}</button>` : "");
   $("#lb").querySelectorAll(".lb-nav").forEach(b => b.hidden = LB.list.length < 2);
 }
 function openLightbox(list, i = 0) { LB.list = list; LB.i = i; lbShow(); $("#lb").hidden = false; $("#lb .lb-x").focus(); }
@@ -1469,9 +1469,17 @@ function renderComunicados() {
   if (clave !== comClave) { comClave = clave; comTope = COM_PASO; }
   const rows = todas.slice(0, comTope);
   const boot = d3.min(C, c => c._first_seen) || 0;   // el primer lote leído no cuenta como "nuevo"
+  // Tira de imágenes de los comunicados (los del filtro elegido): se recorren una tras otra en grande, como las fotos de campo
+  const FC = todas.filter(c => c.imagen).map(c => ({url: c.imagen, caption: c.titulo, fecha: c.fecha ? fmtDay(c.fecha) : c.fecha_texto, shotLabel: "Publicado el",
+    meta: c.inst_nombre, credit: `Imagen: ${c.inst_nombre} — gob.pe`, abrir: "Ver el comunicado", ref: {source: c.source || "com_" + c.inst, kind: "noticia", key: c._key}}));
+  $("#com-fotos-w").hidden = !FC.length;
+  $("#com-fotos").innerHTML = FC.map((f, i) => phHtml(f, i)).join("");
+  $("#com-fotos").onclick = e => { const b = e.target.closest(".ph"); if (b) openLightbox(FC, +b.dataset.i); };
+  $("#com-fotos-note").textContent = FC.length ? `${FC.length} imágenes, de la más reciente a la más antigua · clic para verlas en grande y pasar con las flechas` : "";
+  const iFoto = Object.fromEntries(FC.map((f, i) => [f.ref.key, i]));
   $("#com").innerHTML = rows.map(c => {
     const isNew = c._first_seen > boot + 120 && Date.now() / 1000 - c._first_seen < 3600;
-    return `<li class="${c.imagen ? "withimg" : ""}"><span class="hr">${c.fecha ? fmtDay(c.fecha) : esc(c.fecha_texto)}</span>${c.imagen ? `<a class="cthumb" href="${esc(c.url)}" target="_blank" rel="noopener" tabindex="-1"><img src="${esc(c.imagen)}" alt="" loading="lazy"></a>` : ""}<div>
+    return `<li class="${c.imagen ? "withimg" : ""}"><span class="hr">${c.fecha ? fmtDay(c.fecha) : esc(c.fecha_texto)}</span>${c.imagen ? `<button type="button" class="cthumb" data-foto="${iFoto[c._key]}" aria-label="Ver la imagen en grande"><img src="${esc(c.imagen)}" alt="" loading="lazy"></button>` : ""}<div>
       <div class="inst">${esc(c.inst_nombre)}${isNew ? ` <span class="new">nuevo</span>` : ""}</div>
       <div class="ev"><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.titulo)}</a></div>
       ${c.descripcion && c.descripcion !== c.titulo ? `<div class="d">${esc(c.descripcion)}</div>` : ""}
@@ -1482,6 +1490,7 @@ function renderComunicados() {
   $("#com-more").hidden = resto <= 0;
   $("#com-more").textContent = `Ver ${Math.min(COM_PASO, resto)} más · ${rows.length} de ${todas.length}`;
   $("#com-more").onclick = () => { comTope += COM_PASO; renderComunicados(); };
+  $("#com").querySelectorAll("[data-foto]").forEach(b => b.onclick = () => openLightbox(FC, +b.dataset.foto));
   $("#com").querySelectorAll("details").forEach(dt => dt.addEventListener("toggle", () => {
     if (!dt.open || dt.dataset.loaded) return;
     dt.dataset.loaded = "1";
