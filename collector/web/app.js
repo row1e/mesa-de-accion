@@ -34,7 +34,10 @@ const every = s => s < 3600 ? `cada ${s / 60} min` : `cada ${s / 3600} h`;
 const STATUS = { ok: "Al día", actualizando: "Actualizando", atrasada: "Atrasada", fallando: "Fallando", sin_acceso: "Sin acceso", pendiente: "Pendiente" };
 
 let D = null, V = null, H = [], lastSig = "";   // D = snapshot completo · V = vista filtrada por región
-const REP = {lista: [], filtro: "sin_verificar", firma: ""};   // reportes de corresponsales (cargarReportes)
+const REP = {lista: [], filtro: "sin_verificar", firma: "", mostrar: 20};   // reportes de corresponsales (cargarReportes)
+const POR_PAGINA = 20;   // borradores de IA y reportes de corresponsales: los más recientes primero, y "Ver más"
+const verMas = (mostrados, total) => total > mostrados
+  ? `<li class="mas"><button type="button" class="more" data-mas>Ver ${Math.min(POR_PAGINA, total - mostrados)} más · ${total} en total</button></li>` : "";
 
 /* ── filtro por región ──────────────────────────────────────────── */
 const REG_SECTIONS = ["mapa", "senamhi", "indeci-sec", "vias-sec", "mar-sec", "obras-sec", "recursos-sec", "sinpad-sec", "bom-sec", "com-sec", "igp-sec", "serfor-sec", "ing-sec"];
@@ -1036,7 +1039,7 @@ function renderReportes() {
     ["verificado", "Verificados", r => r.estado === "verificado"], ["descartado", "Descartados", r => r.estado === "descartado"]];
   $("#ciud-f").innerHTML = filtros.map(([k, t, f]) => `<button type="button" data-f="${k}" aria-pressed="${REP.filtro === k}">${t} <span class="n">${n(f)}</span></button>`).join("");
   const sel = L_.filter(filtros.find(([k]) => k === REP.filtro)[2]);
-  $("#ciud").innerHTML = sel.map(r => {
+  $("#ciud").innerHTML = sel.slice(0, REP.mostrar).map(r => {
     const m = r.medio || {}, p = r.privado || {}, a = r.archivo || {}, rev = r.revision || {};
     const quien = r.quien === "medio" ? `<span class="medio">Medio: ${esc(m.nombre || "—")}${m.canal ? ` · ${esc(m.canal)}` : ""}${m.detalle ? ` · ${esc(m.detalle)}` : ""}</span>` : r.quien === "autoridad" ? `autoridad · ${esc(r.autoridad || "")}` : "ciudadano/a";
     const url = `/api/reportes/${encodeURIComponent(r.id)}/archivo`;
@@ -1049,11 +1052,13 @@ function renderReportes() {
       ${rev.por ? `<p class="rev">${r.estado === "verificado" ? "Verificado" : r.estado === "descartado" ? "Descartado" : "Revisado"} por ${esc(rev.por)}${rev.nota ? `: ${esc(rev.nota)}` : ""}</p>` : ""}
       <div class="acc">${r.estado !== "verificado" ? `<button type="button" data-acc="verificado">Verificar</button>` : ""}${r.estado !== "descartado" ? `<button type="button" data-acc="descartado">Descartar</button>` : `<button type="button" data-acc="sin_verificar">Reabrir</button>`}
         <button type="button" data-acc="ficha">${r.estado === "verificado" ? "Redactar con IA" : "Ver ficha"}</button></div></li>`;
-  }).join("") || `<li class="muted" style="border:0;background:none">${REP.filtro === "sin_verificar" ? "No hay reportes pendientes de verificar." : "Ninguno."}</li>`;
+  }).join("") + verMas(Math.min(REP.mostrar, sel.length), sel.length)
+    || `<li class="muted" style="border:0;background:none">${REP.filtro === "sin_verificar" ? "No hay reportes pendientes de verificar." : "Ninguno."}</li>`;
   $("#ciud-note").textContent = `${L_.length} reportes${state.region ? ` en ${regName(state.region)}` : ""}. El teléfono, la ubicación exacta y el nombre (si no aceptó que se mencione) no salen de este tablero.`;
 }
-$("#ciud-f").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (b) { REP.filtro = b.dataset.f; renderReportes(); } });
+$("#ciud-f").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (b) { REP.filtro = b.dataset.f; REP.mostrar = POR_PAGINA; renderReportes(); } });
 $("#ciud").addEventListener("click", async e => {
+  if (e.target.closest("[data-mas]")) { REP.mostrar += POR_PAGINA; return renderReportes(); }
   const b = e.target.closest("[data-acc]"), li = e.target.closest("li[data-key]"); if (!b || !li) return;
   if (b.dataset.acc === "ficha") return openDetail({source: "corresponsales", kind: "reporte", key: li.dataset.key});
   const actor = iaFirmado(); if (!actor) return;
@@ -1512,7 +1517,7 @@ setInterval(() => H.length && renderHealth(), 30000);
 /* ── asistente de IA: borradores verificados ───────────────────────────
    El servidor hace todo lo que importa (verificar cifras, bloquear, citar, exigir aprobación,
    registrar). Aquí solo se muestra y se firma cada acción con el nombre de quien la hace. */
-const IA = {estado: null, filtro: "", borradores: []};
+const IA = {estado: null, filtro: "", borradores: [], mostrar: 20};
 const IA_ESTADOS = {borrador: "Por revisar", aprobado: "Aprobado", bloqueado: "Bloqueado", descartado: "Descartado"};
 const iaActor = () => { try { return localStorage.getItem("mesa.firma") || ""; } catch { return ""; } };
 function iaPedirFirma() {
@@ -1635,14 +1640,20 @@ async function iaCargar() {
   } catch { IA.borradores = []; }
   const cuenta = e => IA.borradores.filter(b => b.estado === e).length;
   seg($("#ia-filtro"), [["", "Todos"], ["borrador", "Por revisar"], ["aprobado", "Aprobados"], ["bloqueado", "Bloqueados"], ["descartado", "Descartados"]],
-    IA.filtro, v => { IA.filtro = v; iaCargar(); });
-  $("#ia-list").innerHTML = IA.borradores.map(b => `<li><button type="button" data-bid="${b.id}"><span class="iachip ${b.estado}">${IA_ESTADOS[b.estado]}</span>
+    IA.filtro, v => { IA.filtro = v; IA.mostrar = POR_PAGINA; iaCargar(); });
+  iaPintar();
+}
+function iaPintar() {
+  $("#ia-list").innerHTML = IA.borradores.slice(0, IA.mostrar).map(b => `<li><button type="button" data-bid="${b.id}"><span class="iachip ${b.estado}">${IA_ESTADOS[b.estado]}</span>
       <span class="t">${esc(b.tipo_nombre)} · ${esc(b.titulo || "")}</span>
       <span class="s">N° ${b.id} · ${esc(b.autor || "")} · ${ago(b.creado)}${b.aprobado_por ? ` · aprobado por ${esc(b.aprobado_por)}` : ""}</span></button></li>`).join("")
+    + verMas(Math.min(IA.mostrar, IA.borradores.length), IA.borradores.length)
     || `<li class="muted" style="padding:10px 2px">Aún no hay borradores${IA.filtro ? " en este estado" : ""}.</li>`;
   $("#ia-list").querySelectorAll("[data-bid]").forEach(el => el.onclick = async () => {
     iaMostrar(await (await fetch(`/api/ia/borradores/${el.dataset.bid}`)).json());
   });
+  const mas = $("#ia-list").querySelector("[data-mas]");
+  if (mas) mas.onclick = () => { IA.mostrar += POR_PAGINA; iaPintar(); };
 }
 async function iaInit() {
   try { IA.estado = await (await fetch("/api/ia/estado")).json(); } catch { IA.estado = null; }
