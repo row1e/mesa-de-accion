@@ -237,7 +237,7 @@ function initMap() {
   // zoom hasta nivel de calle (×60): los partes de bomberos en Lima están a cuadras unos de otros
   zoom = d3.zoom().scaleExtent([1, 60]).translateExtent([[-W * .15, -H_ * .15], [W * 1.15, H_ * 1.15]])
     .filter(e => e.type === "wheel" ? (e.ctrlKey || e.metaKey) : e.type === "touchstart" ? e.touches.length > 1 : !e.button)
-    .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); svg.classed("zoom-ciudades", zt.k >= 1.5); placePoints(); hideTip(); });
+    .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); svg.classed("zoom-ciudades", zt.k >= 1.5); placePoints(); rotularCiudades(); hideTip(); });
   svg.call(zoom).on("dblclick.zoom", null);
   document.querySelector(".zoom").addEventListener("click", e => {
     const z = e.target.closest("button")?.dataset.z; if (!z) return;
@@ -280,6 +280,36 @@ const CIUDADES = [
   ["Abancay", -72.881, -13.634, 2], ["Juliaca", -70.133, -15.500, 2, true], ["Moquegua", -70.936, -17.196, 2], ["Ilo", -71.338, -17.639, 2, true],
   ["Yurimaguas", -76.092, -5.900, 2],
 ];
+// Ciudades del mapa: las 33 de referencia y las 276 del pronóstico de SENAMHI (ubicadas en ref/ciudades_senamhi.json).
+// Todas llevan punto; el nombre se muestra si cabe sin pisar otro, primero las de referencia: al acercar aparecen más.
+let _ciudades = null;
+function ciudadesMapa() {
+  const pron = V?.pronostico || [];
+  if (_ciudades && _ciudades.src === pron) return _ciudades.list;
+  const base = CIUDADES.map(([n, lon, lat, t, izq]) => ({n, lon, lat, t, izq}));
+  const vistas = new Set(), extra = [];
+  for (const p of pron) {
+    const k = `${p.ciudad}|${p.departamento}`;
+    if (p.lon == null || vistas.has(k)) continue;
+    vistas.add(k);
+    if (base.some(b => Math.abs(b.lon - p.lon) < .06 && Math.abs(b.lat - p.lat) < .06)) continue;   // ya está como ciudad de referencia
+    extra.push({n: title(p.ciudad.split("/")[0].trim()), dpto: title(p.departamento), lon: p.lon, lat: p.lat, t: 3, key: k, reg: p.reg});
+  }
+  _ciudades = {src: pron, list: [...base, ...extra]};
+  return _ciudades.list;
+}
+function rotularCiudades() {
+  if (!gPts) return;
+  const nodos = gPts.selectAll(".ciudad").nodes().sort((a, b) => a.__d.t - b.__d.t), puestas = [];
+  for (const n of nodos) {
+    const txt = n.querySelector("text"), d = n.__d, [x, y] = P(n.__ll);
+    if (txt.__w == null) { txt.style.display = ""; txt.__w = txt.getComputedTextLength(); }
+    const h = d.t === 1 ? 16 : d.t === 2 ? 14 : 11, x0 = d.izq ? x - 7 - txt.__w : x + 5, x1 = d.izq ? x - 5 : x + 7 + txt.__w;
+    const libre = x1 > 0 && x0 < W && y > 0 && y < H_ && !puestas.some(b => x0 < b[2] && x1 > b[0] && y - h / 2 < b[3] && y + h / 2 > b[1]);
+    txt.style.display = libre ? "" : "none";
+    if (libre) puestas.push([x0 - 2, y - h / 2, x1 + 2, y + h / 2]);
+  }
+}
 // Bomberos: color por tipo de emergencia; más grande y con borde si sigue en atención
 const BOM_T = [["Incendio", "--fuego"], ["Materiales Peligrosos (Incidente)", "--n3"], ["Rescate", "--hidro"], ["Accidente Vehicular", "--ink-2"], ["Servicio Especial", "--ink-3"]];
 const bomColor = c => css((BOM_T.find(([t]) => t === c) || [, "--ink-3"])[1]);
@@ -329,7 +359,7 @@ const layerDefs = [
   { id: "olas", label: "Altura de ola · Open-Meteo", sw: `<i class="sw" style="background:var(--hidro);opacity:.75"></i>`, n: () => (V.mar?.puntos || []).length, unit: "puntos" },
   { id: "bomberos", label: "Bomberos · 24 h (CGBVP)", sw: `<i class="sw" style="width:12px;height:12px;border-radius:0;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:var(--fuego)"></i>`, n: () => V.bomberos.length },
   { id: "temperatura", label: "Temperatura · pronóstico SENAMHI", sw: `<i class="sw" style="background:linear-gradient(90deg,#2C6FB7,#E9E7E0,#C8372D)"></i>`, n: () => tempPuntos().length, unit: "ciudades" },
-  { id: "ciudades", label: "Ciudades de referencia", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => CIUDADES.length },
+  { id: "ciudades", label: "Ciudades (nombres)", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => ciudadesMapa().length },
   { id: "zonas", label: "Zonas críticas INGEMMET (color = nivel)", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
 // Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
@@ -711,11 +741,14 @@ function renderPoints() {
   }
   // Encima de todo y sin capturar el mouse: orientan pero no tapan los clics sobre los puntos
   if (L.ciudades) {
-    const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(CIUDADES).join("g").attr("class", d => `pt ciudad t${d[3]}`).each(function (d) { this.__ll = [d[1], d[2]]; });
-    c.append("circle").attr("r", 3.4);
-    c.append("text").attr("x", d => d[4] ? -7 : 7).attr("dy", ".35em").attr("text-anchor", d => d[4] ? "end" : "start").text(d => d[0]);
+    const lista = ciudadesMapa().filter(d => !state.region || d.t < 3 || d.reg === state.region);
+    const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(lista).join("g").attr("class", d => `pt ciudad t${d.t}`).each(function (d) { this.__ll = [d.lon, d.lat]; this.__d = d; });
+    c.append("circle").attr("r", d => d.t === 3 ? 2.4 : 3.4);
+    c.append("text").attr("x", d => d.izq ? -6 : 6).attr("dy", ".35em").attr("text-anchor", d => d.izq ? "end" : "start").text(d => d.n);
+    c.filter(d => d.key).select("circle").call(on, d => `<b>${esc(d.n)}</b> · ${esc(d.dpto)}<br><span style="opacity:.75">Ciudad del pronóstico de SENAMHI</span>`,
+      d => ({source: "senamhi_pronostico", kind: "ciudad", key: d.key}));
   }
-  placePoints(); markPicked();
+  placePoints(); rotularCiudades(); markPicked();
 }
 function renderRail() {
   let html = "", provHtml = "";
