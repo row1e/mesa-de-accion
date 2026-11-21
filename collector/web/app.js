@@ -258,8 +258,8 @@ function initMap() {
 }
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
-  olaH: 0, marZona: null, marH: "24", tempDia: 0, tempModo: "tmax",
-  layers: { reportes: true, obras: true, recursos: false, oleaje: true, viento: false, olas: false, temperatura: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
+  olaH: 0, marZona: null, marH: "24", tempDia: 0, tempModo: "tmax", ciudadesModo: "principales",
+  layers: { reportes: true, obras: true, recursos: false, oleaje: true, viento: false, olas: false, temperatura: false, rios: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -280,6 +280,17 @@ const CIUDADES = [
   ["Abancay", -72.881, -13.634, 2], ["Juliaca", -70.133, -15.500, 2, true], ["Moquegua", -70.936, -17.196, 2], ["Ilo", -71.338, -17.639, 2, true],
   ["Yurimaguas", -76.092, -5.900, 2],
 ];
+// Ríos: ref/rios.geojson (Natural Earth + ANA), dibujados con los límites para que acompañen el zoom
+let RIOS = null, riosPedido = false;
+function dibujarRios(ver) {
+  let g = gGeo.select("g.rios");
+  if (!ver) { g.remove(); return; }
+  if (!RIOS) { if (!riosPedido) { riosPedido = true; fetch("/api/rios").then(r => r.json()).then(d => { RIOS = d; renderLayers(); renderPoints(); }).catch(() => { riosPedido = false; }); } return; }
+  if (!g.empty()) return;
+  g = gGeo.insert("g", () => gDep.node()).attr("class", "rios");
+  g.selectAll("path").data(RIOS.features).join("path").attr("d", path).attr("class", f => `rio r${f.properties.r}`)
+    .on("mousemove", (e, f) => f.properties.n && showTip(e, `<b>Río ${esc(f.properties.n)}</b><br><span style="opacity:.7">${esc(f.properties.f)}</span>`)).on("mouseleave", hideTip);
+}
 // Ciudades del mapa: las 33 de referencia y las 276 del pronóstico de SENAMHI (ubicadas en ref/ciudades_senamhi.json).
 // Todas llevan punto; el nombre se muestra si cabe sin pisar otro, primero las de referencia: al acercar aparecen más.
 let _ciudades = null;
@@ -359,7 +370,8 @@ const layerDefs = [
   { id: "olas", label: "Altura de ola · Open-Meteo", sw: `<i class="sw" style="background:var(--hidro);opacity:.75"></i>`, n: () => (V.mar?.puntos || []).length, unit: "puntos" },
   { id: "bomberos", label: "Bomberos · 24 h (CGBVP)", sw: `<i class="sw" style="width:12px;height:12px;border-radius:0;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:var(--fuego)"></i>`, n: () => V.bomberos.length },
   { id: "temperatura", label: "Temperatura · pronóstico SENAMHI", sw: `<i class="sw" style="background:linear-gradient(90deg,#2C6FB7,#E9E7E0,#C8372D)"></i>`, n: () => tempPuntos().length, unit: "ciudades" },
-  { id: "ciudades", label: "Ciudades (nombres)", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => ciudadesMapa().length },
+  { id: "rios", label: "Ríos principales", sw: `<i class="sw" style="background:none;border:0;border-top:2.5px solid #2E86C1;border-radius:0;height:0;transform:translateY(3px)"></i>`, n: () => RIOS ? new Set(RIOS.features.map(f => f.properties.n).filter(Boolean)).size : 44, unit: "ríos" },
+  { id: "ciudades", label: "Ciudades (nombres)", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => state.ciudadesModo === "detalle" ? ciudadesMapa().length : CIUDADES.length },
   { id: "zonas", label: "Zonas críticas INGEMMET (color = nivel)", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
 // Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
@@ -389,11 +401,14 @@ function renderLayers() {
     : layerDefs[i].id === "recursos" ? h + `<p class="lnote">${Object.entries(REC_T).map(([t, [c]]) => `<span class="recsw" style="--c:var(${c})"></span>${esc((REC_N[t] || [t, t])[1])}`).join(" · ")}. La maquinaria se suma por provincia (triángulo, tamaño según unidades). Declarado, no necesariamente disponible.</p>`
     : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
     : layerDefs[i].id === "oleaje" ? h + `<p class="lnote">Trama sobre las provincias costeras con aviso el día elegido: amarillo ligero, naranja moderado, rojo fuerte.</p>`
+    : layerDefs[i].id === "ciudades" ? h + `<div class="lnote olah" id="ciu-ctl"><button type="button" data-c="principales" aria-pressed="${state.ciudadesModo === "principales"}">Principales</button><button type="button" data-c="detalle" aria-pressed="${state.ciudadesModo === "detalle"}">Detalle</button><span>Principales: las 33 ciudades de referencia. Detalle: suma las 276 del pronóstico; los nombres aparecen donde caben y al acercar se ven más.</span></div>`
+    : layerDefs[i].id === "rios" ? h + `<p class="lnote">Ríos principales: Natural Earth (cuenca amazónica) y ANA (costa y sierra). Pase el mouse por un río para ver su nombre.</p>`
     : layerDefs[i].id === "temperatura" ? h + `<div class="lnote olah" id="temp-ctl">${tempDias().map((d, k) => `<button type="button" data-d="${k}" aria-pressed="${state.tempDia === k}">${esc(d.replace(/^(\p{L}+),\s*(\d+) de (\p{L}+)/u, (m, a, b) => `${a.slice(0, 3)} ${+b}`))}</button>`).join("")}`
       + `<button type="button" data-m="tmax" aria-pressed="${state.tempModo === "tmax"}">Máximas</button><button type="button" data-m="tmin" aria-pressed="${state.tempModo === "tmin"}">Mínimas</button>`
       + `<span class="tleg"><i style="background:linear-gradient(90deg,${TEMP_DOM[state.tempModo].map(v => tempColor(v)).join(",")})"></i>${TEMP_DOM[state.tempModo].map(v => `<b>${v}°</b>`).join("")}</span>`
       + `<span>Pronóstico por ciudad de SENAMHI. Acerque el mapa para ver los grados; clic en una ciudad para su ficha.</span></div>`
     : layerDefs[i].id === "olas" ? h + `<div class="lnote olah" id="ola-h">${OLA_V.map((t, k) => `<button type="button" data-h="${k}" aria-pressed="${state.olaH === k}">${k === 0 ? "0–24 h" : k === 1 ? "24–48 h" : "48–72 h"}</button>`).join("")}<span>Modelo global, referencial: no es la DHN.</span></div>` : h).join("");
+  const cc = $("#ciu-ctl"); if (cc) cc.onclick = e => { const b = e.target.closest("button"); if (!b) return; state.ciudadesModo = b.dataset.c; renderLayers(); renderPoints(); };
   const tc = $("#temp-ctl"); if (tc) tc.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.d) state.tempDia = +b.dataset.d; if (b.dataset.m) state.tempModo = b.dataset.m; renderLayers(); renderPoints(); };
   const oh = $("#ola-h"); if (oh) oh.onclick = e => { const b = e.target.closest("button"); if (!b) return; state.olaH = +b.dataset.h; renderLayers(); renderPoints(); renderMar(); };
 }
@@ -731,17 +746,18 @@ function renderPoints() {
     .attr("d", d3.symbol(d3.symbolSquare, 70)).attr("fill", r => r.estado === "verificado" ? css("--ok") : css("--brand")).attr("stroke", css("--ink")).attr("stroke-width", 1.2)
     .call(on, r => `<b>Reporte de corresponsal · ${esc(r.tipo_nombre)}</b> · ${r.estado === "verificado" ? "verificado" : "sin verificar"}<br>${esc((r.descripcion || "").slice(0, 140))}<br><span style="opacity:.7">${esc(r.lugar || r.departamento || "")}</span>` + tipWhen(when(r._first_seen), "recibido"),
       r => ({source: "corresponsales", kind: "reporte", key: r._key}));
+  dibujarRios(L.rios);
   $("#map").classList.toggle("base-tenue", !!L.temperatura);   // con temperaturas, la capa base se atenúa para que se lean los colores
   if (L.temperatura) {
     const m = state.tempModo, g = layer(tempPuntos(), "g", p => [p.lon, p.lat]);
     g.append("circle").attr("r", 6).attr("fill", p => tempColor(p[m])).attr("stroke", css("--ink")).attr("stroke-width", 1);
-    g.append("text").attr("class", "temptxt").attr("x", 8).attr("dy", ".35em").text(p => `${p[m]}°`);
+    g.append("text").attr("class", "temptxt").attr("x", 0).attr("dy", "1.55em").attr("text-anchor", "middle").text(p => `${p[m]}°`);   // debajo: el nombre de la ciudad va a la derecha
     g.call(on, p => `<b>${esc(title(p.ciudad))}</b> · ${esc(title(p.departamento))}<br>${esc(p.dia)}: máx. <b>${p.tmax} °C</b> · mín. <b>${p.tmin} °C</b><br><span style="opacity:.75">${esc(p.descripcion || "")}</span>`,
       p => ({source: "senamhi_pronostico", kind: "ciudad", key: `${p.ciudad}|${p.departamento}`}));
   }
   // Encima de todo y sin capturar el mouse: orientan pero no tapan los clics sobre los puntos
   if (L.ciudades) {
-    const lista = ciudadesMapa().filter(d => !state.region || d.t < 3 || d.reg === state.region);
+    const lista = ciudadesMapa().filter(d => d.t < 3 || (state.ciudadesModo === "detalle" && (!state.region || d.reg === state.region)));
     const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(lista).join("g").attr("class", d => `pt ciudad t${d.t}`).each(function (d) { this.__ll = [d.lon, d.lat]; this.__d = d; });
     c.append("circle").attr("r", d => d.t === 3 ? 2.4 : 3.4);
     c.append("text").attr("x", d => d.izq ? -6 : 6).attr("dy", ".35em").attr("text-anchor", d => d.izq ? "end" : "start").text(d => d.n);

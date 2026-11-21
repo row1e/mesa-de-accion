@@ -103,6 +103,12 @@ def get_resumen(lugar: str | None = None):
         raise HTTPException(404, str(e)) from None
 
 
+@app.get("/api/rios", include_in_schema=False)
+def rios():
+    """Ríos principales del país para la capa del mapa (ref/rios.geojson, ver rios_mapa.py)."""
+    return FileResponse(config.REF / "rios.geojson", media_type="application/geo+json", headers={"Cache-Control": "max-age=86400"})
+
+
 @app.get("/api/lugares")
 def get_lugares():
     """Departamentos y provincias para elegir el lugar del resumen (liviano: sin geometrías)."""
