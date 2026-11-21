@@ -248,12 +248,12 @@ function initMap() {
     .on("mousemove", (e, f) => showTip(e, provTip(f.properties))).on("mouseleave", hideTip)
     .on("click", (e, f) => { state.sel = f.properties.id; renderMap(); renderRail(); showProvince(); });
   gDep.selectAll("path").data(V.geo.deps.features).join("path").attr("class","dep").attr("d", path);
-  $("#layers").addEventListener("change", e => { state.layers[e.target.dataset.l] = e.target.checked; renderPoints(); });
+  $("#layers").addEventListener("change", e => { state.layers[e.target.dataset.l] = e.target.checked; if (e.target.dataset.l === "temperatura") renderMap(); renderPoints(); });
   // Todas / Ninguna: prende o apaga de una vez todas las capas puntuales (la capa base de avisos o UV no cambia)
   document.querySelector(".layers-all").addEventListener("click", e => {
     const b = e.target.closest("button[data-all]"); if (!b) return;
     for (const l of layerDefs) state.layers[l.id] = b.dataset.all === "1";
-    renderLayers(); renderPoints();
+    renderLayers(); renderMap(); renderPoints();
   });
 }
 
@@ -370,7 +370,7 @@ const layerDefs = [
   { id: "olas", label: "Altura de ola · Open-Meteo", sw: `<i class="sw" style="background:var(--hidro);opacity:.75"></i>`, n: () => (V.mar?.puntos || []).length, unit: "puntos" },
   { id: "bomberos", label: "Bomberos · 24 h (CGBVP)", sw: `<i class="sw" style="width:12px;height:12px;border-radius:0;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:var(--fuego)"></i>`, n: () => V.bomberos.length },
   { id: "temperatura", label: "Temperatura · pronóstico SENAMHI", sw: `<i class="sw" style="background:linear-gradient(90deg,#2C6FB7,#E9E7E0,#C8372D)"></i>`, n: () => tempPuntos().length, unit: "ciudades" },
-  { id: "rios", label: "Ríos principales", sw: `<i class="sw" style="background:none;border:0;border-top:2.5px solid #2E86C1;border-radius:0;height:0;transform:translateY(3px)"></i>`, n: () => RIOS ? new Set(RIOS.features.map(f => f.properties.n).filter(Boolean)).size : 44, unit: "ríos" },
+  { id: "rios", label: "Ríos principales", sw: `<i class="sw" style="background:none;border:0;border-top:2.5px solid #2E86C1;border-radius:0;height:0;transform:translateY(3px)"></i>`, n: () => RIOS ? new Set(RIOS.features.map(f => f.properties.n).filter(Boolean)).size : 94, unit: "ríos" },
   { id: "ciudades", label: "Ciudades (nombres)", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => state.ciudadesModo === "detalle" ? ciudadesMapa().length : CIUDADES.length },
   { id: "zonas", label: "Zonas críticas INGEMMET (color = nivel)", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
@@ -391,9 +391,34 @@ function incendios() {
 const incR = n => Math.min(18, 3 + Math.sqrt(n) * 1.15);
 // Temperatura: pronóstico por ciudad de SENAMHI. Escala divergente (azul frío, gris al centro, rojo caliente), distinta
 // para máximas y mínimas porque sus rangos no se parecen.
-const TEMP_DOM = {tmax: [6, 21, 36], tmin: [-10, 6, 22]};
-const tempColor = v => d3.scaleLinear().domain(TEMP_DOM[state.tempModo]).range(["#2C6FB7", "#E9E7E0", "#C8372D"]).clamp(true)(v);
+// La escala sigue el rango del día elegido (del 5 % más frío al 5 % más caliente, centro en la mediana), así el frío y el
+// calor se distinguen siempre; la leyenda muestra los grados de cada extremo.
+const tempDom = () => {
+  const v = tempPuntos().map(p => p[state.tempModo]).sort(d3.ascending);
+  if (v.length < 5) return state.tempModo === "tmax" ? [6, 21, 36] : [-10, 6, 22];
+  const lo = Math.floor(d3.quantileSorted(v, .05)), hi = Math.ceil(d3.quantileSorted(v, .95)), me = Math.round(d3.quantileSorted(v, .5));
+  return [lo, Math.min(Math.max(me, lo + 1), hi - 1), hi];
+};
+const tempColor = v => d3.scaleLinear().domain(tempDom()).range(["#2C6FB7", "#E9E7E0", "#C8372D"]).clamp(true)(v);
 const tempDias = () => [...new Set((V?.pronostico || []).map(p => p.dia))].slice(0, 3);
+// Temperatura por provincia: promedio ponderado (1/distancia²) de las 4 ciudades del pronóstico más cercanas a su
+// centro; si una ciudad está casi en el centro, manda ella. Así el mapa se pinta entero con la "forma" del calor y del frío.
+let _tempProv = null;
+function tempProv() {
+  const pts = tempPuntos(), m = state.tempModo, clave = `${state.tempDia}|${m}`;
+  if (_tempProv && _tempProv.clave === clave && _tempProv.src === V.pronostico) return _tempProv.val;
+  const val = {};
+  for (const [id, c] of Object.entries(V.provCentroids || {})) {
+    const cos = Math.cos(c[1] * Math.PI / 180);
+    const cerca = pts.map(p => [Math.hypot((p.lon - c[0]) * cos, p.lat - c[1]), p[m]]).sort((a, b) => a[0] - b[0]).slice(0, 4);
+    if (!cerca.length || cerca[0][0] > 2.5) continue;            // a más de ~250 km de toda ciudad: sin dato
+    if (cerca[0][0] < .03) { val[id] = cerca[0][1]; continue; }
+    const w = cerca.map(([d]) => 1 / (d * d));
+    val[id] = d3.sum(cerca, (x, i) => x[1] * w[i]) / d3.sum(w);
+  }
+  _tempProv = {clave, src: V.pronostico, val};
+  return val;
+}
 const tempPuntos = () => { const d = tempDias()[state.tempDia]; return (V?.pronostico || []).filter(p => p.dia === d && p.lon != null && p[state.tempModo] != null); };
 function renderLayers() {
   $("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span></label>`).map((h, i) => layerDefs[i].id === "alertas"
@@ -402,17 +427,18 @@ function renderLayers() {
     : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
     : layerDefs[i].id === "oleaje" ? h + `<p class="lnote">Trama sobre las provincias costeras con aviso el día elegido: amarillo ligero, naranja moderado, rojo fuerte.</p>`
     : layerDefs[i].id === "ciudades" ? h + `<div class="lnote olah" id="ciu-ctl"><button type="button" data-c="principales" aria-pressed="${state.ciudadesModo === "principales"}">Principales</button><button type="button" data-c="detalle" aria-pressed="${state.ciudadesModo === "detalle"}">Detalle</button><span>Principales: las 33 ciudades de referencia. Detalle: suma las 276 del pronóstico; los nombres aparecen donde caben y al acercar se ven más.</span></div>`
-    : layerDefs[i].id === "rios" ? h + `<p class="lnote">Ríos principales: Natural Earth (cuenca amazónica) y ANA (costa y sierra). Pase el mouse por un río para ver su nombre.</p>`
+    : layerDefs[i].id === "rios" ? h + `<p class="lnote">Ríos principales: Natural Earth, ANA y OpenStreetMap. Pase el mouse por un río para ver su nombre.</p>`
     : layerDefs[i].id === "temperatura" ? h + `<div class="lnote olah" id="temp-ctl">${tempDias().map((d, k) => `<button type="button" data-d="${k}" aria-pressed="${state.tempDia === k}">${esc(d.replace(/^(\p{L}+),\s*(\d+) de (\p{L}+)/u, (m, a, b) => `${a.slice(0, 3)} ${+b}`))}</button>`).join("")}`
       + `<button type="button" data-m="tmax" aria-pressed="${state.tempModo === "tmax"}">Máximas</button><button type="button" data-m="tmin" aria-pressed="${state.tempModo === "tmin"}">Mínimas</button>`
-      + `<span class="tleg"><i style="background:linear-gradient(90deg,${TEMP_DOM[state.tempModo].map(v => tempColor(v)).join(",")})"></i>${TEMP_DOM[state.tempModo].map(v => `<b>${v}°</b>`).join("")}</span>`
+      + `<span class="tleg"><i style="background:linear-gradient(90deg,${tempDom().map(v => tempColor(v)).join(",")})"></i>${tempDom().map(v => `<b>${v}°</b>`).join("")}</span>`
       + `<span>Pronóstico por ciudad de SENAMHI. Acerque el mapa para ver los grados; clic en una ciudad para su ficha.</span></div>`
     : layerDefs[i].id === "olas" ? h + `<div class="lnote olah" id="ola-h">${OLA_V.map((t, k) => `<button type="button" data-h="${k}" aria-pressed="${state.olaH === k}">${k === 0 ? "0–24 h" : k === 1 ? "24–48 h" : "48–72 h"}</button>`).join("")}<span>Modelo global, referencial: no es la DHN.</span></div>` : h).join("");
   const cc = $("#ciu-ctl"); if (cc) cc.onclick = e => { const b = e.target.closest("button"); if (!b) return; state.ciudadesModo = b.dataset.c; renderLayers(); renderPoints(); };
-  const tc = $("#temp-ctl"); if (tc) tc.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.d) state.tempDia = +b.dataset.d; if (b.dataset.m) state.tempModo = b.dataset.m; renderLayers(); renderPoints(); };
+  const tc = $("#temp-ctl"); if (tc) tc.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.d) state.tempDia = +b.dataset.d; if (b.dataset.m) state.tempModo = b.dataset.m; renderLayers(); renderMap(); renderPoints(); };
   const oh = $("#ola-h"); if (oh) oh.onclick = e => { const b = e.target.closest("button"); if (!b) return; state.olaH = +b.dataset.h; renderLayers(); renderPoints(); renderMar(); };
 }
 function provTip(p) {
+  if (state.layers.temperatura) { const t = tempProv()[p.id]; return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${t != null ? `Temperatura ${state.tempModo === "tmax" ? "máxima" : "mínima"} estimada: <b>${Math.round(t)} °C</b>` : "Sin dato de temperatura"}<br><span style="opacity:.7">De las ciudades del pronóstico de SENAMHI más cercanas</span>`; }
   if (state.mode === "uv") { const u = V.uv[p.id]; return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${u ? `UV ${u.v[state.uvDay]} (pico ${u.h[state.uvDay]})` : "Sin zona UV"}`; }
   const c = (V.levelsByDay[state.day] || {})[p.id];
   const mar = ["oleaje", "viento"].filter(t => state.layers[t]).map(t => [t, marProvs(t)[p.id]]).filter(([, v]) => v)
@@ -426,13 +452,18 @@ function renderControls() {
 }
 function renderMap() {
   const lv = V.levelsByDay[state.day] || {};
+  const tp = state.layers.temperatura ? tempProv() : null;
   gProv.selectAll("path").attr("fill", f => {
+    if (tp) return tp[f.properties.id] != null ? tempColor(tp[f.properties.id]) : css("--land");
     if (state.mode === "uv") { const u = V.uv[f.properties.id]; return uvColor(u ? u.v[state.uvDay] : null); }
     const c = lv[f.properties.id]; return c ? css("--n" + c.m) : css("--land");
   }).classed("sel", f => f.properties.id === state.sel)
     .classed("out", f => !!state.region && !f.properties.id.startsWith(state.region));
   gDep.selectAll("path").classed("reg", f => f.properties.id === state.region);
-  $("#legend").innerHTML = state.mode === "uv"
+  $("#legend").innerHTML = tp
+    ? `<span class="tleg-map"><i style="background:linear-gradient(90deg,${d3.range(0, 1.01, .1).map(t => tempColor(tempDom()[0] + t * (tempDom()[2] - tempDom()[0]))).join(",")})"></i>${tempDom().map(v => `<b>${v} °C</b>`).join("")}</span>`
+      + `<span class="muted">Temperatura ${state.tempModo === "tmax" ? "máxima" : "mínima"} pronosticada · ${esc(tempDias()[state.tempDia] || "")} · cada provincia toma las ciudades del pronóstico más cercanas</span>`
+    : state.mode === "uv"
     ? ["0–2 bajo","3–5 moderado","6–7 alto","8–10 muy alto","11+ extremo"].map((l, i) => `<span><i style="background:var(--uv${i})"></i>${l}</span>`).join("") + `<span class="muted">Zonas UV sin provincia: ${V.uvUnmatched.length}</span>`
     : [2,3,4].map(n => `<span><i style="background:var(--n${n})"></i>Nivel ${n} · ${["","","amarillo","naranja","rojo"][n]}</span>`).join("") + `<span><i style="background:var(--land)"></i>Sin aviso o nivel 1</span>`;
 }
@@ -747,7 +778,6 @@ function renderPoints() {
     .call(on, r => `<b>Reporte de corresponsal · ${esc(r.tipo_nombre)}</b> · ${r.estado === "verificado" ? "verificado" : "sin verificar"}<br>${esc((r.descripcion || "").slice(0, 140))}<br><span style="opacity:.7">${esc(r.lugar || r.departamento || "")}</span>` + tipWhen(when(r._first_seen), "recibido"),
       r => ({source: "corresponsales", kind: "reporte", key: r._key}));
   dibujarRios(L.rios);
-  $("#map").classList.toggle("base-tenue", !!L.temperatura);   // con temperaturas, la capa base se atenúa para que se lean los colores
   if (L.temperatura) {
     const m = state.tempModo, g = layer(tempPuntos(), "g", p => [p.lon, p.lat]);
     g.append("circle").attr("r", 6).attr("fill", p => tempColor(p[m])).attr("stroke", css("--ink")).attr("stroke-width", 1);
