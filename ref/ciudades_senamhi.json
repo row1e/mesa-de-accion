@@ -1,0 +1,1658 @@
+{
+"ABANCAY|APURIMAC": {
+"como": "OpenStreetMap",
+"lat": -13.6373,
+"lon": -72.8789,
+"osm": "Abancay, Apurímac, Perú"
+},
+"ACOBAMBA|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -12.7925,
+"lon": -74.5883,
+"osm": "Acobamba, Huancavelica, 09380, Perú"
+},
+"ACOMAYO|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.9167,
+"lon": -71.6667,
+"osm": "Acomayo, Cusco, 08005, Perú"
+},
+"AGUAYTIA|UCAYALI": {
+"como": "OpenStreetMap",
+"lat": -9.0389,
+"lon": -75.5096,
+"osm": "Aguaytía, Padre Abad, Ucayali, Perú"
+},
+"ALAO|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.514,
+"lon": -76.7408,
+"osm": "San Martín Alao, San Martín, El Dorado, San Martín, Perú"
+},
+"ALTO PERÚ|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.5741,
+"lon": -69.6802,
+"osm": "Alto Perú, Palca, Tacna, Perú"
+},
+"AMBO|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -10.1667,
+"lon": -76.1667,
+"osm": "Ambo, Huánuco, Perú"
+},
+"ANANEA|PUNO": {
+"como": "OpenStreetMap",
+"lat": -14.6784,
+"lon": -69.5352,
+"osm": "Ananea, San Antonio de Putina, Puno, Perú"
+},
+"ANCO|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -13.1168,
+"lon": -73.6905,
+"osm": "Anco, La Mar, Ayacucho, Perú"
+},
+"ANDAHUAYLAS|APURIMAC": {
+"como": "OpenStreetMap",
+"lat": -13.7777,
+"lon": -73.4285,
+"osm": "Andahuaylas, Apurímac, Perú"
+},
+"ANGAMOS|LORETO": {
+"como": "OpenStreetMap",
+"lat": -3.7212,
+"lon": -71.7183,
+"osm": "Angamos, Pebas, Mariscal Ramón Castilla, Loreto, Perú"
+},
+"ANTABAMBA|APURIMAC": {
+"como": "OpenStreetMap",
+"lat": -14.4527,
+"lon": -72.7187,
+"osm": "Antabamba, Apurímac, Perú"
+},
+"ANTA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.5,
+"lon": -72.3333,
+"osm": "Anta, Cusco, Perú"
+},
+"APLAO|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.017,
+"lon": -72.5307,
+"osm": "Aplao, Castilla, Arequipa, Perú"
+},
+"AREQUIPA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.3989,
+"lon": -71.537,
+"osm": "Arequipa, 04001, Perú"
+},
+"ATALAYA|UCAYALI": {
+"como": "OpenStreetMap",
+"lat": -10.48,
+"lon": -73.0983,
+"osm": "Atalaya, Ucayali, 25201, Perú"
+},
+"ATICO|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.2085,
+"lon": -73.6233,
+"osm": "Atico, Caravelí, Arequipa, Perú"
+},
+"AUCAYACU|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -8.9317,
+"lon": -76.116,
+"osm": "Aucayacu, José Crespo y Castillo, Leoncio Prado, Huánuco, Perú"
+},
+"AYABACA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -4.7558,
+"lon": -79.774,
+"osm": "Ayabaca, Piura, Perú"
+},
+"AYACUCHO|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -13.1604,
+"lon": -74.2257,
+"osm": "Ayacucho, Huamanga, Ayacucho, 05003, Perú"
+},
+"AYAVIRI|PUNO": {
+"como": "OpenStreetMap",
+"lat": -14.9347,
+"lon": -70.62,
+"osm": "Ayaviri, Melgar, Puno, Perú"
+},
+"AZANGARO|PUNO": {
+"como": "OpenStreetMap",
+"lat": -14.8002,
+"lon": -70.1517,
+"osm": "Azángaro, Puno, 21101, Perú"
+},
+"BAGUA GRANDE|AMAZONAS": {
+"como": "OpenStreetMap",
+"lat": -5.8248,
+"lon": -78.4443,
+"osm": "Bagua Grande, Utcubamba, Amazonas, Perú"
+},
+"BAMBAMARCA|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -6.6972,
+"lon": -78.4791,
+"osm": "Bambamarca, Hualgayoc, Cajamarca, Perú"
+},
+"BELLAVISTA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -7.6842,
+"lon": -76.3153,
+"osm": "Bellavista, San Martín, Perú"
+},
+"BERNALES|ICA": {
+"como": "OpenStreetMap",
+"lat": -13.7422,
+"lon": -75.9662,
+"osm": "Bernales, Humay, Pisco, Ica, Perú"
+},
+"CABALLOCOCHA|LORETO": {
+"como": "OpenStreetMap",
+"lat": -3.9068,
+"lon": -70.5152,
+"osm": "Caballococha, Ramón Castilla, Mariscal Ramón Castilla, Loreto, Perú"
+},
+"CABANACONDE|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.6891,
+"lon": -71.9531,
+"osm": "Cabanaconde, Caylloma, Arequipa, 04124, Perú"
+},
+"CABANA|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -8.4097,
+"lon": -77.9494,
+"osm": "Cabana, Pallasca, Ancash, Perú"
+},
+"CABANILLAS|PUNO": {
+"como": "OpenStreetMap",
+"lat": -15.8267,
+"lon": -70.6434,
+"osm": "Cabanillas, San Román, Puno, Perú"
+},
+"CACHICADAN|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -8.0946,
+"lon": -78.1489,
+"osm": "Cachicadán, Santiago de Chuco, La Libertad, Perú"
+},
+"CAJABAMBA|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.5538,
+"lon": -78.0534,
+"osm": "Cajabamba, Cajamarca, Perú"
+},
+"CAJAMARCA|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.1567,
+"lon": -78.5173,
+"osm": "Cajamarca, 06001, Perú"
+},
+"CALCA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -12.9398,
+"lon": -72.0582,
+"osm": "Calca, Cusco, Perú"
+},
+"CALLANCAS|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -7.765,
+"lon": -78.4815,
+"osm": "Callancas, Charat, Otuzco, La Libertad, Perú"
+},
+"CAMANA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.4167,
+"lon": -72.8333,
+"osm": "Camaná, Arequipa, Perú"
+},
+"CANDARAVE|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.1277,
+"lon": -70.2685,
+"osm": "Candarave, Tacna, Perú"
+},
+"CANTA|LIMA": {
+"como": "OpenStreetMap",
+"lat": -11.5654,
+"lon": -76.6958,
+"osm": "Canta, Lima, 15365, Perú"
+},
+"CARAVELI|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.7605,
+"lon": -74.0577,
+"osm": "Caravelí, Arequipa, Perú"
+},
+"CARPISH|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -9.5303,
+"lon": -76.1143,
+"osm": "Área de Conservación Regional Bosque Montano de Carpish, Huánuco, Perú"
+},
+"CARUMAS|MOQUEGUA": {
+"como": "OpenStreetMap",
+"lat": -16.8093,
+"lon": -70.6948,
+"osm": "Carumas, Mariscal Nieto, Moquegua, 18400, Perú"
+},
+"CASA GRANDE|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -7.586,
+"lon": -79.2026,
+"osm": "Casa Grande, Ascope, La Libertad, Perú"
+},
+"CASAPALCA|LIMA": {
+"como": "OpenStreetMap",
+"lat": -11.6511,
+"lon": -76.2381,
+"osm": "Casapalca, Chicla, Huarochirí, Lima, Perú"
+},
+"CASCAS|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -7.5086,
+"lon": -78.7492,
+"osm": "Cascas, Gran Chimú, La Libertad, Perú"
+},
+"CASMA|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -9.4729,
+"lon": -78.2137,
+"osm": "Casma, Ancash, 02661, Perú"
+},
+"CAYALTI|LAMBAYEQUE": {
+"como": "OpenStreetMap",
+"lat": -6.8922,
+"lon": -79.562,
+"osm": "Cayaltí, Chiclayo, Lambayeque, Perú"
+},
+"CAYLLOMA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.7341,
+"lon": -71.7536,
+"osm": "Caylloma, Arequipa, Perú"
+},
+"CAÑAVERAL|TUMBES": {
+"como": "OpenStreetMap",
+"lat": -3.9422,
+"lon": -80.6512,
+"osm": "Cañaveral, Casitas, Contralmirante Villar, Tumbes, Perú"
+},
+"CELENDIN|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -6.8002,
+"lon": -78.2036,
+"osm": "Celendín, Cajamarca, Perú"
+},
+"CERRO DE PASCO|PASCO": {
+"como": "OpenStreetMap",
+"lat": -10.6836,
+"lon": -76.2561,
+"osm": "Cerro de Pasco, Chaupimarca, Pasco, Perú"
+},
+"CHACHAPOYAS|AMAZONAS": {
+"como": "OpenStreetMap",
+"lat": -6.2293,
+"lon": -77.8715,
+"osm": "Chachapoyas, Amazonas, 01001, Perú"
+},
+"CHAGLLA|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -9.8449,
+"lon": -75.9031,
+"osm": "Chaglla, Pachitea, Huánuco, Perú"
+},
+"CHALACO|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.0734,
+"lon": -79.7722,
+"osm": "Chalaco, Morropón, Piura, Perú"
+},
+"CHALHUANCA|APURIMAC": {
+"como": "OpenStreetMap",
+"lat": -14.2918,
+"lon": -73.2171,
+"osm": "Chalhuanca, Aymaraes, Apurímac, Perú"
+},
+"CHANCAY BAÑOS|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -6.5759,
+"lon": -78.8674,
+"osm": "Chancay Baños, Chancaybaños, Santa Cruz, Cajamarca, Perú"
+},
+"CHAO|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -8.5459,
+"lon": -78.5136,
+"osm": "Chao, Virú, La Libertad, 13631, Perú"
+},
+"CHAPARRA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.7388,
+"lon": -73.8619,
+"osm": "Chaparra, Caravelí, Arequipa, Perú"
+},
+"CHAVIN|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -9.5937,
+"lon": -77.1779,
+"osm": "Sitio Arqueológico de Chavín, Cochas, Chavín de Huántar, Huari, Ancash, Perú"
+},
+"CHAZUTA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.6369,
+"lon": -75.9669,
+"osm": "Chazuta, San Martín, Perú"
+},
+"CHEPEN|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -7.107,
+"lon": -79.4814,
+"osm": "Chepén, La Libertad, Perú"
+},
+"CHICLAYO|LAMBAYEQUE": {
+"como": "OpenStreetMap",
+"lat": -6.7716,
+"lon": -79.8387,
+"osm": "Chiclayo, Lambayeque, 14001, Perú"
+},
+"CHIGUATA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.37,
+"lon": -71.3575,
+"osm": "Chiguata, Arequipa, Perú"
+},
+"CHILETE|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.2214,
+"lon": -78.8397,
+"osm": "Chilete, Contumazá, Cajamarca, Perú"
+},
+"CHILUYO|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.3818,
+"lon": -69.6178,
+"osm": "Chiluyo, Chiluyo Chico, Tarata, Tacna, Perú"
+},
+"CHIMBOTE|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -9.0745,
+"lon": -78.5936,
+"osm": "Chimbote, Santa, Ancash, 02803, Perú"
+},
+"CHINCHA|ICA": {
+"como": "OpenStreetMap",
+"lat": -13.2965,
+"lon": -75.9527,
+"osm": "Chincha, Ica, Perú"
+},
+"CHIQUIÁN|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -10.1892,
+"lon": -77.1376,
+"osm": "Chiquián, Bolognesi, Ancash, Perú"
+},
+"CHIRIACO|AMAZONAS": {
+"como": "OpenStreetMap",
+"lat": -5.1594,
+"lon": -78.2871,
+"osm": "Chiriaco, Jirón Las Delicias, Chiriaco, Imaza, Bagua, Amazonas, Perú"
+},
+"CHIRINOS|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -5.304,
+"lon": -78.8982,
+"osm": "Chirinos, San Ignacio, Cajamarca, Perú"
+},
+"CHIVAY|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.6417,
+"lon": -71.5731,
+"osm": "Chivay, Caylloma, Arequipa, 04146, Perú"
+},
+"CHONGOYAPE|LAMBAYEQUE": {
+"como": "OpenStreetMap",
+"lat": -6.6327,
+"lon": -79.4708,
+"osm": "Chongoyape, Chiclayo, Lambayeque, Perú"
+},
+"CHOSICA|LIMA": {
+"como": "OpenStreetMap",
+"lat": -11.9368,
+"lon": -76.6969,
+"osm": "Chosica, Lurigancho, Lima, Lima Metropolitana, Lima, 15468, Perú"
+},
+"CHOTA|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -6.5091,
+"lon": -78.8413,
+"osm": "Chota, Cajamarca, 06126, Perú"
+},
+"CHULUCANAS|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.129,
+"lon": -80.1969,
+"osm": "Chulucanas, Morropón, Piura, Perú"
+},
+"CHUQUIBAMBA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.0369,
+"lon": -72.7997,
+"osm": "Chuquibamba, Condesuyos, Arequipa, Perú"
+},
+"COLCABAMBA|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -12.4109,
+"lon": -74.6809,
+"osm": "Colcabamba, Tayacaja, Huancavelica, Perú"
+},
+"CONTAMANA|LORETO": {
+"como": "OpenStreetMap",
+"lat": -7.9273,
+"lon": -75.5229,
+"osm": "Contamana, Ucayali, Loreto, Perú"
+},
+"CONTUMAZÁ|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.3333,
+"lon": -78.9167,
+"osm": "Contumazá, Cajamarca, Perú"
+},
+"CORACORA|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -14.8024,
+"lon": -73.7826,
+"osm": "Coracora, Parinacochas, Ayacucho, 05610, Perú"
+},
+"COSPAN|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.427,
+"lon": -78.5423,
+"osm": "Cospán, Cajamarca, Perú"
+},
+"COTAHUASI|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.2931,
+"lon": -72.8487,
+"osm": "Cotahuasi, La Unión, Arequipa, Perú"
+},
+"CRUCERO|PUNO": {
+"como": "OpenStreetMap",
+"lat": -14.3508,
+"lon": -69.9293,
+"osm": "Crucero, Carabaya, Puno, Perú"
+},
+"CURIMANÁ|UCAYALI": {
+"como": "OpenStreetMap",
+"lat": -8.434,
+"lon": -75.1532,
+"osm": "Curimaná, Padre Abad, Ucayali, Perú"
+},
+"CURPAHUASI|APURIMAC": {
+"como": "OpenStreetMap",
+"lat": -14.0635,
+"lon": -72.6703,
+"osm": "Curpahuasi, Grau, Apurímac, Perú"
+},
+"CUSCO|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.5171,
+"lon": -71.9785,
+"osm": "Cuzco, Distrito de Cusco, Cusco, 08001, Perú"
+},
+"CUSICANCHA|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -13.5025,
+"lon": -75.2936,
+"osm": "Cusicancha, San Antonio de Cusicancha, Huaytará, Huancavelica, Perú"
+},
+"CUTERVO|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -6.202,
+"lon": -78.7897,
+"osm": "Cutervo, Cajamarca, Perú"
+},
+"DESAGUADERO|PUNO": {
+"como": "OpenStreetMap",
+"lat": -16.613,
+"lon": -69.0842,
+"osm": "Desaguadero, Chucuito, Puno, Perú"
+},
+"EL ALTO|PIURA": {
+"como": "OpenStreetMap",
+"lat": -4.3054,
+"lon": -81.0931,
+"osm": "El Alto, Talara, Piura, Perú"
+},
+"EL ESTRECHO|LORETO": {
+"como": "OpenStreetMap",
+"lat": -2.4308,
+"lon": -72.6412,
+"osm": "Bosque y chacras (El Estrecho), Putumayo, Loreto, Perú"
+},
+"ENCAÑADA|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.085,
+"lon": -78.3429,
+"osm": "Encañada, Cajamarca, Perú"
+},
+"GRANJA PORCÓN|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.0722,
+"lon": -78.5975,
+"osm": "Granja Porcon, Carretera Longitudinal de la Sierra Norte, Porcon, Porcon Alto, Cajamarca, Perú"
+},
+"HIDROELÉCTRICA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.1747,
+"lon": -72.5596,
+"osm": "Hidroeléctrica, Camino a Machu picchu, Intihuatana, Machupicchu, Urubamba, Cusco, 08680, Perú"
+},
+"HUAC-HUAS|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -14.1315,
+"lon": -74.9422,
+"osm": "Huac-Huas, Lucanas, Ayacucho, Perú"
+},
+"HUACHOS|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -13.2199,
+"lon": -75.5336,
+"osm": "Huachos, Castrovirreyna, Huancavelica, Perú"
+},
+"HUACHO|LIMA": {
+"como": "OpenStreetMap",
+"lat": -11.1085,
+"lon": -77.6103,
+"osm": "Huacho, Huaura, Lima, 15136, Perú"
+},
+"HUAMACHUCO|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -7.8155,
+"lon": -78.0487,
+"osm": "Huamachuco, Sánchez Carrión, La Libertad, Perú"
+},
+"HUANCABAMBA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.4221,
+"lon": -79.5174,
+"osm": "Huancabamba, Piura, Perú"
+},
+"HUANCANE|PUNO": {
+"como": "OpenStreetMap",
+"lat": -15.0938,
+"lon": -69.571,
+"osm": "Huancané, Puno, Perú"
+},
+"HUANCANO|ICA": {
+"como": "OpenStreetMap",
+"lat": -13.6006,
+"lon": -75.6184,
+"osm": "Huancano, Pisco, Ica, Perú"
+},
+"HUANCAPI|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -13.7783,
+"lon": -74.0787,
+"osm": "Huancapi, Víctor Fajardo, Ayacucho, Perú"
+},
+"HUANCAVELICA|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -12.7873,
+"lon": -74.9731,
+"osm": "Huancavelica, 09001, Perú"
+},
+"HUANCAYO|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -12.0681,
+"lon": -75.2101,
+"osm": "Huancayo, Junín, 12001, Perú"
+},
+"HUANCA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.0339,
+"lon": -71.878,
+"osm": "Huanca, Caylloma, Arequipa, Perú"
+},
+"HUANTA|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -12.5563,
+"lon": -74.1215,
+"osm": "Huanta, Ayacucho, Perú"
+},
+"HUANUCO|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -9.9293,
+"lon": -76.2395,
+"osm": "Huánuco, 10003, Perú"
+},
+"HUARAL|LIMA": {
+"como": "OpenStreetMap",
+"lat": -11.25,
+"lon": -76.9167,
+"osm": "Huaral, Lima, 15201, Perú"
+},
+"HUARAZ|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -9.5299,
+"lon": -77.529,
+"osm": "Huaraz, Ancash, 02001, Perú"
+},
+"HUARMACA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.6832,
+"lon": -79.5763,
+"osm": "Huarmaca, Huancabamba, Piura, Perú"
+},
+"HUARMEY|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -10.0644,
+"lon": -77.9719,
+"osm": "Huarmey, Ancash, Perú"
+},
+"HUAROCHIRÍ|LIMA": {
+"como": "OpenStreetMap",
+"lat": -11.9167,
+"lon": -76.4167,
+"osm": "Huarochirí, Lima, 15500, Perú"
+},
+"HUASAHUASI|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -11.1093,
+"lon": -75.7038,
+"osm": "Huasahuasi, Tarma, Junín, Perú"
+},
+"HUAYLLABAMBA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.3249,
+"lon": -72.0386,
+"osm": "Huayllabamba, Urubamba, Cusco, 08471, Perú"
+},
+"ICA|ICA": {
+"como": "OpenStreetMap",
+"lat": -14.0641,
+"lon": -75.7291,
+"osm": "Ica, 11002, Perú"
+},
+"ICHUÑA|MOQUEGUA": {
+"como": "OpenStreetMap",
+"lat": -16.141,
+"lon": -70.5377,
+"osm": "Ichuña, General Sánchez Cerro, Moquegua, Perú"
+},
+"ILABAYA|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.3839,
+"lon": -70.5643,
+"osm": "Ilabaya, Jorge Basadre, Tacna, Perú"
+},
+"ILAVE|PUNO": {
+"como": "OpenStreetMap",
+"lat": -16.2345,
+"lon": -69.675,
+"osm": "Ilave, El Collao, Puno, Perú"
+},
+"ILO|MOQUEGUA": {
+"como": "OpenStreetMap",
+"lat": -17.5834,
+"lon": -71.2359,
+"osm": "Ilo, Moquegua, Perú"
+},
+"IMATA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.8381,
+"lon": -71.0912,
+"osm": "Imata, San Antonio de Chuca, Caylloma, Arequipa, Perú"
+},
+"INCAHUASI|LAMBAYEQUE": {
+"como": "OpenStreetMap",
+"lat": -6.2314,
+"lon": -79.372,
+"osm": "Incahuasi, Ferreñafe, Lambayeque, Perú"
+},
+"IQUITOS|LORETO": {
+"como": "OpenStreetMap",
+"lat": -3.7494,
+"lon": -73.2444,
+"osm": "Iquitos, Maynas, Loreto, 16002, Perú"
+},
+"ITE|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.8123,
+"lon": -70.9393,
+"osm": "Ite, Jorge Basadre, Tacna, Perú"
+},
+"IÑAPARI|MADRE DE DIOS": {
+"como": "OpenStreetMap",
+"lat": -10.9472,
+"lon": -69.5767,
+"osm": "Iñapari, Tahuamanu, Madre de Dios, Perú"
+},
+"JACAS CHICO|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -9.8611,
+"lon": -76.4946,
+"osm": "Jacas Chico, Yarowilca, Huánuco, Perú"
+},
+"JAEN|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -5.6848,
+"lon": -79.0622,
+"osm": "Jaén, Cajamarca, Perú"
+},
+"JAUJA|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -11.6858,
+"lon": -75.4142,
+"osm": "Jauja, Junín, Perú"
+},
+"JENARO HERRERA|LORETO": {
+"como": "OpenStreetMap",
+"lat": -4.9883,
+"lon": -73.6586,
+"osm": "Jenaro Herrera, Requena, Loreto, Perú"
+},
+"JUANJUI|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -7.272,
+"lon": -76.7509,
+"osm": "Juanjui, Mariscal Cáceres, San Martín, 22601, Perú"
+},
+"JULIACA|PUNO": {
+"como": "OpenStreetMap",
+"lat": -15.4932,
+"lon": -70.1356,
+"osm": "Juliaca, San Román, Puno, 21100, Perú"
+},
+"JULI|PUNO": {
+"como": "OpenStreetMap",
+"lat": -16.3103,
+"lon": -69.5022,
+"osm": "Juli, Chucuito, Puno, 21530, Perú"
+},
+"JUNIN|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -11.0604,
+"lon": -75.9739,
+"osm": "Junín, 12741, Perú"
+},
+"LA CRUZ|TUMBES": {
+"como": "OpenStreetMap",
+"lat": -3.6709,
+"lon": -80.5714,
+"osm": "La Cruz, Tumbes, Perú"
+},
+"LA JOYA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.7252,
+"lon": -71.8612,
+"osm": "La Joya, Arequipa, Perú"
+},
+"LA OROYA|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -11.6021,
+"lon": -75.8706,
+"osm": "La Oroya, Yauli, Junín, Perú"
+},
+"LA UNION|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -9.9066,
+"lon": -76.7866,
+"osm": "La Unión, Dos de Mayo, Huánuco, Perú"
+},
+"LA YARADA|TACNA": {
+"como": "OpenStreetMap",
+"lat": -18.2339,
+"lon": -70.5308,
+"osm": "La Yarada, La Yarada-Los Palos, Tacna, Perú"
+},
+"LAGUNAS|LORETO": {
+"como": "OpenStreetMap",
+"lat": -4.636,
+"lon": -76.0077,
+"osm": "Lagunas, Alto Amazonas, Loreto, Perú"
+},
+"LAMAS|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.2656,
+"lon": -76.5074,
+"osm": "Lamas, San Martín, 22170, Perú"
+},
+"LAMBAYEQUE|LAMBAYEQUE": {
+"como": "OpenStreetMap",
+"lat": -6.703,
+"lon": -79.9065,
+"osm": "Lambayeque, 14013, Perú"
+},
+"LAMPA|PUNO": {
+"como": "OpenStreetMap",
+"lat": -15.4167,
+"lon": -70.5833,
+"osm": "Lampa, Puno, Perú"
+},
+"LANCONES|PIURA": {
+"como": "OpenStreetMap",
+"lat": -4.4023,
+"lon": -80.5872,
+"osm": "Lancones, Sullana, Piura, Perú"
+},
+"LARAQUERI|PUNO": {
+"como": "OpenStreetMap",
+"lat": -16.1497,
+"lon": -70.0636,
+"osm": "Laraqueri, Pichacani, Puno, Perú"
+},
+"LIMA ESTE|LIMA": {
+"como": "OpenStreetMap",
+"lat": -12.0041,
+"lon": -76.873,
+"osm": "Cono Este, Lima, Lima Metropolitana, Lima, Perú"
+},
+"LIMA OESTE / CALLAO|LIMA": {
+"como": "OpenStreetMap",
+"lat": -12.0926,
+"lon": -77.0613,
+"osm": "Securitas Perú, Avenida Javier Prado Oeste, Magdalena, Magdalena del Mar, Lima, Lima Metropolitana, Lima, 15076, Perú"
+},
+"LIRCAY|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -13.1146,
+"lon": -74.757,
+"osm": "Lircay, Angaraes, Huancavelica, Perú"
+},
+"LOCUMBA|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.6138,
+"lon": -70.7624,
+"osm": "Villa Locumba, Locumba, Jorge Basadre, Tacna, Perú"
+},
+"LOMAS|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.5698,
+"lon": -74.8513,
+"osm": "Lomas, Caravelí, Arequipa, Perú"
+},
+"MACHU PICCHU|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.1643,
+"lon": -72.545,
+"osm": "Ciudadela de Machu Picchu, Circuit 1, San Miguel, Intihuatana, Machupicchu, Urubamba, Cusco, 08680, Perú"
+},
+"MACUSANI|PUNO": {
+"como": "OpenStreetMap",
+"lat": -14.0572,
+"lon": -70.457,
+"osm": "Macusani, Carabaya, Puno, Perú"
+},
+"MAJES|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.3243,
+"lon": -72.2878,
+"osm": "Majes, Caylloma, Arequipa, 04110, Perú"
+},
+"MALACASI|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.3428,
+"lon": -79.8573,
+"osm": "Malacasí, Salitral, Morropón, Piura, Perú"
+},
+"MATUCANA|LIMA": {
+"como": "OpenStreetMap",
+"lat": -11.8096,
+"lon": -76.3919,
+"osm": "Matucana, Huarochirí, Lima, Perú"
+},
+"MAZOCRUZ|PUNO": {
+"como": "OpenStreetMap",
+"lat": -16.7418,
+"lon": -69.7164,
+"osm": "Plaza de Armas de Mazocruz, Mazo Cruz, Santa Rosa, El Collao, Puno, Perú"
+},
+"MAZÁN|LORETO": {
+"como": "OpenStreetMap",
+"lat": -3.4977,
+"lon": -73.0895,
+"osm": "Mazán, Maynas, Loreto, Perú"
+},
+"MOHO|PUNO": {
+"como": "OpenStreetMap",
+"lat": -15.3549,
+"lon": -69.4059,
+"osm": "Moho, Puno, Perú"
+},
+"MOLLENDO|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -16.8713,
+"lon": -71.9393,
+"osm": "Mollendo, Islay, Arequipa, 04416, Perú"
+},
+"MOQUEGUA|MOQUEGUA": {
+"como": "OpenStreetMap",
+"lat": -17.1938,
+"lon": -70.9346,
+"osm": "Moquegua, Mariscal Nieto, Moquegua, 18001, Perú"
+},
+"MOTUPE|LAMBAYEQUE": {
+"como": "OpenStreetMap",
+"lat": -6.1544,
+"lon": -79.7171,
+"osm": "Motupe, Lambayeque, 14201, Perú"
+},
+"MOYOBAMBA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.0347,
+"lon": -76.9747,
+"osm": "Moyobamba, San Martín, 22001, Perú"
+},
+"NARANJILLO|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -5.8053,
+"lon": -77.3964,
+"osm": "Naranjillo, Nueva Cajamarca, Rioja, San Martín, Perú"
+},
+"NAUTA|LORETO": {
+"como": "OpenStreetMap",
+"lat": -4.507,
+"lon": -73.574,
+"osm": "Nauta, Loreto, 16301, Perú"
+},
+"NAZCA|ICA": {
+"como": "OpenStreetMap",
+"lat": -14.9236,
+"lon": -75.0806,
+"osm": "Nasca, Ica, Perú"
+},
+"NUEVO LIMA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -7.0994,
+"lon": -76.4725,
+"osm": "Nuevo Lima, Bajo Biavo, Bellavista, San Martín, Perú"
+},
+"OCUCAJE|ICA": {
+"como": "OpenStreetMap",
+"lat": -14.4945,
+"lon": -75.7757,
+"osm": "Ocucaje, Ica, Perú"
+},
+"OLMOS|LAMBAYEQUE": {
+"como": "OpenStreetMap",
+"lat": -5.9882,
+"lon": -79.7473,
+"osm": "Olmos, Lambayeque, Perú"
+},
+"OMATE|MOQUEGUA": {
+"como": "OpenStreetMap",
+"lat": -16.6408,
+"lon": -70.9537,
+"osm": "Omate, General Sánchez Cerro, Moquegua, Perú"
+},
+"ORCOPAMPA|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.1361,
+"lon": -72.2856,
+"osm": "Orcopampa, Castilla, Arequipa, Perú"
+},
+"OXAPAMPA|PASCO": {
+"como": "OpenStreetMap",
+"lat": -10.3333,
+"lon": -75.0833,
+"osm": "Oxapampa, Pasco, Perú"
+},
+"OYOTUN|LAMBAYEQUE": {
+"como": "OpenStreetMap",
+"lat": -6.7784,
+"lon": -79.2504,
+"osm": "Oyotún, Chiclayo, Lambayeque, Perú"
+},
+"OYÓN|LIMA": {
+"como": "OpenStreetMap",
+"lat": -10.7295,
+"lon": -76.8545,
+"osm": "Oyón, Lima, 15274, Perú"
+},
+"PACAYMAYO|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.2044,
+"lon": -72.4744,
+"osm": "Pacaymayo, Machupicchu, Urubamba, Cusco, Perú"
+},
+"PACAYZAPA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.2723,
+"lon": -76.7737,
+"osm": "Pacayzapa, Alonso de Alvarado, Lamas, San Martín, Perú"
+},
+"PACHIA|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.8969,
+"lon": -70.1547,
+"osm": "Pachía, Tacna, Perú"
+},
+"PACHIZA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -7.2967,
+"lon": -76.7731,
+"osm": "Pachiza, Mariscal Cáceres, San Martín, Perú"
+},
+"PAITA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.01,
+"lon": -80.9734,
+"osm": "Paita, Piura, Perú"
+},
+"PALCA|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.778,
+"lon": -69.9597,
+"osm": "Palca, Tacna, Perú"
+},
+"PALPA|ICA": {
+"como": "OpenStreetMap",
+"lat": -14.3515,
+"lon": -75.1708,
+"osm": "Palpa, Ica, Perú"
+},
+"PAMPAS|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -12.3987,
+"lon": -74.8684,
+"osm": "Pampas, Tayacaja, Huancavelica, 09000, Perú"
+},
+"PAPAYAL|TUMBES": {
+"como": "OpenStreetMap",
+"lat": -3.5706,
+"lon": -80.2962,
+"osm": "Papayal, Zarumilla, Tumbes, Perú"
+},
+"PARAMONGA|LIMA": {
+"como": "OpenStreetMap",
+"lat": -10.5077,
+"lon": -77.7512,
+"osm": "Paramonga, Barranca, Lima, 15178, Perú"
+},
+"PARURO|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.9167,
+"lon": -71.9167,
+"osm": "Paruro, Cusco, 08565, Perú"
+},
+"PAUCARAY|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -14.7576,
+"lon": -73.5897,
+"osm": "Paucaray, Coracora, Parinacochas, Ayacucho, Perú"
+},
+"PAUCARBAMBA|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -12.5541,
+"lon": -74.532,
+"osm": "Paucarbamba, Churcampa, Huancavelica, Perú"
+},
+"PAUCARTAMBO|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.2001,
+"lon": -71.554,
+"osm": "Paucartambo, Cusco, Perú"
+},
+"PAUZA|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -15.2808,
+"lon": -73.3431,
+"osm": "Hospital de Apoyo de Pauza, 600, Jirón Cesar Vallejo, Huánuco, Pausa, Páucar del Sara Sara, Ayacucho, Perú"
+},
+"PEBAS|LORETO": {
+"como": "OpenStreetMap",
+"lat": -3.4842,
+"lon": -71.8451,
+"osm": "Pebas, Mariscal Ramón Castilla, Loreto, Perú"
+},
+"PEDRO RUIZ|AMAZONAS": {
+"como": "OpenStreetMap",
+"lat": -5.7584,
+"lon": -78.4365,
+"osm": "Pedro Ruiz, Bagua Grande, Utcubamba, Amazonas, Perú"
+},
+"PELEJO|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.2119,
+"lon": -75.8008,
+"osm": "Pelejo, El Porvenir, San Martín, Perú"
+},
+"PICHANAKI|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -11.0028,
+"lon": -74.8151,
+"osm": "Pichanaqui, Chanchamayo, Junín, Perú"
+},
+"PILLUANA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.7768,
+"lon": -76.292,
+"osm": "Pilluana, Picota, San Martín, Perú"
+},
+"PISACOMA|PUNO": {
+"como": "OpenStreetMap",
+"lat": -16.9081,
+"lon": -69.3713,
+"osm": "Pisacoma, Chucuito, Puno, Perú"
+},
+"PISAC|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.421,
+"lon": -71.8505,
+"osm": "Pisac, Calca, Cusco, 08106, Perú"
+},
+"PISCO|ICA": {
+"como": "OpenStreetMap",
+"lat": -13.71,
+"lon": -76.203,
+"osm": "Pisco, Ica, 11601, Perú"
+},
+"PIURA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.1971,
+"lon": -80.6267,
+"osm": "Piura, 20000, Perú"
+},
+"POLVORA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -7.9828,
+"lon": -76.8469,
+"osm": "Pólvora, Tocache, San Martín, Perú"
+},
+"POMABAMBA|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -8.6999,
+"lon": -77.4403,
+"osm": "Pomabamba, Ancash, Perú"
+},
+"POMACANCHI|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -14.052,
+"lon": -71.6257,
+"osm": "Pomacanchi, Acomayo, Cusco, Perú"
+},
+"PONGO DE CAYNARACHI|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.3306,
+"lon": -76.2842,
+"osm": "Pongo de Caynarachi, Caynarachi, Lamas, San Martín, Perú"
+},
+"POZUZO|PASCO": {
+"como": "OpenStreetMap",
+"lat": -10.0689,
+"lon": -75.5507,
+"osm": "Pozuzo, Oxapampa, Pasco, 19251, Perú"
+},
+"PUCALLPA|UCAYALI": {
+"como": "OpenStreetMap",
+"lat": -8.3821,
+"lon": -74.5388,
+"osm": "Pucallpa, Callería, Coronel Portillo, Ucayali, 25000, Perú"
+},
+"PUERTO ESPERANZA|UCAYALI": {
+"como": "OpenStreetMap",
+"lat": -9.7723,
+"lon": -70.7101,
+"osm": "Puerto Esperanza, Purús, Ucayali, Perú"
+},
+"PUERTO INCA|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -9.3966,
+"lon": -75.1439,
+"osm": "Puerto Inca, Huánuco, Perú"
+},
+"PUERTO MALDONADO|MADRE DE DIOS": {
+"como": "OpenStreetMap",
+"lat": -12.5939,
+"lon": -69.1867,
+"osm": "Puerto Maldonado, Tambopata, Madre de Dios, Perú"
+},
+"PUERTO PIZARRO|TUMBES": {
+"como": "OpenStreetMap",
+"lat": -3.5028,
+"lon": -80.3915,
+"osm": "Puerto Pizarro, Tumbes, Perú"
+},
+"PUMAHUASI|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -9.1884,
+"lon": -75.9549,
+"osm": "Pumahuasi, Daniel Alomía Robles, Leoncio Prado, Huánuco, Perú"
+},
+"PUNO|PUNO": {
+"como": "OpenStreetMap",
+"lat": -15.8407,
+"lon": -70.0284,
+"osm": "Puno, 21001, Perú"
+},
+"PUQUINA|MOQUEGUA": {
+"como": "OpenStreetMap",
+"lat": -16.6598,
+"lon": -71.1315,
+"osm": "Puquina, General Sánchez Cerro, Moquegua, Perú"
+},
+"PUQUIO|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -14.6856,
+"lon": -73.9944,
+"osm": "Puquio, Lucanas, Ayacucho, Perú"
+},
+"PUTINA|PUNO": {
+"como": "OpenStreetMap",
+"lat": -14.7212,
+"lon": -69.7975,
+"osm": "Putina, San Antonio de Putina, Puno, Perú"
+},
+"QORIHUAYRACHINA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.2248,
+"lon": -72.4336,
+"osm": "Q'oriwayrachina, Machupicchu, Urubamba, Cusco, Perú"
+},
+"QUILLABAMBA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -12.8634,
+"lon": -72.693,
+"osm": "Quillabamba, Santa Ana, La Convención, Cusco, 08741, Perú"
+},
+"QUIMBIRI|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -12.6204,
+"lon": -73.7885,
+"osm": "Kimbiri, La Convención, Cusco, Perú"
+},
+"QUINCEMIL|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.2307,
+"lon": -70.7543,
+"osm": "Quincemil, Camanti, Quispicanchi, Cusco, Perú"
+},
+"QUIRUVILCA|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -8.0017,
+"lon": -78.3099,
+"osm": "Quiruvilca, Santiago de Chuco, La Libertad, Perú"
+},
+"RECUAY|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -9.9527,
+"lon": -77.4098,
+"osm": "Recuay, Ancash, Perú"
+},
+"REQUENA|LORETO": {
+"como": "OpenStreetMap",
+"lat": -6.0,
+"lon": -74.1667,
+"osm": "Requena, Loreto, Perú"
+},
+"SALALA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.1136,
+"lon": -79.4611,
+"osm": "Salala, El Carmen de la Frontera, Huancabamba, Piura, Perú"
+},
+"SALPO|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -8.0292,
+"lon": -78.6303,
+"osm": "Salpo, Otuzco, La Libertad, Perú"
+},
+"SALVACION|MADRE DE DIOS": {
+"como": "OpenStreetMap",
+"lat": -12.8353,
+"lon": -71.3649,
+"osm": "Salvación, Manu, Madre de Dios, 17700, Perú"
+},
+"SAMA GRANDE|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.795,
+"lon": -70.495,
+"osm": "Sama Grande, Inclán, Tacna, Perú"
+},
+"SAN ALEJANDRO|UCAYALI": {
+"como": "OpenStreetMap",
+"lat": -8.8283,
+"lon": -75.2129,
+"osm": "San Alejandro, Irazola, Padre Abad, Ucayali, Perú"
+},
+"SAN BENITO|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.425,
+"lon": -78.9273,
+"osm": "San Benito, Contumazá, Cajamarca, Perú"
+},
+"SAN GABÁN|PUNO": {
+"como": "OpenStreetMap",
+"lat": -13.5396,
+"lon": -70.4087,
+"osm": "San Gabán, Carabaya, Puno, Perú"
+},
+"SAN IGNACIO|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -5.1244,
+"lon": -78.8956,
+"osm": "San Ignacio, Cajamarca, Perú"
+},
+"SAN JUAN DE YANAC|ICA": {
+"como": "OpenStreetMap",
+"lat": -13.211,
+"lon": -75.7869,
+"osm": "San Juan de Yanac, Chincha, Ica, Perú"
+},
+"SAN JUAN DEL ORO|PUNO": {
+"como": "OpenStreetMap",
+"lat": -14.221,
+"lon": -69.1537,
+"osm": "San Juan del Oro, Sandia, Puno, Perú"
+},
+"SAN LORENZO|LORETO": {
+"como": "OpenStreetMap",
+"lat": -4.8316,
+"lon": -76.5546,
+"osm": "San Lorenzo, Barranca, Datem del Marañón, Loreto, Perú"
+},
+"SAN MIGUEL DE PALLAQUES|CAJAMARCA": {
+"como": "OpenStreetMap",
+"lat": -7.0008,
+"lon": -78.8504,
+"osm": "San Miguel de Pallaques, San Miguel, Cajamarca, Perú"
+},
+"SAN PABLO|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.8094,
+"lon": -76.5749,
+"osm": "San Pablo, Bellavista, San Martín, Perú"
+},
+"SAN PEDRO DE HUACARPANA|ICA": {
+"como": "OpenStreetMap",
+"lat": -13.0489,
+"lon": -75.648,
+"osm": "San Pedro de Huacarpana, Chincha, Ica, Perú"
+},
+"SAN RAFAEL|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -10.3379,
+"lon": -76.1823,
+"osm": "San Rafael, Ambo, Huánuco, Perú"
+},
+"SAN VICENTE DE CAÑETE|LIMA": {
+"como": "OpenStreetMap",
+"lat": -13.0778,
+"lon": -76.3874,
+"osm": "San Vicente de Cañete, Cañete, Lima, 15701, Perú"
+},
+"SANTA CLOTILDE|LORETO": {
+"como": "OpenStreetMap",
+"lat": -2.4887,
+"lon": -73.6785,
+"osm": "Santa Clotilde, Napo, Maynas, Loreto, Perú"
+},
+"SANTA MARIA DE NIEVA|AMAZONAS": {
+"como": "OpenStreetMap",
+"lat": -4.5938,
+"lon": -77.8667,
+"osm": "Santa María de Nieva, Nieva, Condorcanqui, Amazonas, Perú"
+},
+"SANTA ROSA|LORETO": {
+"como": "OpenStreetMap",
+"lat": -3.4766,
+"lon": -72.9607,
+"osm": "Santa Rosa, Indiana, Maynas, Loreto, Perú"
+},
+"SANTA TERESA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.231,
+"lon": -72.681,
+"osm": "Santa Teresa, La Convención, Cusco, Perú"
+},
+"SANTIAGO DE CHOCORVOS|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -13.8253,
+"lon": -75.2577,
+"osm": "Santiago de Chocorvos, Huaytará, Huancavelica, Perú"
+},
+"SANTO TOMÁS|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -14.6229,
+"lon": -72.194,
+"osm": "Santo Tomás, Chumbivilcas, Cusco, Perú"
+},
+"SAPOSOA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.8618,
+"lon": -76.8581,
+"osm": "Saposoa, Huallaga, San Martín, Perú"
+},
+"SATIPO|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -11.5538,
+"lon": -74.1182,
+"osm": "Satipo, Junín, 12260, Perú"
+},
+"SAUCE|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.7093,
+"lon": -76.2126,
+"osm": "Sauce, San Martín, 22330, Perú"
+},
+"SECHURA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -5.8636,
+"lon": -80.644,
+"osm": "Sechura, Piura, Perú"
+},
+"SIBAYO|AREQUIPA": {
+"como": "OpenStreetMap",
+"lat": -15.3502,
+"lon": -71.578,
+"osm": "Sibayo, Caylloma, Arequipa, Perú"
+},
+"SICUANI|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -14.2729,
+"lon": -71.2265,
+"osm": "Sicuani, Canchis, Cusco, 08254, Perú"
+},
+"SIHUAS|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -8.4878,
+"lon": -77.557,
+"osm": "Sihuas, Ancash, 02225, Perú"
+},
+"SORAYPAMPA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.3872,
+"lon": -72.5737,
+"osm": "Soraypampa, Mollepata, Anta, Cusco, 08645, Perú"
+},
+"STA. RITA DE CASTILLA|LORETO": {
+"como": "OpenStreetMap",
+"lat": -4.5905,
+"lon": -74.3804,
+"osm": "Santa Rita de Castilla, Santa Rita, Parinari, Loreto, Perú"
+},
+"STA. ROSA DE OCOPA|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -11.8698,
+"lon": -75.3039,
+"osm": "Santa Rosa de Ocopa, Concepción, Junín, Perú"
+},
+"SULLANA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -4.5684,
+"lon": -80.6447,
+"osm": "Sullana, Piura, 20100, Perú"
+},
+"TACNA|TACNA": {
+"como": "OpenStreetMap",
+"lat": -18.0139,
+"lon": -70.2511,
+"osm": "Tacna, 23001, Perú"
+},
+"TALARA|PIURA": {
+"como": "OpenStreetMap",
+"lat": -4.5111,
+"lon": -81.0984,
+"osm": "Talara, Piura, Perú"
+},
+"TAMBOBAMBA|APURIMAC": {
+"como": "OpenStreetMap",
+"lat": -13.8976,
+"lon": -72.2036,
+"osm": "Tambobamba, Cotabambas, Apurímac, Perú"
+},
+"TAMBO|HUANCAVELICA": {
+"como": "OpenStreetMap",
+"lat": -13.6895,
+"lon": -75.2747,
+"osm": "Tambo, Huaytará, Huancavelica, Perú"
+},
+"TAMSHIYACU|LORETO": {
+"como": "OpenStreetMap",
+"lat": -4.003,
+"lon": -73.1606,
+"osm": "Tamshiyacu, Fernando Lores, Maynas, Loreto, Perú"
+},
+"TARAPOTO|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.4877,
+"lon": -76.3599,
+"osm": "Tarapoto, San Martín, 22202, Perú"
+},
+"TARATA|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.3983,
+"lon": -69.9913,
+"osm": "Tarata, Tacna, 23200, Perú"
+},
+"TARMA|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -11.2518,
+"lon": -75.6947,
+"osm": "Tarma, Junín, 12651, Perú"
+},
+"TINGO DE PONAZA|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -6.9828,
+"lon": -76.2305,
+"osm": "Tingo de Ponaza, Picota, San Martín, Perú"
+},
+"TINGO MARIA|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -9.2984,
+"lon": -76.0003,
+"osm": "Tingo María, Rupa-Rupa, Leoncio Prado, Huánuco, 10131, Perú"
+},
+"TOCACHE|SAN MARTIN": {
+"como": "OpenStreetMap",
+"lat": -8.2212,
+"lon": -76.7026,
+"osm": "Tocache, San Martín, 22541, Perú"
+},
+"TOURNAVISTA|HUANUCO": {
+"como": "OpenStreetMap",
+"lat": -8.9307,
+"lon": -74.7051,
+"osm": "Tournavista, Puerto Inca, Huánuco, Perú"
+},
+"TRUJILLO|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -8.1117,
+"lon": -79.0288,
+"osm": "Trujillo, La Libertad, 13008, Perú"
+},
+"TUMBES|TUMBES": {
+"como": "OpenStreetMap",
+"lat": -3.5708,
+"lon": -80.4596,
+"osm": "Tumbes, Perú"
+},
+"UBINAS|MOQUEGUA": {
+"como": "OpenStreetMap",
+"lat": -16.3867,
+"lon": -70.8559,
+"osm": "Ubinas, General Sánchez Cerro, Moquegua, Perú"
+},
+"URUBAMBA|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -13.2293,
+"lon": -72.2647,
+"osm": "Urubamba, Cusco, Perú"
+},
+"USQUIL|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -7.801,
+"lon": -78.3595,
+"osm": "Usquil, Otuzco, La Libertad, Perú"
+},
+"VILACOTA|TACNA": {
+"como": "OpenStreetMap",
+"lat": -17.2925,
+"lon": -69.8758,
+"osm": "Área de Conservación Regional Vilacota Maure, Tacna, Perú"
+},
+"VILCASHUAMÁN|AYACUCHO": {
+"como": "OpenStreetMap",
+"lat": -13.6531,
+"lon": -73.9538,
+"osm": "Vilcas Huamán, Ayacucho, Perú"
+},
+"VIRÚ|LA LIBERTAD": {
+"como": "OpenStreetMap",
+"lat": -8.5324,
+"lon": -78.567,
+"osm": "Virú, La Libertad, 13631, Perú"
+},
+"YANACANCHA|JUNIN": {
+"como": "OpenStreetMap",
+"lat": -12.2011,
+"lon": -75.387,
+"osm": "Yanacancha, Chupaca, Junín, Perú"
+},
+"YANAHUANCA|PASCO": {
+"como": "OpenStreetMap",
+"lat": -10.576,
+"lon": -76.5888,
+"osm": "Yanahuanca, Daniel Alcides Carrión, Pasco, Perú"
+},
+"YAURI-ESPINAR|CUSCO": {
+"como": "OpenStreetMap",
+"lat": -14.793,
+"lon": -71.4128,
+"osm": "Yauri, Espinar, Cusco, 08301, Perú"
+},
+"YAUYOS|LIMA": {
+"como": "OpenStreetMap",
+"lat": -12.5454,
+"lon": -75.8599,
+"osm": "Yauyos, Lima, Perú"
+},
+"YUNGAY|ANCASH": {
+"como": "OpenStreetMap",
+"lat": -9.1513,
+"lon": -77.6812,
+"osm": "Yungay, Ancash, Perú"
+},
+"YUNGUYO|PUNO": {
+"como": "OpenStreetMap",
+"lat": -16.2959,
+"lon": -69.096,
+"osm": "Yunguyo, Puno, Perú"
+},
+"YURIMAGUAS|LORETO": {
+"como": "OpenStreetMap",
+"lat": -5.8952,
+"lon": -76.1047,
+"osm": "Yurimaguas, Alto Amazonas, Loreto, 16501, Perú"
+}
+}

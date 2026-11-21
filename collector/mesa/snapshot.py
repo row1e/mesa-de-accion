@@ -22,6 +22,21 @@ def invalidate():
 runner.on_run(invalidate)
 
 
+_CIUDADES = {}
+
+
+def _ciudades_pronostico():
+    """Ubicación de las ciudades del pronóstico de SENAMHI (ref/ciudades_senamhi.json, ver ciudades_pronostico.py)."""
+    if not _CIUDADES:
+        try:
+            import json as _json
+            datos = _json.loads((config.REF / "ciudades_senamhi.json").read_text(encoding="utf-8"))
+            _CIUDADES.update({k: {"lon": v["lon"], "lat": v["lat"]} for k, v in datos.items()})
+        except (OSError, ValueError):
+            pass
+    return _CIUDADES
+
+
 def aviso_falla(sid, org, msg):
     """El error técnico de una fuente, dicho para la mesa: qué pasa y de quién es el problema. None si no se reconoce."""
     m, quien = msg or "", (org or "la fuente").split("·")[0].strip()
@@ -249,7 +264,8 @@ def build():
             else:
                 uv_unmatched.append(f"{z['code']} {z['zona']}")
 
-        pron = [{"ciudad": c["ciudad"], "departamento": c["departamento"], **d}
+        ubic = _ciudades_pronostico()
+        pron = [{"ciudad": c["ciudad"], "departamento": c["departamento"], **d, **ubic.get(c["_key"], {})}
                 for c in db.get_items("senamhi_pronostico", "ciudad", order="key") for d in c["dias"]]
         hidro = [{k: v for k, v in h.items() if k != "raw"} for h in db.get_items("senamhi_hidro", "aviso_estacion")]
 
