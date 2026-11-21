@@ -158,6 +158,14 @@ tr:last-child td{border-bottom:0}
 .layers .olah span{flex-basis:100%}
 .legend .tleg-map{display:inline-flex;align-items:center;gap:8px}.legend .tleg-map i{display:inline-block;width:180px;height:10px;border-radius:2px}
 .legend .tleg-map b{font-weight:600;font-size:12px}
+#map .via,#map .via-borde{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#map .via-borde{stroke:#2A241E;pointer-events:none}
+#map .via{stroke:#FBF8F1;pointer-events:stroke;cursor:help}
+#map .via-borde.v1{stroke-width:4.4}#map .via.v1{stroke-width:2.2}
+#map .via-borde.v2{stroke-width:3}#map .via.v2{stroke-width:1.3}
+#map .via-borde.v3,#map .via.v3{display:none}#map .via-borde.v3{stroke-width:2}#map .via.v3{stroke-width:.8}
+#map.zoom-ramales .via-borde.v3,#map.zoom-ramales .via.v3{display:inline}
+#map .via:hover{stroke:#FFD100}
 #map .rio{fill:none;stroke:#2E86C1;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:help}
 #map .rio.r1{stroke-width:2.4}#map .rio.r2{stroke-width:1.5}
 #map .rio:hover{stroke:#1B4F72;stroke-width:3.2}

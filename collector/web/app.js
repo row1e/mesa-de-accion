@@ -237,7 +237,12 @@ function initMap() {
   // zoom hasta nivel de calle (×60): los partes de bomberos en Lima están a cuadras unos de otros
   zoom = d3.zoom().scaleExtent([1, 60]).translateExtent([[-W * .15, -H_ * .15], [W * 1.15, H_ * 1.15]])
     .filter(e => e.type === "wheel" ? (e.ctrlKey || e.metaKey) : e.type === "touchstart" ? e.touches.length > 1 : !e.button)
-    .on("zoom", e => { zt = e.transform; gGeo.attr("transform", zt); svg.classed("zoom-ciudades", zt.k >= 1.5); placePoints(); rotularCiudades(); hideTip(); });
+    .on("zoom", e => {
+      zt = e.transform; gGeo.attr("transform", zt); svg.classed("zoom-ciudades", zt.k >= 1.5).classed("zoom-ramales", zt.k >= 2.2);
+      if (state.layers.ciudades && ciudadesDetalle() !== _detalleAntes) { renderPoints(); renderLayers(); }   // automático: entra o sale el detalle
+      else { placePoints(); rotularCiudades(); }
+      hideTip();
+    });
   svg.call(zoom).on("dblclick.zoom", null);
   document.querySelector(".zoom").addEventListener("click", e => {
     const z = e.target.closest("button")?.dataset.z; if (!z) return;
@@ -258,8 +263,8 @@ function initMap() {
 }
 
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
-  olaH: 0, marZona: null, marH: "24", tempDia: 0, tempModo: "tmax", ciudadesModo: "principales",
-  layers: { reportes: true, obras: true, recursos: false, oleaje: true, viento: false, olas: false, temperatura: false, rios: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
+  olaH: 0, marZona: null, marH: "24", tempDia: 0, tempModo: "tmax", ciudadesModo: "auto",
+  layers: { reportes: true, obras: true, recursos: false, oleaje: true, viento: false, olas: false, temperatura: false, rios: false, carreteras: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -290,6 +295,31 @@ function dibujarRios(ver) {
   g = gGeo.insert("g", () => gDep.node()).attr("class", "rios");
   g.selectAll("path").data(RIOS.features).join("path").attr("d", path).attr("class", f => `rio r${f.properties.r}`)
     .on("mousemove", (e, f) => f.properties.n && showTip(e, `<b>Río ${esc(f.properties.n)}</b><br><span style="opacity:.7">${esc(f.properties.f)}</span>`)).on("mouseleave", hideTip);
+}
+// Automático: detalle a partir de este acercamiento (el mismo en que aparecen los grados de temperatura)
+const ZOOM_DETALLE = 1.5;
+const ciudadesDetalle = () => state.ciudadesModo === "detalle" || (state.ciudadesModo === "auto" && zt.k >= ZOOM_DETALLE);
+let _detalleAntes = false;
+// Carreteras: Red Vial Nacional del MTC (ref/vias.geojson). Ejes longitudinales gruesos, transversales medianas y ramales
+// finos (estos solo al acercar). Al pasar el mouse: la ruta y las emergencias viales de PROVIAS que tiene hoy.
+const RUTA_NOMBRE = {"PE-1N": "Panamericana Norte", "PE-1S": "Panamericana Sur", "PE-3N": "Longitudinal de la Sierra Norte",
+  "PE-3S": "Longitudinal de la Sierra Sur", "PE-5N": "Longitudinal de la Selva Norte", "PE-5S": "Longitudinal de la Selva Sur", "PE-22": "Carretera Central"};
+let VIAS = null, viasPedido = false;
+function dibujarCarreteras(ver) {
+  let g = gGeo.select("g.carreteras");
+  if (!ver) { g.remove(); return; }
+  if (!VIAS) { if (!viasPedido) { viasPedido = true; fetch("/api/carreteras").then(r => r.json()).then(d => { VIAS = d; renderLayers(); renderPoints(); }).catch(() => { viasPedido = false; }); } return; }
+  if (!g.empty()) return;
+  g = gGeo.insert("g", () => gDep.node()).attr("class", "carreteras");
+  const datos = VIAS.features.slice().sort((a, b) => b.properties.r - a.properties.r);
+  // estilo de mapa de carreteras: borde oscuro debajo y línea clara encima, para que se lean sobre cualquier color de fondo
+  g.append("g").selectAll("path").data(datos).join("path").attr("d", path).attr("class", f => `via-borde v${f.properties.r}`);
+  g.append("g").selectAll("path").data(datos).join("path").attr("d", path).attr("class", f => `via v${f.properties.r}`)
+    .on("mousemove", (e, f) => {
+      const r = f.properties.ruta, em = (V.vias || []).filter(v => v.ruta === r);
+      showTip(e, `<b>Ruta ${esc(r)}</b>${RUTA_NOMBRE[r] ? ` · ${RUTA_NOMBRE[r]}` : ""}<br>${["", "Eje longitudinal", "Transversal", "Ramal"][f.properties.r]} de la Red Vial Nacional`
+        + (em.length ? `<br><b>${em.length} emergencia${em.length > 1 ? "s" : ""} vial${em.length > 1 ? "es" : ""} PROVIAS</b> en esta ruta` : "") + `<br><span style="opacity:.7">MTC · red al 31/12/2014</span>`);
+    }).on("mouseleave", hideTip);
 }
 // Ciudades del mapa: las 33 de referencia y las 276 del pronóstico de SENAMHI (ubicadas en ref/ciudades_senamhi.json).
 // Todas llevan punto; el nombre se muestra si cabe sin pisar otro, primero las de referencia: al acercar aparecen más.
@@ -370,8 +400,9 @@ const layerDefs = [
   { id: "olas", label: "Altura de ola · Open-Meteo", sw: `<i class="sw" style="background:var(--hidro);opacity:.75"></i>`, n: () => (V.mar?.puntos || []).length, unit: "puntos" },
   { id: "bomberos", label: "Bomberos · 24 h (CGBVP)", sw: `<i class="sw" style="width:12px;height:12px;border-radius:0;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:var(--fuego)"></i>`, n: () => V.bomberos.length },
   { id: "temperatura", label: "Temperatura · pronóstico SENAMHI", sw: `<i class="sw" style="background:linear-gradient(90deg,#2C6FB7,#E9E7E0,#C8372D)"></i>`, n: () => tempPuntos().length, unit: "ciudades" },
+  { id: "carreteras", label: "Carreteras · Red Vial Nacional", sw: `<i class="sw" style="background:#FBF8F1;border:1.5px solid #2A241E;border-radius:2px;height:5px;transform:translateY(2px)"></i>`, n: () => VIAS ? VIAS.features.length : 141, unit: "rutas" },
   { id: "rios", label: "Ríos principales", sw: `<i class="sw" style="background:none;border:0;border-top:2.5px solid #2E86C1;border-radius:0;height:0;transform:translateY(3px)"></i>`, n: () => RIOS ? new Set(RIOS.features.map(f => f.properties.n).filter(Boolean)).size : 94, unit: "ríos" },
-  { id: "ciudades", label: "Ciudades (nombres)", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => state.ciudadesModo === "detalle" ? ciudadesMapa().length : CIUDADES.length },
+  { id: "ciudades", label: "Ciudades (nombres)", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => ciudadesDetalle() ? ciudadesMapa().length : CIUDADES.length },
   { id: "zonas", label: "Zonas críticas INGEMMET (color = nivel)", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
 // Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
@@ -426,7 +457,8 @@ function renderLayers() {
     : layerDefs[i].id === "recursos" ? h + `<p class="lnote">${Object.entries(REC_T).map(([t, [c]]) => `<span class="recsw" style="--c:var(${c})"></span>${esc((REC_N[t] || [t, t])[1])}`).join(" · ")}. La maquinaria se suma por provincia (triángulo, tamaño según unidades). Declarado, no necesariamente disponible.</p>`
     : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
     : layerDefs[i].id === "oleaje" ? h + `<p class="lnote">Trama sobre las provincias costeras con aviso el día elegido: amarillo ligero, naranja moderado, rojo fuerte.</p>`
-    : layerDefs[i].id === "ciudades" ? h + `<div class="lnote olah" id="ciu-ctl"><button type="button" data-c="principales" aria-pressed="${state.ciudadesModo === "principales"}">Principales</button><button type="button" data-c="detalle" aria-pressed="${state.ciudadesModo === "detalle"}">Detalle</button><span>Principales: las 33 ciudades de referencia. Detalle: suma las 276 del pronóstico; los nombres aparecen donde caben y al acercar se ven más.</span></div>`
+    : layerDefs[i].id === "ciudades" ? h + `<div class="lnote olah" id="ciu-ctl">${[["auto", "Automático"], ["principales", "Principales"], ["detalle", "Detalle"]].map(([v, t]) => `<button type="button" data-c="${v}" aria-pressed="${state.ciudadesModo === v}">${t}</button>`).join("")}<span>Automático: las 33 principales en todo el país y, al acercar el mapa, también las 276 ciudades del pronóstico. Los nombres aparecen donde caben.</span></div>`
+    : layerDefs[i].id === "carreteras" ? h + `<p class="lnote">Red Vial Nacional del MTC (une las capitales de departamento). Gruesas: los tres ejes longitudinales (Panamericana, Sierra, Selva); medianas: transversales; finas, al acercar: ramales. Pase el mouse por una ruta para ver su código y las emergencias PROVIAS que tiene.</p>`
     : layerDefs[i].id === "rios" ? h + `<p class="lnote">Ríos principales: Natural Earth, ANA y OpenStreetMap. Pase el mouse por un río para ver su nombre.</p>`
     : layerDefs[i].id === "temperatura" ? h + `<div class="lnote olah" id="temp-ctl">${tempDias().map((d, k) => `<button type="button" data-d="${k}" aria-pressed="${state.tempDia === k}">${esc(d.replace(/^(\p{L}+),\s*(\d+) de (\p{L}+)/u, (m, a, b) => `${a.slice(0, 3)} ${+b}`))}</button>`).join("")}`
       + `<button type="button" data-m="tmax" aria-pressed="${state.tempModo === "tmax"}">Máximas</button><button type="button" data-m="tmin" aria-pressed="${state.tempModo === "tmin"}">Mínimas</button>`
@@ -777,7 +809,7 @@ function renderPoints() {
     .attr("d", d3.symbol(d3.symbolSquare, 70)).attr("fill", r => r.estado === "verificado" ? css("--ok") : css("--brand")).attr("stroke", css("--ink")).attr("stroke-width", 1.2)
     .call(on, r => `<b>Reporte de corresponsal · ${esc(r.tipo_nombre)}</b> · ${r.estado === "verificado" ? "verificado" : "sin verificar"}<br>${esc((r.descripcion || "").slice(0, 140))}<br><span style="opacity:.7">${esc(r.lugar || r.departamento || "")}</span>` + tipWhen(when(r._first_seen), "recibido"),
       r => ({source: "corresponsales", kind: "reporte", key: r._key}));
-  dibujarRios(L.rios);
+  dibujarRios(L.rios); dibujarCarreteras(L.carreteras); _detalleAntes = ciudadesDetalle();
   if (L.temperatura) {
     const m = state.tempModo, g = layer(tempPuntos(), "g", p => [p.lon, p.lat]);
     g.append("circle").attr("r", 6).attr("fill", p => tempColor(p[m])).attr("stroke", css("--ink")).attr("stroke-width", 1);
@@ -787,7 +819,7 @@ function renderPoints() {
   }
   // Encima de todo y sin capturar el mouse: orientan pero no tapan los clics sobre los puntos
   if (L.ciudades) {
-    const lista = ciudadesMapa().filter(d => d.t < 3 || (state.ciudadesModo === "detalle" && (!state.region || d.reg === state.region)));
+    const lista = ciudadesMapa().filter(d => d.t < 3 || (ciudadesDetalle() && (!state.region || d.reg === state.region)));
     const c = gPts.append("g").attr("class", "ciudades").selectAll("g").data(lista).join("g").attr("class", d => `pt ciudad t${d.t}`).each(function (d) { this.__ll = [d.lon, d.lat]; this.__d = d; });
     c.append("circle").attr("r", d => d.t === 3 ? 2.4 : 3.4);
     c.append("text").attr("x", d => d.izq ? -6 : 6).attr("dy", ".35em").attr("text-anchor", d => d.izq ? "end" : "start").text(d => d.n);

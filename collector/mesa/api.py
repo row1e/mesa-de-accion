@@ -109,6 +109,12 @@ def rios():
     return FileResponse(config.REF / "rios.geojson", media_type="application/geo+json", headers={"Cache-Control": "max-age=86400"})
 
 
+@app.get("/api/carreteras", include_in_schema=False)
+def carreteras():
+    """Red Vial Nacional del MTC para la capa del mapa (ref/vias.geojson, ver vias_mapa.py)."""
+    return FileResponse(config.REF / "vias.geojson", media_type="application/geo+json", headers={"Cache-Control": "max-age=86400"})
+
+
 @app.get("/api/lugares")
 def get_lugares():
     """Departamentos y provincias para elegir el lugar del resumen (liviano: sin geometrías)."""
