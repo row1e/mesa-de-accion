@@ -129,6 +129,8 @@ tr:last-child td{border-bottom:0}
 .maprow.fs.sin-capas .side,.maprow.fs.sin-datos .datos{visibility:hidden}
 .maprow.fs .fsbar{display:flex;position:absolute;top:12px;right:12px;gap:4px;z-index:3}
 .fsbar button{border:1px solid var(--line);background:var(--surface);border-radius:4px;height:32px;padding:0 11px;font-size:12.5px;font-weight:600;cursor:pointer}
+.fsbar a{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:4px;height:32px;padding:0 11px;font-size:12.5px;font-weight:600;text-decoration:none;color:var(--ink)}
+a.pinbtn{text-decoration:none;color:var(--ink)}
 .fsbar button[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
 body.fs-abierto{overflow:hidden}
 /* la ficha abre junto a la lista de datos, sin taparla */
@@ -718,7 +720,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 <main class="wrap">
   <div class="thesis" id="thesis"></div>
   <section id="mapa">
-    <div class="sec-head"><div><p class="eyebrow">Cruce espacial</p><h2>Nivel de peligro por provincia</h2></div><div class="sec-acts"><button type="button" id="map-fs" class="pinbtn" title="El mapa ocupa toda la pantalla, con las capas a la izquierda y los datos de la capa elegida a la derecha">⛶ Pantalla completa</button><button type="button" id="map-pin" class="pinbtn" aria-pressed="false" title="Al bajar por la página, el mapa queda en una ventana en la esquina">Fijar mapa al bajar</button></div></div>
+    <div class="sec-head"><div><p class="eyebrow">Cruce espacial</p><h2>Nivel de peligro por provincia</h2></div><div class="sec-acts"><a id="map-fs" class="pinbtn nav-mapa" href="/mapa" target="_blank" rel="noopener" title="Abre en otra pestaña el mapa a pantalla completa, con las capas a la izquierda y los datos de la capa elegida a la derecha">⛶ Mapa en pantalla completa ↗</a><button type="button" id="map-pin" class="pinbtn" aria-pressed="false" title="Al bajar por la página, el mapa queda en una ventana en la esquina">Fijar mapa al bajar</button></div></div>
     <p class="lede">Los polígonos de cada aviso SENAMHI, cruzados con los límites provinciales del INEI. Una provincia cuenta cuando el aviso cubre al menos el 3&nbsp;% de su área; se pinta con el nivel más alto entre los avisos del día. Sobre eso, las capas puntuales de las demás fuentes.</p>
     <div class="maprow">
       <div class="mapcol">
@@ -732,7 +734,8 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
         <div class="fsbar" role="group" aria-label="Pantalla completa">
           <button type="button" id="fs-capas" aria-pressed="true">Capas</button>
           <button type="button" id="fs-datos" aria-pressed="true">Datos</button>
-          <button type="button" id="fs-salir">Salir ✕</button>
+          <button type="button" id="fs-nav" title="Pantalla completa del navegador (Esc para salir)">⛶</button>
+          <a id="fs-tablero" class="nav-tablero" href="/">Tablero ↗</a>
         </div>
       </div>
       <aside class="side" id="side">

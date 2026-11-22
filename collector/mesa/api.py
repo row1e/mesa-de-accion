@@ -27,7 +27,7 @@ LIBRES = ("/api/licencia", "/marca/", "/fuentes/", "/licencia")
 async def control_licencia(request: Request, call_next):
     p = request.url.path
     if licencia.requerida() and not p.startswith(LIBRES) and licencia.bloqueada():
-        if p in ("/", "/index.html", "/reportar", "/resumen", "/incendios", "/danos"):
+        if p in ("/", "/index.html", "/reportar", "/resumen", "/incendios", "/danos", "/mapa"):
             return _con_marca("licencia.html")
         return JSONResponse({"detail": "Licencia vencida o ausente.", "licencia": licencia.estado()}, status_code=403)
     return await call_next(request)
@@ -61,8 +61,11 @@ app.mount("/media", StaticFiles(directory=config.DATA / "media"), name="media") 
 MARCAS = {"irtp": "IRTP"}
 
 
-def _con_marca(pagina):
+def _con_marca(pagina, vista=None):
     html = (config.WEB / pagina).read_text(encoding="utf-8")
+    if vista == "mapa":    # /mapa: el mismo tablero abierto solo en el mapa a pantalla completa (ver app.js, «pantalla completa»)
+        html = (html.replace("<title>Mesa de Acción · En vivo</title>", "<title>Mapa · Mesa de Acción</title>")
+                    .replace("<!--MARCA-->", '<script>document.documentElement.dataset.vista = "mapa";</script><!--MARCA-->', 1))
     if config.MARCA in MARCAS:
         icono = f'<link rel="icon" type="image/png" href="/marca/{config.MARCA}.png"><link rel="apple-touch-icon" href="/marca/{config.MARCA}.png">'
         html = (html.replace("<!--MARCA-->", f'<script>document.documentElement.dataset.marca = "{config.MARCA}";</script>{icono}')
@@ -73,6 +76,12 @@ def _con_marca(pagina):
 @app.get("/", include_in_schema=False)
 def index():
     return _con_marca("index.html")
+
+
+@app.get("/mapa", include_in_schema=False)
+def mapa_pagina():
+    """El mapa a pantalla completa: capas a la izquierda y la lista de datos de la capa elegida a la derecha."""
+    return _con_marca("index.html", vista="mapa")
 
 
 @app.get("/resumen", include_in_schema=False)

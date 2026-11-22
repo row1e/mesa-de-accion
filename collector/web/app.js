@@ -111,6 +111,8 @@ function updateFichaLinks() {
   const id = $("#region").value;
   const nr = document.querySelector("a.nav-out"); if (nr) nr.href = id ? `/resumen?lugar=${id}` : "/resumen";
   document.querySelectorAll("a.nav-inc").forEach(a => { a.href = id ? `/incendios?lugar=${id}` : "/incendios"; });
+  document.querySelectorAll("a.nav-mapa").forEach(a => { a.href = id ? `/mapa#r=${id}` : "/mapa"; });
+  document.querySelectorAll("a.nav-tablero").forEach(a => { a.href = id ? `/#r=${id}` : "/"; });
   document.querySelectorAll("a.nav-dan").forEach(a => { a.href = id ? `/danos?lugar=${id}` : "/danos"; });
   for (const [el, href] of [[$("#ficha-dl"), `/ficha/${id}.pdf`], [$("#ficha-ver"), `/ficha/${id}`]]) {
     if (id) { el.href = href; el.removeAttribute("aria-disabled"); el.removeAttribute("title"); if (el.id === "ficha-dl") el.setAttribute("download", ""); }
@@ -1968,25 +1970,25 @@ $("#dock-soltar").onclick = () => fijarMapa(false);
 $("#dock-ir").onclick = () => $("#mapa").scrollIntoView({behavior: reduceMotion ? "auto" : "smooth"});
 ubicarMapa();
 
-/* ── pantalla completa ──────────────────────────────────────────────
-   El mapa ocupa toda la ventana: capas y panel a la izquierda, la lista de la capa elegida a la derecha (ambos se
-   pliegan). Además pide pantalla completa al navegador, si lo permite; Esc sale de las dos. */
+/* ── pantalla completa (/mapa) ───────────────────────────────────────
+   Solo en la página /mapa (el tablero principal no cambia: tiene un enlace que la abre en otra pestaña). El mapa ocupa
+   toda la ventana: capas y panel a la izquierda, la lista de la capa elegida a la derecha, ambos plegables. El botón ⛶
+   pide además la pantalla completa del navegador. */
+const VISTA_MAPA = document.documentElement.dataset.vista === "mapa";
 const mapRow = document.querySelector(".maprow");
 function pantallaCompleta(v) {
-  if (v === enFS) return;
+  if (v === enFS || (!v && VISTA_MAPA) || (v && !VISTA_MAPA)) return;
   enFS = v;
   if (v) {
     ubicarMapa();                                        // si estaba en la ventana de la esquina, vuelve a su lugar
     const angosta = !anchoMapa.matches;
     mapRow.classList.toggle("sin-capas", angosta); mapRow.classList.toggle("sin-datos", angosta);
     if (!capaFoco || !state.layers[capaFoco]) capaFoco = layerDefs.find(l => l.id !== "ciudades" && state.layers[l.id])?.id || null;
-    try { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {}); } catch { /* sin API: queda el modo de la página */ }
-  } else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  }
   mapRow.classList.toggle("fs", v);
   document.body.classList.toggle("fs-abierto", v);
-  $("#map-fs").setAttribute("aria-pressed", String(v));
-  botonesFS(); renderLayers(); renderDatos();
-  if (!v) { ubicarMapa(); $("#mapa").scrollIntoView({block: "start"}); }
+  botonesFS();
+  if (V) { renderLayers(); renderDatos(); }
 }
 function botonesFS() {
   $("#fs-capas").setAttribute("aria-pressed", String(!mapRow.classList.contains("sin-capas")));
@@ -1995,7 +1997,6 @@ function botonesFS() {
 function verDatos(id) {
   capaFoco = id;
   if (!state.layers[id]) { state.layers[id] = true; renderPoints(); }
-  if (!enFS) pantallaCompleta(true);
   mapRow.classList.remove("sin-datos"); botonesFS();
   datosTope = 100; renderLayers(); renderDatos();
 }
@@ -2031,12 +2032,13 @@ function renderDatos() {
 }
 $("#datos-capa").onchange = e => { capaFoco = e.target.value; datosTope = 100; renderLayers(); renderDatos(); };
 $("#datos-vista").onchange = e => { datosSoloVista = e.target.checked; datosTope = 100; renderDatos(); };
-$("#map-fs").onclick = () => pantallaCompleta(!enFS);
-$("#fs-salir").onclick = () => pantallaCompleta(false);
+$("#fs-nav").onclick = () => {
+  try { document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.(); } catch { /* el navegador no lo permite */ }
+};
 $("#fs-capas").onclick = () => { mapRow.classList.toggle("sin-capas"); if (!anchoMapa.matches && !mapRow.classList.contains("sin-capas")) mapRow.classList.add("sin-datos"); botonesFS(); };
 $("#fs-datos").onclick = () => { mapRow.classList.toggle("sin-datos"); if (!anchoMapa.matches && !mapRow.classList.contains("sin-datos")) mapRow.classList.add("sin-capas"); botonesFS(); renderDatos(); };
-document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && enFS) pantallaCompleta(false); });
-addEventListener("keydown", e => { if (e.key === "Escape" && enFS && $("#detail").hidden && !document.fullscreenElement) pantallaCompleta(false); });
+document.addEventListener("fullscreenchange", () => $("#fs-nav").setAttribute("aria-pressed", String(!!document.fullscreenElement)));
+if (VISTA_MAPA) pantallaCompleta(true);
 
 /* ── aviso de licencia (app instalada): desde 10 días antes del vencimiento ─────────────── */
 fetch("/api/licencia", {cache: "no-store"}).then(r => r.json()).then(e => {
