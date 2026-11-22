@@ -89,13 +89,6 @@ def _today():
 DANOS_DAYS = 7
 
 
-def _event_key(it, rec):
-    """Un mismo evento tiene varios reportes (N° 1, 2, 3…) con cifras acumuladas: se identifica por SINPAD o por evento+lugar."""
-    if rec.get("sinpad"):
-        return f"sinpad:{rec['sinpad']}"
-    return "lugar:" + "|".join(geo.norm(it.get(k)) for k in ("evento", "distrito", "dpto"))
-
-
 def _fecha_ocurrencia(rec):
     """Primera fecha dd/mm/aaaa de la sección HECHOS ("Fecha y hora de la ocurrencia")."""
     m = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", rec.get("hechos") or "")
@@ -131,89 +124,10 @@ def _hora_ocurrencia(texto):
     return fecha, (f"{int(m.group(4)):02d}:{m.group(5)}" if m.group(4) and int(m.group(4)) < 24 else None)
 
 
-def _reparto(rec, fallback_reg, fallback_prov):
-    """Reparte las cifras por región y provincia usando las filas de subtotal DPTO./PROV. de la tabla, si existen."""
-    from . import indeci_danos
-    filas = (rec.get("danos") or {}).get("filas") or []
-    por_reg, por_prov, dep_name = {}, {}, None
-    for f in filas:
-        loc = (f.get("ubicacion") or "").strip()
-        head = geo.norm(loc.split(" ")[0]) if loc else ""
-        name = loc.split(" ", 1)[1].strip() if " " in loc else ""
-        canon = {}
-        for label, v in f["valores"].items():
-            field = indeci_danos.classify(label)
-            if field:
-                canon[field] = canon.get(field, 0) + v
-        if head in ("DPTO.", "DEP.", "DPTO", "DEP", "DEPARTAMENTO") and name:
-            dep_name = name
-            code = geo.region_code(name)
-            if code:
-                por_reg[code] = canon
-        elif head in ("PROV.", "PROV", "PROVINCIA") and name:
-            code = geo.province_code(dep_name or "", name)
-            if code:
-                por_prov[code] = canon
-    tot = (rec.get("danos") or {}).get("totales") or {}
-    if not por_reg and fallback_reg:
-        por_reg = {fallback_reg: tot}
-    if not por_prov and fallback_prov:
-        por_prov = {fallback_prov: tot}
-    return por_reg, por_prov
-
-
-def danos_resumen(days=DANOS_DAYS):
-    """Daños de los reportes INDECI de los últimos `days` días, sin duplicar eventos (cuenta el reporte más reciente de cada uno).
-
-    Separa eventos NUEVOS (ocurridos en la ventana) de eventos ANTERIORES aún en seguimiento (p. ej. un sismo de julio que sigue
-    recibiendo reportes). Reparte por región/provincia con las filas DPTO./PROV. de la tabla cuando el evento abarca varias."""
-    from . import indeci_danos
-    now = time.time()
-    cutoff = now - days * 86400
-    since_date = (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
-    pdfs = {r["_key"]: r for r in db.get_items("indeci", "reporte_pdf", current_only=False)}
-    latest = {}
-    for it in db.get_items("indeci", "item", current_only=False, limit=5000):
-        if it.get("clase") != "reporte" or (it.get("ts") or 0) < cutoff:
-            continue
-        rec = pdfs.get(it["_key"]) or {}
-        tot = (rec.get("danos") or {}).get("totales")
-        if not tot:
-            continue
-        k = _event_key(it, rec)
-        if k in latest and (it.get("ts") or 0) <= latest[k]["ts"]:
-            continue
-        reg = (it["prov"][:2] if it.get("prov") else None) or geo.region_code(re.split(r"\s*[–-]\s*", it.get("dpto") or "")[-1])
-        ocurr = _fecha_ocurrencia(rec)
-        rep_reg, rep_prov = _reparto(rec, reg, it.get("prov"))
-        latest[k] = {"evento_key": k, "item_key": it["_key"], "ts": it.get("ts") or 0, "sinpad": rec.get("sinpad"),
-                     "evento": it.get("evento"), "distrito": it.get("distrito"), "provincia": it.get("provincia"),
-                     "dpto": it.get("dpto"), "prov": it.get("prov"), "reg": reg, "tipo": it.get("tipo"), "num": it.get("num"),
-                     "seq": it.get("seq"), "totales": tot, "actualizado": rec.get("danos_actualizado"), "link": it.get("link"),
-                     "ocurrencia": ocurr, "nuevo": (ocurr is None or ocurr >= since_date), "por_reg": rep_reg, "por_prov": rep_prov,
-                     "multi_region": len(rep_reg) > 1}
-    eventos = sorted(latest.values(), key=lambda e: e["ts"], reverse=True)
-
-    def add(acc, tot):
-        for f, v in tot.items():
-            acc[f] = acc.get(f, 0) + v
-
-    def blank():
-        return {"totales": {}, "nuevos": {}, "seguimiento": {}, "n_eventos": 0, "n_nuevos": 0}
-
-    out, por_reg, por_prov = blank(), {}, {}
-    for e in eventos:
-        tipo = "nuevos" if e["nuevo"] else "seguimiento"
-        for acc in (out,):
-            add(acc["totales"], e["totales"]); add(acc[tipo], e["totales"])
-            acc["n_eventos"] += 1; acc["n_nuevos"] += e["nuevo"]
-        for bucket, parts in ((por_reg, e["por_reg"]), (por_prov, e["por_prov"])):
-            for code, tot in parts.items():
-                b = bucket.setdefault(code, blank())
-                add(b["totales"], tot); add(b[tipo], tot)
-                b["n_eventos"] += 1; b["n_nuevos"] += e["nuevo"]
-    return {"dias": days, "desde": since_date, "eventos": eventos, **out, "por_reg": por_reg, "por_prov": por_prov,
-            "labels": indeci_danos.LABELS, "orden": indeci_danos.ORDER}
+def danos_resumen(days=DANOS_DAYS, unidades=True):
+    """Daños de los reportes INDECI de los últimos `days` días, cada evento una vez (ver danos.py)."""
+    from . import danos
+    return danos.resumen(days=days, unidades=unidades)
 
 
 def build():
@@ -363,7 +277,8 @@ def build():
         regions = [{"id": f["properties"]["id"], "n": f["properties"]["n"]} for f in deps["features"]]
         danos = danos_resumen()
         by_item = {e["item_key"]: e for e in danos["eventos"]}
-        pdf_danos = {r["_key"]: ((r.get("danos") or {}).get("totales") or {}) for r in db.get_items("indeci", "reporte_pdf", current_only=False)}
+        from .danos import normalizar
+        pdf_danos = {r["_key"]: normalizar((r.get("danos") or {}).get("totales") or {}) for r in db.get_items("indeci", "reporte_pdf", current_only=False)}
         for i in indeci:
             i["danos"] = pdf_danos.get(i["_key"]) or None
 

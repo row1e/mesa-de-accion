@@ -27,7 +27,7 @@ LIBRES = ("/api/licencia", "/marca/", "/fuentes/", "/licencia")
 async def control_licencia(request: Request, call_next):
     p = request.url.path
     if licencia.requerida() and not p.startswith(LIBRES) and licencia.bloqueada():
-        if p in ("/", "/index.html", "/reportar", "/resumen", "/incendios"):
+        if p in ("/", "/index.html", "/reportar", "/resumen", "/incendios", "/danos"):
             return _con_marca("licencia.html")
         return JSONResponse({"detail": "Licencia vencida o ausente.", "licencia": licencia.estado()}, status_code=403)
     return await call_next(request)
@@ -91,6 +91,18 @@ def incendios_pagina():
 def get_incendios():
     from . import incendios
     return JSONResponse(incendios.historial(), headers={"Cache-Control": "private, max-age=300"})
+
+
+@app.get("/danos", include_in_schema=False)
+def danos_pagina():
+    """Daños de los reportes INDECI a lo largo del tiempo, por fecha en que ocurrió cada evento (ver danos.py)."""
+    return _con_marca("danos.html")
+
+
+@app.get("/api/danos")
+def get_danos():
+    from . import danos
+    return JSONResponse(danos.historial(), headers={"Cache-Control": "private, max-age=300"})
 
 
 @app.get("/api/resumen")

@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Historial de daños · Mesa de Acción</title>
+<script>try { const t = localStorage.getItem("mesa.tema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* tema del sistema */ }</script>
+<!--MARCA-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap">
+<style>
+/* Historial de daños: cifras de los reportes INDECI por semana en que ocurrió cada evento (mesa/danos.py). */
+:root{--ground:#F3F3EF;--surface:#FFFFFF;--surface-2:#F8F8F5;--ink:#15140F;--ink-2:#4A4840;--ink-3:#7C796E;--line:#DCDBD3;--line-2:#EAE9E3;
+  --brand:#FFD100;--brand-ink:#15140F;--vida:#B3261E;--f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --c-lluvias:#2a78d6;--c-incendio_forestal:#eb6834;--c-vientos:#1baf7a;--c-incendio_urbano:#eda100;--c-frio:#6250d6;--c-sismo:#e87ba4;--c-deficit:#008300;--c-otros:#B9B7AD}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ground:#121210;--surface:#1B1A17;--surface-2:#22211D;--ink:#F1F0EA;--ink-2:#C4C2B8;--ink-3:#8F8C81;
+  --line:#35342E;--line-2:#2A2925;--vida:#FF7A70;
+  --c-lluvias:#3987e5;--c-incendio_forestal:#d95926;--c-vientos:#199e70;--c-incendio_urbano:#c98500;--c-frio:#9085e9;--c-sismo:#d55181;--c-deficit:#0ca30c;--c-otros:#5D5B52}}
+:root[data-theme="dark"]{--ground:#121210;--surface:#1B1A17;--surface-2:#22211D;--ink:#F1F0EA;--ink-2:#C4C2B8;--ink-3:#8F8C81;--line:#35342E;--line-2:#2A2925;--vida:#FF7A70;
+  --c-lluvias:#3987e5;--c-incendio_forestal:#d95926;--c-vientos:#199e70;--c-incendio_urbano:#c98500;--c-frio:#9085e9;--c-sismo:#d55181;--c-deficit:#0ca30c;--c-otros:#5D5B52}
+:root[data-marca="irtp"]{--brand:#C1002D;--brand-ink:#FFFFFF}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ground);color:var(--ink);font:400 15px/1.5 var(--f-display)}
+a{color:inherit}
+button{font:inherit;cursor:pointer}
+.mast{background:var(--brand);color:var(--brand-ink)}
+.mast-in{max-width:1280px;margin:0 auto;padding:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.marca-logo{display:block;height:44px;width:auto}
+.mast h1{margin:0;font-size:26px;line-height:1;font-weight:800;font-variation-settings:"wdth" 70;text-transform:uppercase}
+.mast .per{font-size:13px;opacity:.95;max-width:760px}
+.mast .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.mast select{font:inherit;font-size:14px;padding:6px 8px;border-radius:4px;border:1px solid currentColor;background:var(--surface);color:var(--ink);max-width:260px}
+.mast .acts a{color:var(--brand-ink);border:1px solid currentColor;border-radius:4px;padding:6px 12px;text-decoration:none;font-size:14px}
+main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);padding:16px 18px;min-width:0}
+.ancho{grid-column:1/-1}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:650;margin:0}
+h2{margin:2px 0 8px;font-size:21px;line-height:1.2}
+h3{margin:16px 0 6px;font-size:15px}
+.note{font-size:13px;color:var(--ink-3);margin:8px 0 0;max-width:980px}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:10px}
+.ctrl label{font-size:13.5px;color:var(--ink-2);display:flex;gap:6px;align-items:center}
+.ctrl select{font:inherit;font-size:14px;padding:5px 8px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:12px;margin:4px 0 14px}
+.tile b{display:block;font-size:30px;line-height:1.1;font-weight:750;font-variation-settings:"wdth" 80;font-variant-numeric:tabular-nums}
+.tile span{font-size:12.5px;color:var(--ink-3)}
+.leyenda{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink-2);margin:0 0 6px}
+.leyenda i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-radius:2px}
+.leyenda .prov i{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M0 6L6 0' stroke='%237C796E' stroke-width='1.5'/%3E%3C/svg%3E")}
+#barras{width:100%;display:block;cursor:pointer}
+#barras .g{stroke:var(--line-2)}
+#barras text{font:12px var(--f-display);fill:var(--ink-3)}
+#barras .sel-bg{fill:var(--surface-2)}
+#barras .tot{fill:var(--ink-2);font-weight:650;font-variant-numeric:tabular-nums}
+.tip{position:fixed;z-index:9;background:var(--ink);color:var(--surface);padding:7px 10px;border-radius:4px;font-size:13px;pointer-events:none;max-width:300px}
+.tip .r{display:flex;justify-content:space-between;gap:14px}
+.tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.rank{list-style:none;margin:0;padding:0}
+.rank li{border-top:1px solid var(--line-2)}
+.rank button{display:flex;gap:10px;justify-content:space-between;width:100%;background:none;border:0;padding:6px 2px;color:var(--ink);text-align:left}
+.rank button:hover{background:var(--surface-2)}
+.rank .v{font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+.evs{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
+.evs li{border-top:1px solid var(--line-2);padding:8px 2px;font-size:14px}
+.evs .t{display:flex;gap:8px;align-items:baseline;justify-content:space-between}
+.evs .t a{font-weight:650;text-decoration:none}
+.evs .t a:hover{text-decoration:underline}
+.evs .v{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+.evs .s{display:block;font-size:12.5px;color:var(--ink-3)}
+.evs i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.evs .sin{color:var(--ink-3);font-weight:400}
+.mas{margin-top:8px;background:none;border:1px solid var(--line);border-radius:4px;padding:6px 12px;color:var(--ink)}
+details{margin-top:12px}
+summary{cursor:pointer;font-size:13.5px;color:var(--ink-2)}
+.tabla-w{max-height:360px;overflow:auto;margin-top:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{border-bottom:1px solid var(--line-2);padding:4px 8px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{position:sticky;top:0;background:var(--surface);color:var(--ink-3);font-weight:600}
+</style>
+<header class="mast"><div class="mast-in"><!--MARCA-LOGO--><div><h1>Historial de daños</h1><div class="per" id="per">Cargando…</div></div>
+  <div class="acts"><select id="lugar" aria-label="Lugar"><option value="">Todo el Perú</option></select><a href="/#indeci-sec">Volver al tablero</a></div></div></header>
+<main>
+  <section class="panel ancho">
+    <p class="eyebrow">INDECI · reportes de emergencia</p>
+    <h2 id="titulo">Daños por semana en que ocurrió el evento</h2>
+    <div class="ctrl">
+      <label>Cifra <select id="cifra"></select></label>
+      <span class="note" style="margin:0" id="sel-txt"></span>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="leyenda" id="ley"></div>
+    <svg id="barras" role="img" aria-label="Daños por semana y tipo de evento"></svg>
+    <p class="note" id="nota"></p>
+    <details><summary>Ver los datos en una tabla</summary><div class="tabla-w"><table id="tabla"></table></div></details>
+  </section>
+  <section class="panel">
+    <p class="eyebrow" id="ev-eyebrow">Eventos</p>
+    <h2 id="ev-tit">—</h2>
+    <ul class="evs" id="evs"></ul>
+    <button type="button" class="mas" id="mas" hidden></button>
+  </section>
+  <aside class="panel">
+    <p class="eyebrow">En el periodo elegido</p>
+    <h3 style="margin-top:4px">Por tipo de evento</h3>
+    <ul class="rank" id="por-tipo"></ul>
+    <h3 id="rank-t">Dónde se concentra</h3>
+    <ul class="rank" id="rank"></ul>
+  </aside>
+</main>
+<div class="tip" id="tip" hidden></div>
+<script src="/vendor/d3.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const nf = new Intl.NumberFormat("es-PE", {maximumFractionDigits: 1});
+const titulo = s => (s || "").toLowerCase().replace(/(^|[\s(])\p{L}/gu, c => c.toUpperCase());
+const fecha = d => new Date(d + "T12:00:00");
+const iso = d => d.toLocaleDateString("en-CA");
+const fmtCorto = d => fecha(d).toLocaleDateString("es-PE", {day: "numeric", month: "short"}).replace(".", "");
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// Cifras que se pueden graficar: la suma de los campos de INDECI indicados (ya normalizados: vías en km).
+const CIFRAS = [
+  ["eventos", "Eventos reportados", null, "eventos"],
+  ["personas_afectadas", "Personas afectadas", ["personas_afectadas"], "personas"],
+  ["personas_damnificadas", "Personas damnificadas", ["personas_damnificadas"], "personas"],
+  ["fallecidos", "Fallecidos", ["personas_fallecidas"], "personas"],
+  ["heridos", "Heridos", ["personas_heridas"], "personas"],
+  ["desaparecidos", "Desaparecidos", ["personas_desaparecidas"], "personas"],
+  ["viv_graves", "Viviendas colapsadas o inhabitables", ["viviendas_colapsadas", "viviendas_inhabitables"], "viviendas"],
+  ["viv_afectadas", "Viviendas afectadas", ["viviendas_afectadas"], "viviendas"],
+  ["ie", "Instituciones educativas dañadas", ["ie_afectadas", "ie_inhabitables", "ie_colapsadas"], "locales"],
+  ["salud", "Establecimientos de salud dañados", ["salud_afectados", "salud_inhabitables"], "locales"],
+  ["vias", "Vías afectadas o destruidas (km)", ["vias_afectadas_km", "vias_destruidas_km"], "km"],
+  ["puentes", "Puentes afectados o colapsados", ["puentes_afectados", "puentes_colapsados"], "puentes"],
+  ["cultivos", "Cultivos afectados o perdidos (ha)", ["cultivo_afectado_ha", "cultivo_perdido_ha"], "ha"],
+  ["cobertura", "Cobertura natural dañada (ha)", ["cobertura_natural_afectada_ha", "cobertura_natural_perdida_ha", "cobertura_natural_destruida_ha"], "ha"],
+];
+const CIFRA = Object.fromEntries(CIFRAS.map(c => [c[0], c]));
+// Orden de apilado (fijo; los colores siguen al tipo, no al ranking). "Otros" en gris arriba.
+const ORDEN = ["lluvias", "incendio_forestal", "vientos", "incendio_urbano", "frio", "sismo", "deficit", "otros"];
+const S = {D: null, lugar: "", cifra: "personas_afectadas", semanas: [], sel: null, nombres: {}, tope: 25};
+
+const lunes = d => { const x = fecha(d); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return iso(x); };
+const masDias = (d, n) => { const x = fecha(d); x.setDate(x.getDate() + n); return iso(x); };
+
+// Cifras del evento en el lugar elegido: si abarca varias regiones/provincias, solo la parte de ese lugar.
+function enLugar(e) {
+  const L = S.lugar;
+  if (!L) return e.totales || {};
+  if (L.length === 2) return e.por_reg ? e.por_reg[L] : (e.reg === L ? e.totales || {} : null);
+  return e.por_prov ? e.por_prov[L] : (e.prov === L ? e.totales || {} : null);
+}
+function valor(tot, c = S.cifra) {
+  const campos = CIFRA[c][2];
+  if (!campos) return 1;
+  return campos.reduce((s, k) => s + (tot[k] || 0), 0);
+}
+
+function armar() {
+  const D = S.D, desde = lunes(D.desde), hoy = D.hasta;
+  const limiteProv = masDias(hoy, -(D.demora.p80 ?? 14));      // semanas que terminan después de esto aún pueden crecer
+  S.semanas = [];
+  for (let w = desde; w <= hoy; w = masDias(w, 7)) S.semanas.push({ini: w, fin: masDias(w, 6), prov: masDias(w, 6) > limiteProv, evs: []});
+  const idx = Object.fromEntries(S.semanas.map((s, i) => [s.ini, i]));
+  S.antes = []; S.enLugar = [];
+  for (const e of D.eventos) {
+    const tot = enLugar(e);
+    if (tot == null) continue;
+    const x = {...e, t: tot};
+    S.enLugar.push(x);
+    if (e.fecha < D.desde) { S.antes.push(x); continue; }   // ocurrió antes de que la Mesa empezara a guardar reportes
+    const i = idx[lunes(e.fecha)];
+    if (i != null) S.semanas[i].evs.push(x);
+  }
+}
+function serie() {
+  const c = S.cifra, conCifra = !!CIFRA[c][2];
+  return S.semanas.map(s => {
+    const por = Object.fromEntries(ORDEN.map(k => [k, 0]));
+    let sin = 0;
+    for (const e of s.evs) { por[e.categoria] += valor(e.t, c); if (conCifra && !e.cifras) sin++; }
+    return {...s, por, total: d3.sum(ORDEN, k => por[k]), sin, n: s.evs.length};
+  });
+}
+
+// ── Gráfico de barras apiladas ──
+const AL = 280, M = {t: 22, r: 8, b: 26, l: 48};
+let geom = null;
+function dibujar() {
+  const svg = $("#barras"), W = svg.getBoundingClientRect().width || 900, ser = serie();
+  svg.setAttribute("viewBox", `0 0 ${W} ${AL}`); svg.setAttribute("height", AL);
+  const n = ser.length, paso = (W - M.l - M.r) / n, ancho = Math.max(4, Math.min(56, paso * .72));
+  const y = d3.scaleLinear().domain([0, d3.max(ser, s => s.total) || 1]).nice().range([AL - M.b, M.t]);
+  geom = {paso, ser};
+  let h = `<defs><pattern id="prov" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.2" height="6" fill="${css("--surface")}" opacity=".75"/></pattern></defs>`;
+  for (const t of y.ticks(4)) h += `<line class="g" x1="${M.l}" x2="${W - M.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${M.l - 6}" y="${y(t) + 4}" text-anchor="end">${nf.format(t)}</text>`;
+  ser.forEach((s, i) => {
+    const x0 = M.l + i * paso + (paso - ancho) / 2;
+    if (S.sel === i) h += `<rect class="sel-bg" x="${M.l + i * paso}" y="${M.t - 18}" width="${paso}" height="${AL - M.b - M.t + 18}"/>`;
+    let base = AL - M.b;
+    const capas = ORDEN.filter(k => s.por[k] > 0);
+    capas.forEach((k, j) => {
+      const alto = y(0) - y(s.por[k]); if (alto <= 0) return;
+      // cada segmento ocupa [base-alto, base]; los de arriba dejan 2 px libres abajo como separación
+      const t2 = base - alto, bot = base - (j > 0 ? 2 : 0), hh = Math.max(0.5, bot - t2);
+      const r = j === capas.length - 1 ? Math.min(4, ancho / 2, hh) : 0;   // solo el extremo superior va redondeado
+      h += r ? `<path fill="var(--c-${k})" d="M${x0},${bot}V${t2 + r}Q${x0},${t2} ${x0 + r},${t2}H${x0 + ancho - r}Q${x0 + ancho},${t2} ${x0 + ancho},${t2 + r}V${bot}Z"/>`
+        : `<rect fill="var(--c-${k})" x="${x0}" y="${t2}" width="${ancho}" height="${hh}"/>`;
+      if (s.prov) h += `<rect fill="url(#prov)" x="${x0}" y="${t2}" width="${ancho}" height="${hh}"/>`;
+      base = t2;
+    });
+    if (s.total && (S.sel === i || i === n - 1 || s.total === d3.max(ser, z => z.total)))
+      h += `<text class="tot" x="${x0 + ancho / 2}" y="${y(s.total) - 5}" text-anchor="middle">${nf.format(s.total)}</text>`;
+    const cada = Math.ceil(n / Math.max(3, Math.floor(W / 70)));
+    if (i % cada === 0 || i === n - 1) h += `<text x="${M.l + i * paso + paso / 2}" y="${AL - 8}" text-anchor="middle">${fmtCorto(s.ini)}</text>`;
+  });
+  svg.innerHTML = h;
+}
+function semanaEn(ev) { const r = $("#barras").getBoundingClientRect(); return Math.floor((ev.clientX - r.left - M.l) / geom.paso); }
+$("#barras").addEventListener("pointermove", e => {
+  const i = semanaEn(e), s = geom?.ser[i], t = $("#tip");
+  if (!s) { t.hidden = true; return; }
+  const c = CIFRA[S.cifra];
+  t.innerHTML = `<b>Semana del ${fmtCorto(s.ini)} al ${fmtCorto(s.fin)}</b>${s.prov ? " · provisional" : ""}<br>` +
+    ORDEN.filter(k => s.por[k]).slice().reverse().map(k => `<div class="r"><span><i style="background:var(--c-${k})"></i>${esc(S.cat[k])}</span><b>${nf.format(s.por[k])}</b></div>`).join("") +
+    `<div class="r" style="border-top:1px solid #fff4;margin-top:3px;padding-top:3px"><span>Total · ${esc(c[1].toLowerCase())}</span><b>${nf.format(s.total)}</b></div>` +
+    `<span style="opacity:.75">${s.n} evento${s.n === 1 ? "" : "s"}${s.sin ? ` · ${s.sin} aún sin cifras` : ""}</span>`;
+  t.hidden = false;
+  t.style.left = Math.min(e.clientX + 14, innerWidth - 310) + "px"; t.style.top = Math.max(8, e.clientY - 40 - t.offsetHeight / 2) + "px";
+});
+$("#barras").addEventListener("pointerleave", () => { $("#tip").hidden = true; });
+$("#barras").addEventListener("click", e => { const i = semanaEn(e); if (geom?.ser[i]) { S.sel = S.sel === i ? null : i; S.tope = 25; pintar(); } });
+
+// ── Paneles ──
+function eventosSel() { return S.sel == null ? S.semanas.flatMap(s => s.evs) : S.semanas[S.sel].evs; }
+function panel() {
+  const c = CIFRA[S.cifra], evs = eventosSel(), conCifra = !!c[2];
+  const tot = d3.sum(evs, e => valor(e.t)), sin = evs.filter(e => !e.cifras).length;
+  const s = S.sel != null ? S.semanas[S.sel] : null;
+  const periodo = s ? `semana del ${fmtCorto(s.ini)} al ${fmtCorto(s.fin)}` : `${fmtCorto(S.semanas[0].ini)} al ${fmtCorto(S.D.hasta)}`;
+  $("#sel-txt").textContent = s ? `Semana elegida: ${fmtCorto(s.ini)} al ${fmtCorto(s.fin)}${s.prov ? " (provisional)" : ""} · clic de nuevo para ver todo el periodo` : "Clic en una barra para ver los eventos de esa semana";
+  // cuarta cifra: fallecidos, salvo que ya sea la cifra del gráfico (entonces, damnificados)
+  const [k4, t4] = S.cifra === "fallecidos" ? ["personas_damnificadas", "damnificados"] : ["personas_fallecidas", "fallecidos"];
+  const cuarta = d3.sum(evs, e => (e.t[k4] || 0));
+  $("#tiles").innerHTML = [
+    [nf.format(tot), conCifra ? `${c[1].toLowerCase()} · ${periodo}` : `eventos · ${periodo}`],
+    [nf.format(evs.length), "eventos ocurridos"],
+    [nf.format(evs.length - sin), "con cifras de daños"],
+    [nf.format(cuarta), t4],
+  ].map(([v, t]) => `<div class="tile"><b>${v}</b><span>${esc(t)}</span></div>`).join("");
+
+  // por tipo
+  const por = ORDEN.map(k => [k, d3.sum(evs.filter(e => e.categoria === k), e => valor(e.t)), evs.filter(e => e.categoria === k).length]).filter(r => r[2]);
+  por.sort((a, b) => b[1] - a[1] || b[2] - a[2]);
+  $("#por-tipo").innerHTML = por.map(([k, v, n]) => `<li><button type="button" disabled style="cursor:default"><span><i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:var(--c-${k})"></i>${esc(S.cat[k])}</span><span class="v">${conCifra ? nf.format(v) + " · " : ""}${n} ev.</span></button></li>`).join("") || `<li class="note">Sin eventos.</li>`;
+
+  // dónde: departamentos (o provincias si ya hay un departamento elegido)
+  const nivel = S.lugar.length === 2 ? "prov" : "reg";
+  const cuenta = {};
+  if (S.lugar.length < 4) for (const e of evs) {
+    const partes = nivel === "reg" ? (e.por_reg || (e.reg ? {[e.reg]: e.totales || {}} : {})) : (e.por_prov || (e.prov ? {[e.prov]: e.totales || {}} : {}));
+    for (const [k, t] of Object.entries(partes)) { if (nivel === "prov" && !k.startsWith(S.lugar)) continue; cuenta[k] = (cuenta[k] || 0) + valor(t || {}); }
+  }
+  const top = Object.entries(cuenta).filter(r => r[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  $("#rank-t").hidden = !top.length;
+  $("#rank-t").textContent = nivel === "prov" ? "Provincias con más " + (conCifra ? c[1].toLowerCase() : "eventos") : "Departamentos con más " + (conCifra ? c[1].toLowerCase() : "eventos");
+  $("#rank").innerHTML = top.map(([k, v]) => `<li><button type="button" data-l="${k}"><span>${esc(S.nombres[k] || k)}</span><span class="v">${nf.format(v)}</span></button></li>`).join("");
+
+  // lista de eventos
+  const lista = [...evs].sort((a, b) => (valor(b.t) - valor(a.t)) || (b.fecha > a.fecha ? 1 : -1));
+  $("#ev-eyebrow").textContent = s ? `Semana del ${fmtCorto(s.ini)} al ${fmtCorto(s.fin)}` : "Todo el periodo";
+  $("#ev-tit").textContent = `${evs.length} evento${evs.length === 1 ? "" : "s"}${conCifra ? ", de mayor a menor " + c[1].toLowerCase().replace(/ \((km|ha)\)/, "") : ""}`;
+  $("#evs").innerHTML = lista.slice(0, S.tope).map(e => {
+    const v = valor(e.t);
+    return `<li><div class="t"><span><i style="background:var(--c-${e.categoria})"></i><a href="${esc(e.item_key)}" target="_blank" rel="noopener">${esc(titulo(e.evento))} — ${esc(titulo(e.distrito))}</a></span>${conCifra ? (e.cifras ? `<span class="v">${nf.format(v)}</span>` : `<span class="v sin">sin cifras aún</span>`) : ""}</div>
+      <span class="s">${esc(titulo(e.provincia))}${e.provincia ? ", " : ""}${esc(titulo(e.dpto))} · ocurrió ${fmtCorto(e.fecha)}${e.fecha_estimada ? " (fecha del primer reporte)" : ""} · ${e.n_reportes} reporte${e.n_reportes === 1 ? "" : "s"}${e.por_reg || e.por_prov ? " · abarca varias zonas: se cuenta la parte de este lugar" : ""}</span></li>`;
+  }).join("") || `<li class="s">Ningún evento en este periodo y lugar.</li>`;
+  const resto = lista.length - S.tope;
+  $("#mas").hidden = resto <= 0;
+  $("#mas").textContent = `Ver ${Math.min(25, resto)} más · ${lista.length} en total`;
+}
+function tabla() {
+  const ser = serie(), c = CIFRA[S.cifra], usadas = ORDEN.filter(k => ser.some(s => s.por[k]));
+  $("#tabla").innerHTML = `<thead><tr><th>Semana</th>${usadas.map(k => `<th>${esc(S.cat[k])}</th>`).join("")}<th>Total</th><th>Eventos</th>${c[2] ? "<th>Sin cifras aún</th>" : ""}</tr></thead><tbody>` +
+    ser.slice().reverse().map(s => `<tr><td>${fmtCorto(s.ini)} al ${fmtCorto(s.fin)}${s.prov ? " · provisional" : ""}</td>${usadas.map(k => `<td>${nf.format(s.por[k])}</td>`).join("")}<td><b>${nf.format(s.total)}</b></td><td>${s.n}</td>${c[2] ? `<td>${s.sin}</td>` : ""}</tr>`).join("") + "</tbody>";
+}
+function leyenda() {
+  const ser = serie(), usadas = ORDEN.filter(k => ser.some(s => s.por[k]));
+  $("#ley").innerHTML = usadas.map(k => `<span><i style="background:var(--c-${k})"></i>${esc(S.cat[k])}</span>`).join("") +
+    (S.semanas.some(s => s.prov) ? `<span class="prov"><i></i>Semanas provisionales: sus cifras todavía pueden crecer</span>` : "");
+}
+function pintar() {
+  const c = CIFRA[S.cifra];
+  $("#titulo").textContent = `${c[1]} por semana en que ocurrió el evento${S.lugar ? " · " + (S.nombres[S.lugar] || "") : ""}`;
+  leyenda(); dibujar(); panel(); tabla();
+}
+function setLugar(v, empujar = true) {
+  S.lugar = v; $("#lugar").value = v; S.sel = null; S.tope = 25; armar(); pintar();
+  if (empujar) actualizarURL();
+}
+function actualizarURL() {
+  const q = new URLSearchParams();
+  if (S.lugar) q.set("lugar", S.lugar);
+  if (S.cifra !== "personas_afectadas") q.set("cifra", S.cifra);
+  history.replaceState(null, "", q.toString() ? "?" + q : location.pathname);
+}
+$("#lugar").onchange = e => setLugar(e.target.value);
+$("#cifra").onchange = e => { S.cifra = e.target.value; S.tope = 25; pintar(); actualizarURL(); };
+$("#rank").onclick = e => { const b = e.target.closest("button"); if (b) setLugar(b.dataset.l); };
+$("#mas").onclick = () => { S.tope += 25; panel(); };
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (S.semanas.length) dibujar(); }, 150); });
+
+(async () => {
+  const [D, L] = await Promise.all([fetch("/api/danos").then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }), fetch("/api/lugares").then(r => r.json()).catch(() => [])]);
+  S.D = D; S.cat = Object.fromEntries(D.categorias);
+  $("#lugar").innerHTML = `<option value="">Todo el Perú</option>` + L.map(d => { S.nombres[d.id] = d.nombre; d.provincias.forEach(p => S.nombres[p.id] = `${p.nombre} (${d.nombre})`);
+    return `<optgroup label="${esc(d.nombre)}"><option value="${d.id}">${esc(d.nombre)} · todo el departamento</option>${d.provincias.map(p => `<option value="${p.id}">  ${esc(p.nombre)}</option>`).join("")}</optgroup>`; }).join("");
+  $("#cifra").innerHTML = CIFRAS.map(c => `<option value="${c[0]}">${esc(c[1])}</option>`).join("");
+  if (!D.eventos.length || !D.desde) { $("#per").textContent = "Aún no hay reportes de INDECI guardados."; return; }
+  const q = new URLSearchParams(location.search);
+  if (CIFRA[q.get("cifra")]) S.cifra = q.get("cifra");
+  $("#cifra").value = S.cifra;
+  $("#per").textContent = `Eventos ocurridos desde el ${fecha(D.desde).toLocaleDateString("es-PE", {day: "numeric", month: "long", year: "numeric"})}, cuando la Mesa empezó a guardar los reportes de INDECI. Cada evento se cuenta una vez, con su reporte más reciente.`;
+  const lugarQ = q.get("lugar") || "";
+  setLugar([...$("#lugar").options].some(o => o.value === lugarQ) ? lugarQ : "", false);
+  const dm = D.demora;
+  $("#nota").textContent = `Cómo se cuenta: cada evento recibe varios reportes (preliminar y complementarios) y cada uno repite las cifras acumuladas del evento; por eso no se suman reportes, sino que vale el más reciente con cifras. ` +
+    `Un evento es el mismo código SINPAD o, si no lo tiene, el mismo tipo de evento, distrito y fecha de ocurrencia (dos incendios en el mismo distrito en días distintos son dos eventos). ` +
+    `Las barras ubican cada evento en la semana en que ocurrió, no en la que se reportó. ` +
+    (dm.mediana != null ? `La mitad de los eventos recibe su última cifra hasta ${dm.mediana} días después de ocurrido y el 80 %, hasta ${dm.p80} días: por eso las semanas más recientes (rayadas) son provisionales y suelen crecer. ` : "") +
+    `Muchos reportes preliminares todavía no traen cifras ("evaluación en proceso"); esos eventos cuentan como eventos pero no suman daños hasta que INDECI publique números. ` +
+    `Los eventos que abarcan varias regiones o provincias se reparten con las filas de la tabla de daños, para no contarlos dos veces al filtrar por lugar. Las vías reportadas en metros se pasan a kilómetros. ` +
+    (S.antes.length ? `No se grafican ${S.antes.length} eventos ocurridos antes del ${fmtCorto(D.desde)} que siguieron reportando después. ` : "") + `Fuente: INDECI (COEN).`;
+})().catch(e => { $("#per").textContent = "No se pudo cargar el historial: " + e.message; });
+</script>

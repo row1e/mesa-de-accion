@@ -212,7 +212,7 @@ def danos(dias: int = Query(45, ge=1, le=120), deps: str | None = None, quien: s
     reporte más reciente (las cifras son acumuladas). `ubigeo` es el distrito del reporte; los eventos que abarcan varias
     provincias o regiones traen además el reparto `por_prov` / `por_reg` de la tabla de daños."""
     regiones = {d.strip().zfill(2) for d in (deps or "").split(",") if d.strip()}
-    res = snapshot.danos_resumen(days=dias)
+    res = snapshot.danos_resumen(days=dias, unidades=False)   # cifras como vienen del reporte (compatibilidad)
     cat = _catalogo_distritos()
     eventos = []
     for e in res["eventos"]:

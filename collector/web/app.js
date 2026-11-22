@@ -111,6 +111,7 @@ function updateFichaLinks() {
   const id = $("#region").value;
   const nr = document.querySelector("a.nav-out"); if (nr) nr.href = id ? `/resumen?lugar=${id}` : "/resumen";
   document.querySelectorAll("a.nav-inc").forEach(a => { a.href = id ? `/incendios?lugar=${id}` : "/incendios"; });
+  document.querySelectorAll("a.nav-dan").forEach(a => { a.href = id ? `/danos?lugar=${id}` : "/danos"; });
   for (const [el, href] of [[$("#ficha-dl"), `/ficha/${id}.pdf`], [$("#ficha-ver"), `/ficha/${id}`]]) {
     if (id) { el.href = href; el.removeAttribute("aria-disabled"); el.removeAttribute("title"); if (el.id === "ficha-dl") el.setAttribute("download", ""); }
     else { el.removeAttribute("href"); el.setAttribute("aria-disabled", "true"); }
@@ -1581,7 +1582,7 @@ const SHORTD = {personas_fallecidas: "fallecidos", personas_desaparecidas: "desa
   personas_damnificadas: "damnificados", personas_afectadas: "afectados", viviendas_colapsadas: "viv. colapsadas",
   viviendas_inhabitables: "viv. inhabitables", viviendas_afectadas: "viv. afectadas", cobertura_natural_destruida_ha: "ha cobertura destruida",
   cobertura_natural_perdida_ha: "ha cobertura perdida", cobertura_natural_afectada_ha: "ha cobertura afectada", cultivo_perdido_ha: "ha cultivo perdido",
-  cultivo_afectado_ha: "ha cultivo afectado", vias_afectadas_m: "m de vía afectada", vias_destruidas_m: "m de vía destruida"};
+  cultivo_afectado_ha: "ha cultivo afectado", vias_afectadas_km: "km de vía afectada", vias_destruidas_km: "km de vía destruida"};
 const fmtN = v => typeof v === "number" && !Number.isInteger(v) ? v.toLocaleString("es-PE", {maximumFractionDigits: 1}) : nf.format(v);
 function danosChips(tot, max = 3) {
   if (!tot) return "";
