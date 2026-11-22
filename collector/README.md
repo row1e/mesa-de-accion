@@ -81,6 +81,7 @@ El job `respaldo` (cada 24 h, visible en el tablero de fuentes) copia `data/` a 
 | `firms` | 2 h | |
 | `ingemmet` | 3 h | |
 | `ana_obras`, `olas_openmeteo` | 6 h | |
+| `clima_openmeteo` | 3 h | Lluvia, nubes y viento por provincia (malla de 0,5°, ~630 puntos en tandas de 120 cada 20 s por el límite del plan libre) |
 | `bomberos` | 15 min | Lista de 24 h: no se pierde nada |
 | `senamhi_pronostico` | 6 h | |
 | `senamhi_uv` | 6 h | |

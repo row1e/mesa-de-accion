@@ -1,5 +1,5 @@
 """Registro de fuentes: id → (función, etiqueta, institución, acceso, nivel geográfico, qué había en la hoja)."""
-from . import ana, bomberos, declaratorias, dhn, gobpe, indeci_geo, midis, others, senamhi
+from . import ana, bomberos, clima, declaratorias, dhn, gobpe, indeci_geo, midis, others, senamhi
 
 SOURCES = {
     "senamhi_avisos": dict(fn=senamhi.avisos, org="SENAMHI", name="Avisos meteorológicos", via="HTML + WFS GeoServer",
@@ -45,6 +45,8 @@ SOURCES = {
                        geo="Tramo de litoral → provincia costera", sheet="No existía"),
     "dhn_pronosticos": dict(fn=dhn.pronosticos, org="DHN · Marina de Guerra", name="Pronóstico de olas (mapas del modelo)",
                             via="Imágenes del modelo (naylamp)", geo="Zona y bahía", sheet="No existía"),
+    "clima_openmeteo": dict(fn=clima.clima, org="Open-Meteo", name="Lluvia, nubes y viento pronosticados (modelo de referencia, no oficial)",
+                            via="JSON abierto (malla de 0,5°)", geo="Malla → provincia", sheet="—"),
     "olas_openmeteo": dict(fn=dhn.openmeteo, org="Open-Meteo Marine", name="Altura de ola (modelo de referencia, no oficial)",
                            via="JSON abierto", geo="Puntos frente a la costa", sheet="—"),
     "ana_obras": dict(fn=ana.obras, org="ANA · Autoridad Nacional del Agua", name="Obras de prevención: puntos críticos y barreras",

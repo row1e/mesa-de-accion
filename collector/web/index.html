@@ -14,6 +14,7 @@
   --sismo:#3559D6; --fuego:#E3170A; --hidro:#0E8FA3; --geo:#7A5A2E; --indeci:#15140F;
   --ok:#2F7D4F; --ok-bg:#E3F1E7; --warn:#9A6A00; --warn-bg:#FBF0D2; --bad:#B42323; --bad-bg:#F8E0DE;
   --uv0:#EEEAF6; --uv1:#CFC3E8; --uv2:#A38BD2; --uv3:#7755B8; --uv4:#4B2A8C;
+  --ll1:#D6E8F8; --ll2:#9CC6EE; --ll3:#5A9FDF; --ll4:#2468B8; --ll5:#123F7A; --nube:#44506A; --tormenta:#6A2FB0;
   --f-display:"Archivo","Helvetica Neue",Arial,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){
@@ -24,6 +25,7 @@
     --sismo:#7B98FF; --fuego:#FF3B2E; --hidro:#34B9CC; --geo:#C49A5C; --indeci:#F1F0EA;
     --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14; --bad:#F08A84; --bad-bg:#3A1C1A;
     --uv0:#2A2533; --uv1:#43365E; --uv2:#6A52A0; --uv3:#9579D6; --uv4:#C9B6FF;
+    --ll1:#1E3247; --ll2:#25507D; --ll3:#2F72B5; --ll4:#5097E3; --ll5:#9AC8FF; --nube:#ECEFF5; --tormenta:#C7A6FF;
   }
 }
 :root[data-theme="dark"]{
@@ -33,6 +35,7 @@
   --sismo:#7B98FF; --fuego:#FF3B2E; --hidro:#34B9CC; --geo:#C49A5C; --indeci:#F1F0EA;
   --ok:#7CCB98; --ok-bg:#1F3326; --warn:#E7BE55; --warn-bg:#352C14; --bad:#F08A84; --bad-bg:#3A1C1A;
   --uv0:#2A2533; --uv1:#43365E; --uv2:#6A52A0; --uv3:#9579D6; --uv4:#C9B6FF;
+    --ll1:#1E3247; --ll2:#25507D; --ll3:#2F72B5; --ll4:#5097E3; --ll5:#9AC8FF; --nube:#ECEFF5; --tormenta:#C7A6FF;
 }
 /* marca IRTP (MESA_MARCA=irtp): rojo del logo con texto blanco. Sobre la barra fija el rojo de texto cambia con el tema:
    la barra es oscura en tema claro (rojo luminoso) y clara en tema oscuro (rojo del logo). */
@@ -181,6 +184,7 @@ body.fs-abierto:has(.maprow.fs:not(.sin-datos)) .detail{right:406px;top:56px}
 .seg button{border:0;background:transparent;padding:5px 11px;font-size:13px;cursor:pointer;border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
+.maprow.fs #mode{display:flex;max-width:100%}.maprow.fs #mode button{padding:5px 8px;font-size:12px}   /* /mapa: cinco capas base */
 .seg button:hover:not([aria-pressed="true"]){background:var(--surface-2)}
 .layers-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .layers-all{display:flex;gap:4px}
@@ -224,6 +228,8 @@ body.fs-abierto:has(.maprow.fs:not(.sin-datos)) .detail{right:406px;top:56px}
 #map.zoom-ciudades .temptxt{display:inline}
 .layers .tleg{display:flex;align-items:center;gap:6px;flex-basis:100%}.layers .tleg i{display:inline-block;width:110px;height:8px;border-radius:2px}
 .layers .tleg b{font-weight:600;font-size:11px;color:var(--ink-2)}
+.layers .nleg{display:flex;align-items:center;gap:6px;flex-basis:100%;flex-wrap:wrap}.layers .nleg i{display:inline-block;width:12px;height:10px;border-radius:2px}
+#nub-hora{font-variant-numeric:tabular-nums;color:var(--ink-2)}
 #map .olatxt{font:600 10px/1 var(--f-body,inherit);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;pointer-events:none}
 #map .mar .out{opacity:.25}
 .bom-up{color:var(--n3);font-weight:700;font-size:12px}

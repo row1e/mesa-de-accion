@@ -182,6 +182,14 @@ def build():
         pron = [{"ciudad": c["ciudad"], "departamento": c["departamento"], **d, **ubic.get(c["_key"], {})}
                 for c in db.get_items("senamhi_pronostico", "ciudad", order="key") for d in c["dias"]]
         hidro = [{k: v for k, v in h.items() if k != "raw"} for h in db.get_items("senamhi_hidro", "aviso_estacion")]
+        # lluvia, nubes y viento por provincia (Open-Meteo, referencial); compacto: una lista por día
+        lluvia = {"fechas": [], "prov": {}}
+        for r in db.get_items("clima_openmeteo", "provincia"):
+            if r["_key"] == "_malla":
+                lluvia["fechas"], lluvia["emitido"] = r["fechas"], r["emitido"]
+            elif r["_key"] in pinfo:
+                lluvia["prov"][r["_key"]] = [[d["mm"], d["mm_max"], d["prob"], d["horas"], d["nubes"], d["viento"], d["rafaga"]]
+                                             for d in r["dias"]]
 
         # INDECI: ventana móvil
         cutoff = time.time() - INDECI_WINDOW_H * 3600
@@ -311,7 +319,7 @@ def build():
             "live": True, "snapshot": today, "built": datetime.datetime.now(LIMA).strftime("%Y-%m-%d %H:%M"),
             "geo": {"deps": deps, "provs": provs}, "provCentroids": {k: v["c"] for k, v in pinfo.items()},
             "avisos": avisos_out, "avisosHist": avisos_hist, "levelsByDay": dict(sorted(levels.items())),
-            "uv": uv, "uvUnmatched": uv_unmatched, "pronostico": pron, "hidro": hidro,
+            "uv": uv, "uvUnmatched": uv_unmatched, "pronostico": pron, "hidro": hidro, "lluvia": lluvia,
             "indeci": indeci, "indeciWindowH": INDECI_WINDOW_H,
             "indeciUnlocated": sum(1 for i in indeci if i.get("clase") == "reporte" and not i.get("prov")),
             "sismos": sismos, "focos": focos, "alertas": alertas, "zonas": zonas, "vias": vias, "viasEventos": vias_eventos,

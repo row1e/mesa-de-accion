@@ -7,6 +7,7 @@ const fmtDay = iso => { const d = new Date(iso + "T12:00:00"); return `${DOW[d.g
 const lvlNum = s => ({AMARILLO:2, NARANJA:3, ROJO:4})[s] || +String(s).replace(/\D/g,"") || 1;
 const lvlChip = n => `<span class="lvl l${n}">${["","N1","N2","N3","N4"][n]}</span>`;
 const nf = new Intl.NumberFormat("es-PE");
+const VISTA_MAPA = document.documentElement.dataset.vista === "mapa";   // la página /mapa (pantalla completa, capas propias)
 const title = s => String(s||"").toLowerCase().replace(/(^|[\s(\-/])([a-záéíóúñ])/g,(m,a,b)=>a+b.toUpperCase());
 const ago = ts => { if (!ts) return "—"; const s = Math.max(0, Date.now() / 1000 - ts); if (s < 60) return "hace segundos"; if (s < 3600) return `hace ${Math.round(s / 60)} min`; if (s < 86400) return `hace ${Math.round(s / 3600)} h`; return `hace ${Math.round(s / 86400)} d`; };
 const until = ts => { if (!ts) return "—"; const s = ts - Date.now() / 1000; if (s <= 60) return "en instantes"; if (s < 3600) return `en ${Math.round(s / 60)} min`; return `en ${Math.round(s / 3600)} h`; };
@@ -217,7 +218,7 @@ $("#board").addEventListener("click", e => {
 /* ── mapa ───────────────────────────────────────────────────────── */
 const svg = d3.select("#map"), W = 640, H_ = 860;
 svg.attr("viewBox", `0 0 ${W} ${H_}`);
-let proj, path, gGeo, gProv, gMar, gDep, gPts, zoom, zt = d3.zoomIdentity;
+let proj, path, gGeo, gProv, gMar, gDep, gPts, gNub, zoom, zt = d3.zoomIdentity;
 const P = ll => zt.apply(proj(ll));
 const placePoints = () => gPts.selectAll(".pt").attr("transform", function () { const [x, y] = P(this.__ll); return `translate(${x},${y})`; });
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -230,7 +231,7 @@ function zoomToFeature(f) {
 function initMap() {
   proj = d3.geoIdentity().reflectY(true).fitExtent([[16,16],[W-16,H_-16]], V.geo.deps);
   path = d3.geoPath(proj);
-  gGeo = svg.append("g"); gProv = gGeo.append("g"); gMar = gGeo.append("g").attr("class", "mar"); gDep = gGeo.append("g"); gPts = svg.append("g");
+  gGeo = svg.append("g"); gProv = gGeo.append("g"); gMar = gGeo.append("g").attr("class", "mar"); gNub = gGeo.append("g").attr("class", "nubes").attr("pointer-events", "none"); gDep = gGeo.append("g"); gPts = svg.append("g");
   // tramas de los avisos de la DHN: oleaje en diagonal, viento en la diagonal opuesta; color = nivel
   const defs = svg.append("defs");
   for (const [t, ang] of [["o", 45], ["v", -45]]) for (const n of [2, 3, 4])
@@ -260,7 +261,7 @@ function initMap() {
   $("#layers").addEventListener("change", e => {
     const id = e.target.dataset.l; if (!id) return;
     state.layers[id] = e.target.checked;
-    if (enFS && e.target.checked && id !== "ciudades") capaFoco = id;   // en pantalla completa, la capa recién prendida pasa a la lista
+    if (enFS && e.target.checked && !SIN_LISTA.includes(id)) capaFoco = id;   // en pantalla completa, la capa recién prendida pasa a la lista
     renderPoints(); if (enFS) renderLayers();
   });
   $("#layers").addEventListener("click", e => {
@@ -279,8 +280,8 @@ function initMap() {
 // pantalla completa del mapa y lista de datos de la capa elegida (ver más abajo, «pantalla completa»)
 let enFS = false, capaFoco = null, datosSoloVista = false, datosTope = 100, _datosT = null;
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
-  olaH: 0, marZona: null, marH: "24", tempDia: 0, tempModo: "tmax", ciudadesModo: "auto",
-  layers: { reportes: true, obras: true, recursos: false, oleaje: true, viento: false, olas: false, temperatura: false, rios: false, carreteras: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
+  olaH: 0, marZona: null, marH: "24", tempDia: 0, tempModo: "tmax", ciudadesModo: "auto", lluviaDia: 0,
+  layers: { nubes: false, reportes: true, obras: true, recursos: false, oleaje: true, viento: false, olas: false, temperatura: false, rios: false, carreteras: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
 let avisoDays = [], uvDays = [];
 const uvBins = [3, 6, 8, 11];
 const uvColor = v => v == null ? css("--land") : css(["--uv0","--uv1","--uv2","--uv3","--uv4"][d3.bisectRight(uvBins, v)]);
@@ -421,6 +422,10 @@ const layerDefs = [
   { id: "ciudades", label: "Ciudades (nombres)", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => ciudadesDetalle() ? ciudadesMapa().length : CIUDADES.length },
   { id: "zonas", label: "Zonas críticas INGEMMET (color = nivel)", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
+// capas sin lista de datos (≡): los nombres de ciudades y la imagen de nubes
+const SIN_LISTA = ["ciudades", "nubes"];
+if (VISTA_MAPA) layerDefs.splice(layerDefs.findIndex(l => l.id === "temperatura"), 0,
+  { id: "nubes", label: "Nubes · satélite GOES (NASA)", sw: `<i class="sw sq" style="background:linear-gradient(90deg,var(--nube),var(--tormenta))"></i>`, n: null });
 // Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
 // detecciones reúne y en cuántos días es la mejor medida de su tamaño que publica SERFOR (no informa hectáreas).
 let _inc = {src: null, list: []};
@@ -467,12 +472,118 @@ function tempProv() {
   return val;
 }
 const tempPuntos = () => { const d = tempDias()[state.tempDia]; return (V?.pronostico || []).filter(p => p.dia === d && p.lon != null && p[state.tempModo] != null); };
+// ── Lluvia pronosticada y nubes del satélite (solo /mapa) ─────────────────────────────────────────────────────────
+// Lluvia: Open-Meteo (modelos globales, referencial; no es SENAMHI). Cada provincia es el promedio de los puntos de una
+// malla de 0,5° que caen dentro de ella; «hasta» es su punto más lluvioso. La escala es fija en mm del día, igual para
+// todos los días, para que un día se pueda comparar con otro (no se estira a los valores de cada día).
+const LL_CORTES = [1, 5, 10, 25, 50];
+const LL_ROT = ["1–5 mm", "5–10", "10–25", "25–50", "50+ mm"];
+const nf1 = new Intl.NumberFormat("es-PE", {maximumFractionDigits: 1});
+const fmtMM = v => v == null ? "—" : v > 0 && v < .1 ? "<0.1 mm" : `${nf1.format(v)} mm`;
+const lluviaColor = mm => mm == null || mm < LL_CORTES[0] ? css("--land") : css("--ll" + d3.bisectRight(LL_CORTES, mm));
+const lluviaDias = () => V.lluvia?.fechas || [];
+const lluviaDia = i => { const d = lluviaDias()[i]; if (!d) return ""; const k = Math.round((Date.parse(d) - Date.parse(V.snapshot)) / 864e5); return k === 0 ? "Hoy" : k === 1 ? "Mañana" : fmtDay(d); };
+const lluviaDe = (id, i = state.lluviaDia) => { const d = V.lluvia?.prov?.[id]?.[i]; return d && {mm: d[0], mx: d[1], prob: d[2], horas: d[3], nubes: d[4], viento: d[5], rafaga: d[6]}; };
+const lluviaEmitido = () => V.lluvia?.emitido ? new Date(V.lluvia.emitido).toLocaleString("es-PE", {timeZone: "America/Lima", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"}) : "—";
+
+// Nubes: imagen infrarroja del satélite GOES-East (NASA GIBS, cada 10 min) del recuadro del Perú, leída en el navegador.
+// Se separan tres clases según la temperatura del tope de la nube: nube (gris claro en la imagen), nube alta y densa (GIBS
+// la pinta de azul a verde, ~-30 a -50 °C) y tormenta (amarillo a rojo y los topes más fríos en negro, blanco o rosado,
+// por debajo de ~-55 °C: nubes de desarrollo vertical que suelen dar lluvia fuerte). El suelo, el mar y las nubes bajas tibias quedan transparentes:
+// el infrarrojo no distingue la neblina de la costa del suelo. Se pinta con los colores del tema (--nube, --tormenta).
+const NUB_BOX = [-81.6, -18.6, -68.4, 0.2];   // oeste, sur, este, norte
+const NUB_W = 660, NUB_H = 940;
+const nub = {frames: [], i: 0, cargando: false, anim: null, error: null, cargado: 0};
+const nubHora = t => new Date(t).toLocaleTimeString("es-PE", {timeZone: "America/Lima", hour: "2-digit", minute: "2-digit"});
+async function nubFrame(t) {
+  const url = "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0"
+    + `&LAYERS=GOES-East_ABI_Band13_Clean_Infrared&CRS=EPSG:4326&BBOX=${NUB_BOX[1]},${NUB_BOX[0]},${NUB_BOX[3]},${NUB_BOX[2]}`
+    + `&WIDTH=${NUB_W}&HEIGHT=${NUB_H}&FORMAT=image/png&TIME=${new Date(t).toISOString().slice(0, 16)}:00Z`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const bmp = await createImageBitmap(await r.blob());
+  const cv = document.createElement("canvas"); cv.width = NUB_W; cv.height = NUB_H;
+  const cx = cv.getContext("2d", {willReadFrequently: true}); cx.drawImage(bmp, 0, 0, NUB_W, NUB_H);
+  const px = cx.getImageData(0, 0, NUB_W, NUB_H).data, cls = new Uint8Array(NUB_W * NUB_H);
+  let opacos = 0;
+  for (let i = 0, j = 0; j < cls.length; i += 4, j++) {
+    if (px[i + 3] < 10) continue;
+    opacos++;
+    const r_ = px[i], g = px[i + 1], b = px[i + 2], sat = Math.max(r_, g, b) - Math.min(r_, g, b);
+    if (sat >= 24) cls[j] = (r_ > g && r_ > b) || (r_ >= 100 && b < 100) || (r_ >= 150 && b >= 150) ? 255 : 150;   // rojo/amarillo/rosado: tormenta; azul/verde: alta
+    else if (r_ < 70 || r_ >= 200) cls[j] = 255;                            // núcleos más fríos (negro, blanco)
+    else if (r_ >= 140) cls[j] = Math.round(25 + (r_ - 140) / 60 * 95);     // nube: más clara = más fría = más opaca
+  }
+  if (opacos < cls.length * .2) return null;          // sin imagen para esa hora (GIBS devuelve un PNG vacío)
+  return {t, cls, urls: {}};
+}
+function nubURL(f) {
+  const clave = css("--nube") + css("--tormenta");
+  if (f.urls[clave]) return f.urls[clave];
+  const hex = h => { h = h.trim().replace("#", ""); return [0, 2, 4].map(k => parseInt(h.slice(k, k + 2), 16)); };
+  const [cn, ct] = [hex(css("--nube")), hex(css("--tormenta"))];
+  const cv = document.createElement("canvas"); cv.width = NUB_W; cv.height = NUB_H;
+  const cx = cv.getContext("2d"), im = cx.createImageData(NUB_W, NUB_H), d = im.data;
+  for (let j = 0, i = 0; j < f.cls.length; j++, i += 4) {
+    const v = f.cls[j]; if (!v) continue;
+    const c = v === 255 ? ct : cn;
+    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = v === 255 ? 190 : v === 150 ? 160 : v;
+  }
+  cx.putImageData(im, 0, 0);
+  return (f.urls[clave] = cv.toDataURL("image/png"));
+}
+async function nubCargar() {
+  if (nub.cargando) return;
+  nub.cargando = true; nub.error = null; nubCtl();
+  try {
+    // la imagen llega a GIBS con 20–40 min de atraso: se prueba desde hace 20 min hacia atrás, de 10 en 10
+    const t0 = Math.floor((Date.now() - 20 * 6e4) / 6e5) * 6e5;
+    let f = null;
+    for (let k = 0; k < 9 && !f; k++) f = await nubFrame(t0 - k * 6e5);
+    if (!f) throw new Error("GIBS no tiene imágenes de la última hora y media");
+    nub.frames = [f]; nub.i = 0; nub.cargado = Date.now();
+  } catch (e) { nub.error = e.message; }
+  nub.cargando = false; renderNubes(); nubCtl();
+}
+async function nubAnimar() {
+  if (nub.anim) { clearInterval(nub.anim); nub.anim = null; nub.i = nub.frames.length - 1; renderNubes(); nubCtl(); return; }
+  const ult = nub.frames[nub.frames.length - 1]; if (!ult) return;
+  if (nub.frames.length < 2) {
+    nub.cargando = true; nubCtl();
+    const previos = await Promise.all(d3.range(6, 0, -1).map(k => nubFrame(ult.t - k * 30 * 6e4).catch(() => null)));
+    nub.frames = [...previos.filter(Boolean), ult]; nub.cargando = false;
+  }
+  nub.i = 0;
+  nub.anim = setInterval(() => { nub.i = (nub.i + 1) % nub.frames.length; renderNubes(); nubCtl(true); }, 700);
+  nubCtl();
+}
+function renderNubes() {
+  if (!gNub) return;
+  if (!VISTA_MAPA || !state.layers.nubes) { gNub.attr("display", "none"); if (nub.anim) { clearInterval(nub.anim); nub.anim = null; nub.i = nub.frames.length - 1; } return; }
+  gNub.attr("display", null);
+  if ((!nub.frames.length || Date.now() - nub.cargado > 10 * 6e4) && !nub.cargando && !nub.anim && !nub.error) nubCargar();
+  const f = nub.frames[nub.i], [x0, y0] = proj([NUB_BOX[0], NUB_BOX[3]]), [x1, y1] = proj([NUB_BOX[2], NUB_BOX[1]]);
+  gNub.selectAll("image").data(f ? [f] : []).join("image").attr("preserveAspectRatio", "none")
+    .attr("x", x0).attr("y", y0).attr("width", x1 - x0).attr("height", y1 - y0).attr("href", nubURL);
+}
+function nubCtl(soloHora) {
+  const el = $("#nub-hora"); if (!el) return;
+  const f = nub.frames[nub.i];
+  el.textContent = nub.error ? `Sin imagen: ${nub.error}` : nub.cargando ? "Cargando imagen del satélite…"
+    : f ? `${nub.anim ? "Animación · " : ""}${nubHora(f.t)} hora de Lima${nub.anim ? "" : ` (hace ${Math.max(0, Math.round((Date.now() - f.t) / 6e4))} min)`}` : "";
+  if (soloHora) return;
+  const b = $("#nub-anim"); if (b) { b.textContent = nub.anim ? "■ Detener" : "▶ Últimas 3 h"; b.disabled = !f || nub.cargando; b.setAttribute("aria-pressed", String(!!nub.anim)); }
+}
+setInterval(() => { if (VISTA_MAPA && state.layers.nubes && !nub.anim && !document.hidden) { nub.error = null; renderNubes(); } }, 60e3);
 function renderLayers() {
-  $("#layers").innerHTML = layerDefs.map(l => `<label class="${l.id === capaFoco ? "foco" : ""}"><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span>${l.id === "ciudades" ? "" : `<button type="button" class="ver-datos" data-ver="${l.id}" title="Ver la lista de esta capa">≡</button>`}</label>`).map((h, i) => layerDefs[i].id === "alertas"
+  $("#layers").innerHTML = layerDefs.map(l => `<label class="${l.id === capaFoco ? "foco" : ""}"><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${l.n ? nf.format(l.n()) + (l.unit ? " " + l.unit : "") : ""}</span>${SIN_LISTA.includes(l.id) ? "" : `<button type="button" class="ver-datos" data-ver="${l.id}" title="Ver la lista de esta capa">≡</button>`}</label>`).map((h, i) => layerDefs[i].id === "alertas"
     ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>`
     : layerDefs[i].id === "recursos" ? h + `<p class="lnote">${Object.entries(REC_T).map(([t, [c]]) => `<span class="recsw" style="--c:var(${c})"></span>${esc((REC_N[t] || [t, t])[1])}`).join(" · ")}. La maquinaria se suma por provincia (triángulo, tamaño según unidades). Declarado, no necesariamente disponible.</p>`
     : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
     : layerDefs[i].id === "oleaje" ? h + `<p class="lnote">Trama sobre las provincias costeras con aviso el día elegido: amarillo ligero, naranja moderado, rojo fuerte.</p>`
+    : layerDefs[i].id === "nubes" ? h + `<div class="lnote olah" id="nub-ctl"><button type="button" id="nub-anim" aria-pressed="false">▶ Últimas 3 h</button><span id="nub-hora"></span>`
+      + `<span class="nleg"><i style="background:var(--nube);opacity:.35"></i>Nube <i style="background:var(--nube);opacity:.65"></i>Alta y densa <i style="background:var(--tormenta);opacity:.75"></i>Tormenta (topes muy fríos)</span>`
+      + `<span>Infrarrojo del satélite GOES-East (NASA GIBS), cada 10 min, con 20–40 min de atraso. No muestra la neblina ni las nubes bajas de la costa.</span></div>`
     : layerDefs[i].id === "ciudades" ? h + `<div class="lnote olah" id="ciu-ctl">${[["auto", "Automático"], ["principales", "Principales"], ["detalle", "Detalle"]].map(([v, t]) => `<button type="button" data-c="${v}" aria-pressed="${state.ciudadesModo === v}">${t}</button>`).join("")}<span>Automático: las 33 principales en todo el país y, al acercar el mapa, también las 276 ciudades del pronóstico. Los nombres aparecen donde caben.</span></div>`
     : layerDefs[i].id === "carreteras" ? h + `<p class="lnote">Red Vial Nacional del MTC (une las capitales de departamento). Gruesas: los tres ejes longitudinales (Panamericana, Sierra, Selva); medianas: transversales; finas, al acercar: ramales. Pase el mouse por una ruta para ver su código y las emergencias PROVIAS que tiene.</p>`
     : layerDefs[i].id === "rios" ? h + `<p class="lnote">Ríos principales: Natural Earth, ANA y OpenStreetMap. Pase el mouse por un río para ver su nombre.</p>`
@@ -481,12 +592,19 @@ function renderLayers() {
       + `<span class="tleg"><i style="background:linear-gradient(90deg,${tempDom().map(v => tempColor(v)).join(",")})"></i>${tempDom().map(v => `<b>${v}°</b>`).join("")}</span>`
       + `<span>Pronóstico por ciudad de SENAMHI. Acerque el mapa para ver los grados; clic en una ciudad para su ficha. Para pintar el mapa por temperatura, elija «Temperatura» en Capa base.</span></div>`
     : layerDefs[i].id === "olas" ? h + `<div class="lnote olah" id="ola-h">${OLA_V.map((t, k) => `<button type="button" data-h="${k}" aria-pressed="${state.olaH === k}">${k === 0 ? "0–24 h" : k === 1 ? "24–48 h" : "48–72 h"}</button>`).join("")}<span>Modelo global, referencial: no es la DHN.</span></div>` : h).join("");
+  const na = $("#nub-anim"); if (na) { na.onclick = () => nubAnimar(); nubCtl(); }
   const cc = $("#ciu-ctl"); if (cc) cc.onclick = e => { const b = e.target.closest("button"); if (!b) return; state.ciudadesModo = b.dataset.c; renderLayers(); renderPoints(); };
   const tc = $("#temp-ctl"); if (tc) tc.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.d) state.tempDia = +b.dataset.d; if (b.dataset.m) state.tempModo = b.dataset.m; renderLayers(); renderMapAll(); };
   const oh = $("#ola-h"); if (oh) oh.onclick = e => { const b = e.target.closest("button"); if (!b) return; state.olaH = +b.dataset.h; renderLayers(); renderPoints(); renderMar(); };
 }
 function provTip(p) {
   if (state.mode === "temp") { const t = tempProv()[p.id]; return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${t != null ? `Temperatura ${state.tempModo === "tmax" ? "máxima" : "mínima"} estimada: <b>${Math.round(t)} °C</b>` : "Sin dato de temperatura"}<br><span style="opacity:.7">De las ciudades del pronóstico de SENAMHI más cercanas</span>`; }
+  if (state.mode === "lluvia") {
+    const l = lluviaDe(p.id);
+    return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${l ? `Lluvia esperada (${lluviaDia(state.lluviaDia).toLowerCase()}): <b>${fmtMM(l.mm)}</b> en promedio${l.mx != null && l.mx > (l.mm || 0) ? ` · hasta ${fmtMM(l.mx)}` : ""}`
+      + `<br>Probabilidad de lluvia: ${l.prob ?? "—"} % · nubosidad ${l.nubes ?? "—"} %<br>Viento máx. ${l.viento ?? "—"} km/h · ráfagas ${l.rafaga ?? "—"} km/h` : "Sin dato"}`
+      + `<br><span style="opacity:.7">Modelo Open-Meteo, referencial (no es SENAMHI)</span>`;
+  }
   if (state.mode === "uv") { const u = V.uv[p.id]; return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${u ? `UV ${u.v[state.uvDay]} (pico ${u.h[state.uvDay]})` : "Sin zona UV"}`; }
   if (state.mode === "ninguna") return `<b>${title(p.n)}</b> · ${title(p.d)}`;
   const c = (V.levelsByDay[state.day] || {})[p.id];
@@ -495,10 +613,11 @@ function provTip(p) {
   return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${c ? `Nivel ${c.m} · avisos ${c.a.map(x => "#" + x[0]).join(", ")}` : "Sin aviso nivel 2+"}${mar}`;
 }
 function renderControls() {
-  seg($("#mode"), [["avisos", "Avisos SENAMHI"], ["uv", "Índice UV"], ["temp", "Temperatura"], ["ninguna", "Ninguna"]], state.mode, v => { state.mode = v; renderMapAll(); renderLayers(); });
+  seg($("#mode"), [["avisos", "Avisos SENAMHI"], ["uv", "Índice UV"], ["temp", "Temperatura"], ...(VISTA_MAPA ? [["lluvia", "Lluvia"]] : []), ["ninguna", "Ninguna"]], state.mode, v => { state.mode = v; renderMapAll(); renderLayers(); });
   $("#days").parentElement.hidden = state.mode === "ninguna";
   if (state.mode === "avisos") seg($("#days"), avisoDays.map(d => [d, fmtDay(d)]), state.day, v => { state.day = v; renderMapAll(); });
   else if (state.mode === "uv") seg($("#days"), uvDays.map((d, i) => [i, fmtDay(d)]), state.uvDay, v => { state.uvDay = +v; renderMapAll(); });
+  else if (state.mode === "lluvia") seg($("#days"), lluviaDias().map((d, i) => [i, lluviaDia(i)]), state.lluviaDia, v => { state.lluviaDia = +v; renderMapAll(); });
   else if (state.mode === "temp") {   // días del pronóstico y máximas/mínimas (el mismo ajuste que la capa de ciudades con grados)
     seg($("#days"), [...tempDias().map((d, i) => [i, d.replace(/^(\p{L}+),\s*(\d+) de (\p{L}+)/u, (m, a, b) => `${a.slice(0, 3)} ${+b}`)]), ["tmax", "Máximas"], ["tmin", "Mínimas"]],
       null, v => { if (v === "tmax" || v === "tmin") state.tempModo = v; else state.tempDia = +v; renderMapAll(); renderLayers(); });
@@ -511,6 +630,7 @@ function renderMap() {
   gProv.selectAll("path").attr("fill", f => {
     if (tp) return tp[f.properties.id] != null ? tempColor(tp[f.properties.id]) : css("--land");
     if (state.mode === "uv") { const u = V.uv[f.properties.id]; return uvColor(u ? u.v[state.uvDay] : null); }
+    if (state.mode === "lluvia") return lluviaColor(lluviaDe(f.properties.id)?.mm);
     if (state.mode === "ninguna") return css("--land");
     const c = lv[f.properties.id]; return c ? css("--n" + c.m) : css("--land");
   }).classed("sel", f => f.properties.id === state.sel)
@@ -519,6 +639,8 @@ function renderMap() {
   $("#legend").innerHTML = tp
     ? `<span class="tleg-map"><i style="background:linear-gradient(90deg,${d3.range(0, 1.01, .1).map(t => tempColor(tempDom()[0] + t * (tempDom()[2] - tempDom()[0]))).join(",")})"></i>${tempDom().map(v => `<b>${v} °C</b>`).join("")}</span>`
       + `<span class="muted">Temperatura ${state.tempModo === "tmax" ? "máxima" : "mínima"} pronosticada · ${esc(tempDias()[state.tempDia] || "")} · cada provincia toma las ciudades del pronóstico más cercanas</span>`
+    : state.mode === "lluvia" ? LL_ROT.map((l, i) => `<span><i style="background:var(--ll${i + 1})"></i>${l}</span>`).join("") + `<span><i style="background:var(--land)"></i>Menos de 1 mm</span>`
+      + `<span class="muted">Lluvia pronosticada en el día (${esc(lluviaDia(state.lluviaDia).toLowerCase())}), promedio de cada provincia · modelo Open-Meteo, referencial, no es SENAMHI · actualizado ${esc(lluviaEmitido())}</span>`
     : state.mode === "ninguna" ? `<span class="muted">Sin capa base: el mapa muestra solo las capas elegidas.</span>`
     : state.mode === "uv"
     ? ["0–2 bajo","3–5 moderado","6–7 alto","8–10 muy alto","11+ extremo"].map((l, i) => `<span><i style="background:var(--uv${i})"></i>${l}</span>`).join("") + `<span class="muted">Zonas UV sin provincia: ${V.uvUnmatched.length}</span>`
@@ -674,7 +796,7 @@ const ORG = { igp: "IGP · Centro Sismológico Nacional", serfor: "SERFOR · Mon
   senamhi_pronostico: "SENAMHI · Pronóstico por ciudad", corresponsales: "Reporte de corresponsal", indeci: "INDECI · COEN", firms: "NASA FIRMS",
   enfen: "ENFEN · Comisión Multisectorial", com_pnp: "PNP · Comunicados (gob.pe)", com_provias: "PROVIAS Nacional · Notas de prensa (gob.pe)",
   provias: "PROVIAS Nacional · Emergencias viales", bomberos: "CGBVP · Bomberos · Emergencias 24 horas", dhn_avisos: "DHN · Avisos especiales de oleaje y viento",
-  olas_openmeteo: "Open-Meteo Marine · modelo referencial", ana_obras: "ANA · Obras de prevención (puntos críticos 2026)", indeci_recursos: "INDECI · Recursos declarados ante el FEN", sinpad_historial: "INDECI · SINPAD (historial)", declaratorias: "PCM · Estados de emergencia (El Peruano)", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
+  clima_openmeteo: "Open-Meteo · lluvia, nubes y viento (modelo referencial)", olas_openmeteo: "Open-Meteo Marine · modelo referencial", ana_obras: "ANA · Obras de prevención (puntos críticos 2026)", indeci_recursos: "INDECI · Recursos declarados ante el FEN", sinpad_historial: "INDECI · SINPAD (historial)", declaratorias: "PCM · Estados de emergencia (El Peruano)", com_mtc: "MTC · Notas de prensa (gob.pe)", com_mininter: "MININTER · Notas de prensa (gob.pe)" };
 const refId = r => r && `${r.source}|${r.kind}|${r.key}`;
 let detailReq = 0;
 function closeDetail() {
@@ -775,6 +897,7 @@ function indeciCat(evento) {
   return "otros";
 }
 function renderPoints() {
+  renderNubes();
   gPts.selectAll("*").remove();
   const L = state.layers;
   const on = (sel, html, ref) => sel.on("mousemove", (e, d) => showTip(e, html(d) + `<br><span style="opacity:.7">Clic para ver la ficha completa</span>`)).on("mouseleave", hideTip)
@@ -909,6 +1032,13 @@ function renderRail() {
     const pts = tempPuntos(), m = state.tempModo, orden = [...pts].sort((a, b) => b[m] - a[m]);
     const fila = p => `<li class="clk" tabindex="0" role="button" data-ciudad="${esc(`${p.ciudad}|${p.departamento}`)}"><span class="lvl" style="background:${tempColor(p[m])};color:#15140F">${p[m]}°</span><span class="t">${esc(title(p.ciudad))}</span><span class="s">${esc(title(p.departamento))} · máx. ${p.tmax}° · mín. ${p.tmin}°</span></li>`;
     html += `<div><p class="eyebrow">${esc(tempDias()[state.tempDia] || "")} · pronóstico</p><h3>${m === "tmax" ? "Máximas más altas" : "Mínimas más bajas"}</h3><ul class="alist">${(m === "tmax" ? orden : orden.reverse()).slice(0, 8).map(fila).join("") || "<li class='muted'>Sin pronóstico</li>"}</ul></div>`;
+  } else if (state.mode === "lluvia") {
+    const pn = Object.fromEntries(V.geo.provs.features.map(f => [f.properties.id, f.properties]));
+    const top = Object.keys(V.lluvia?.prov || {}).filter(id => !state.region || id.startsWith(state.region)).map(id => [id, lluviaDe(id)])
+      .filter(([, l]) => l && l.mm != null).sort((a, b) => b[1].mm - a[1].mm || (b[1].mx || 0) - (a[1].mx || 0)).slice(0, 10);
+    const fila = ([id, l]) => `<li class="clk" tabindex="0" role="button" data-lprov="${id}"><span class="lvl" style="background:${lluviaColor(l.mm)};color:${l.mm >= 10 ? "#fff" : "#15140F"}">${l.mm < 10 ? nf1.format(l.mm) : Math.round(l.mm)}</span><span class="t">${esc(title(pn[id]?.n))}</span><span class="s">${esc(title(pn[id]?.d))}${l.mx > l.mm ? ` · hasta ${fmtMM(l.mx)}` : ""} · prob. ${l.prob ?? "—"} %</span></li>`;
+    html += `<div><p class="eyebrow">${esc(lluviaDia(state.lluviaDia))} · pronóstico Open-Meteo</p><h3>Más lluvia esperada (mm)</h3><ul class="alist">${top.filter(([, l]) => l.mm >= .1).map(fila).join("") || "<li class='muted'>Sin lluvia significativa pronosticada</li>"}</ul>`
+      + `<p class="muted" style="font-size:12px">Promedio de la provincia; «hasta» es su punto más lluvioso. Modelo global, referencial: no reemplaza los avisos de SENAMHI. Actualizado ${esc(lluviaEmitido())}</p></div>`;
   } else if (state.mode === "uv") {
     const top = Object.entries(V.uv).sort((a, b) => b[1].v[state.uvDay] - a[1].v[state.uvDay]).slice(0, 8);
     const pn = Object.fromEntries(V.geo.provs.features.map(f => [f.properties.id, f.properties]));
@@ -927,6 +1057,7 @@ function renderRail() {
       <a class="zbtn" href="/api/provincia/${p.id}" target="_blank" rel="noopener">JSON</a></div><dl>
       <dt>Aviso ${state.day ? fmtDay(state.day) : ""}</dt><dd>${c ? `${lvlChip(c.m)} ${c.a.map(x => { const a = V.avisos.find(v => v.nro === x[0]); return a ? `<a href="#" data-aviso="${esc(a.key)}">#${x[0]}</a> (N${x[1]})` : `#${x[0]} (N${x[1]})`; }).join(", ")}` : "Sin aviso nivel 2+"}</dd>
       <dt>UV</dt><dd class="num">${u ? u.v.map((v, i) => `${v} (${fmtDay(u.dias[i])})`).join(" · ") : "—"}</dd>
+      ${VISTA_MAPA && V.lluvia?.prov?.[p.id] ? `<dt>Lluvia (pronóstico)</dt><dd>${lluviaDias().map((d, i) => { const l = lluviaDe(p.id, i); return `${lluviaDia(i)}: <b>${fmtMM(l.mm)}</b>${l.mx > l.mm ? ` (hasta ${fmtMM(l.mx)})` : ""}`; }).join(" · ")}<br><span class="muted">Modelo Open-Meteo, referencial</span></dd>` : ""}
       <dt>INDECI 24 h</dt><dd>${ind.length ? ind.map(i => `${esc(title(i.evento))} — ${esc(title(i.distrito))}`).join("<br>") : "—"}</dd>
       <dt>Incendios</dt><dd>${al.length ? d3.rollups(al, v => v.length, a => a.estado).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") : "—"}</dd>
       <dt>Zonas críticas</dt><dd>${zn.length || "—"}</dd>
@@ -952,6 +1083,7 @@ function renderRail() {
     el.addEventListener("click", go);
     el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") go(e); });
   });
+  $("#rail").querySelectorAll("[data-lprov]").forEach(el => el.addEventListener("click", () => { state.sel = el.dataset.lprov; renderMap(); renderRail(); showProvince(); }));
   $("#rail").querySelectorAll("[data-ciudad]").forEach(el => {
     const go = e => { e.preventDefault(); openDetail({source: "senamhi_pronostico", kind: "ciudad", key: el.dataset.ciudad}); };
     el.addEventListener("click", go);
@@ -1533,7 +1665,7 @@ $("#pq").addEventListener("input", () => D && filterPron());
 const SHORT = {senamhi_avisos: "SENAMHI avisos", senamhi_uv: "SENAMHI UV", senamhi_pronostico: "SENAMHI pronóstico", senamhi_hidro: "SENAMHI hidrología",
   indeci: "INDECI", indeci_fotos: "INDECI fotos", igp: "IGP sismos", serfor: "SERFOR incendios", ingemmet: "INGEMMET", enfen: "ENFEN", firms: "NASA FIRMS",
   com_pnp: "PNP comunicados", com_provias: "PROVIAS notas", com_mtc: "MTC notas", com_mininter: "MININTER notas",
-  provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras", indeci_recursos: "INDECI recursos", sinpad_historial: "SINPAD historial", declaratorias: "Estados de emergencia"};
+  provias: "PROVIAS vías", bomberos: "Bomberos", dhn_avisos: "DHN avisos", dhn_pronosticos: "DHN pronósticos", clima_openmeteo: "Open-Meteo lluvia", olas_openmeteo: "Open-Meteo olas", ana_obras: "ANA obras", indeci_recursos: "INDECI recursos", sinpad_historial: "SINPAD historial", declaratorias: "Estados de emergencia"};
 const LAT = {rows: [], counts: {}, more: false, next: null, req: 0};
 function writeHash() {
   const p = [state.region && `r=${state.region}`, state.latSource && `f=${state.latSource}`].filter(Boolean).join("&");
@@ -2017,7 +2149,6 @@ ubicarMapa();
    Solo en la página /mapa (el tablero principal no cambia: tiene un enlace que la abre en otra pestaña). El mapa ocupa
    toda la ventana: capas y panel a la izquierda, la lista de la capa elegida a la derecha, ambos plegables. El botón ⛶
    pide además la pantalla completa del navegador. */
-const VISTA_MAPA = document.documentElement.dataset.vista === "mapa";
 const mapRow = document.querySelector(".maprow");
 function pantallaCompleta(v) {
   if (v === enFS || (!v && VISTA_MAPA) || (v && !VISTA_MAPA)) return;
@@ -2026,7 +2157,7 @@ function pantallaCompleta(v) {
     ubicarMapa();                                        // si estaba en la ventana de la esquina, vuelve a su lugar
     const angosta = !anchoMapa.matches;
     mapRow.classList.toggle("sin-capas", angosta); mapRow.classList.toggle("sin-datos", angosta);
-    if (!capaFoco || !state.layers[capaFoco]) capaFoco = layerDefs.find(l => l.id !== "ciudades" && state.layers[l.id])?.id || null;
+    if (!capaFoco || !state.layers[capaFoco]) capaFoco = layerDefs.find(l => !SIN_LISTA.includes(l.id) && state.layers[l.id])?.id || null;
   }
   mapRow.classList.toggle("fs", v);
   document.body.classList.toggle("fs-abierto", v);
@@ -2064,7 +2195,7 @@ function muestraMarcador(n) {
 }
 function renderDatos() {
   if (!enFS) return;
-  const activas = layerDefs.filter(l => l.id !== "ciudades" && state.layers[l.id] && gPts?.select(`g[data-capa="${l.id}"]`).size());
+  const activas = layerDefs.filter(l => !SIN_LISTA.includes(l.id) && state.layers[l.id] && gPts?.select(`g[data-capa="${l.id}"]`).size());
   if (!activas.some(l => l.id === capaFoco)) capaFoco = activas[0]?.id || null;
   $("#datos-capa").innerHTML = activas.map(l => `<option value="${l.id}" ${l.id === capaFoco ? "selected" : ""}>${esc(l.label)}</option>`).join("") || `<option>Ninguna capa con puntos</option>`;
   $("#datos-capa").disabled = !activas.length;

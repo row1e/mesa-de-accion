@@ -73,6 +73,7 @@ INTERVALS = {
     "provias": 30 * 60,          # visor de emergencias viales (SGCV): novedad cada ~1 h
     "dhn_avisos": 60 * 60,       # avisos especiales de oleaje y viento: unos pocos por semana
     "dhn_pronosticos": 12 * 3600, # mapas del modelo de olas: corre una vez al día (00Z)
+    "clima_openmeteo": 3 * 3600, # lluvia, nubes y viento por provincia (malla ~620 puntos; los modelos se renuevan cada 6 h)
     "olas_openmeteo": 6 * 3600,  # modelo global de olas, referencial
     "ana_obras": 6 * 3600,       # obras de prevención de la ANA: avances unas pocas veces por semana
     "bomberos": 15 * 60,         # lista de las últimas 24 horas del CGBVP (no se pierde nada; bloquea si se consulta seguido)
