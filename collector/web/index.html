@@ -117,6 +117,48 @@ tr:last-child td{border-bottom:0}
 .dock-head #dock-ir{margin-left:auto}
 .dock-body .mapcol{height:min(470px,58vh);border:0}
 .dock-body .zoom-hint{display:none}
+/* pantalla completa: el mapa ocupa la ventana; capas a la izquierda y datos de la capa elegida a la derecha, plegables */
+.sec-acts{display:flex;gap:6px;flex-wrap:wrap}
+.maprow .datos,.fsbar{display:none}
+.maprow.fs{position:fixed;inset:0;z-index:22;--mapH:100vh;border:0;grid-template-columns:var(--fs-side,370px) minmax(0,1fr) var(--fs-datos,390px);grid-template-areas:"side map datos";transition:grid-template-columns .25s ease}
+.maprow.fs.sin-capas{--fs-side:0px}
+.maprow.fs.sin-datos{--fs-datos:0px}
+.maprow.fs .mapcol{grid-area:map;height:100vh;border-right:0}
+.maprow.fs .side{grid-area:side;height:100vh;border-right:1px solid var(--line)}
+.maprow.fs .datos{grid-area:datos;display:flex;flex-direction:column;height:100vh;min-width:0;overflow:hidden;border-left:1px solid var(--line);background:var(--surface)}
+.maprow.fs.sin-capas .side,.maprow.fs.sin-datos .datos{visibility:hidden}
+.maprow.fs .fsbar{display:flex;position:absolute;top:12px;right:12px;gap:4px;z-index:3}
+.fsbar button{border:1px solid var(--line);background:var(--surface);border-radius:4px;height:32px;padding:0 11px;font-size:12.5px;font-weight:600;cursor:pointer}
+.fsbar button[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+body.fs-abierto{overflow:hidden}
+/* la ficha abre junto a la lista de datos, sin taparla */
+body.fs-abierto:has(.maprow.fs:not(.sin-datos)) .detail{right:406px;top:56px}
+@media (max-width:900px){body.fs-abierto:has(.maprow.fs:not(.sin-datos)) .detail{right:16px}}
+.datos-head{display:flex;flex-direction:column;gap:7px;padding:14px 16px 10px;border-bottom:1px solid var(--line-2)}
+.datos-head select{font:inherit;font-size:14px;padding:5px 8px;border:1px solid var(--line);border-radius:3px;background:var(--surface);color:var(--ink)}
+.datos-vista{font-size:12.5px;color:var(--ink-2);display:flex;gap:6px;align-items:center;cursor:pointer}
+.datos-head p{margin:0;font-size:12.5px}
+.datos-lista{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1}
+.datos-lista li{border-bottom:1px solid var(--line-2)}
+.datos-lista button.fila{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 16px;font:inherit;font-size:12.5px;line-height:1.4;color:var(--ink-2);cursor:pointer}
+.datos-lista button.fila b{color:var(--ink);font-size:13px}
+.datos-lista button.fila:hover,.datos-lista button.fila:focus-visible{background:var(--surface-2)}
+.datos-lista .more{margin:10px 16px}
+.side .layers label{grid-template-columns:auto 14px 1fr auto auto}
+.datos-lista .tw{display:block;margin-top:2px;font-size:11.5px;color:var(--ink-3)}
+.datos-lista .ti{display:block;margin:2px 0 4px}
+.datos-lista .tseg{display:inline-block;margin-left:4px;padding:0 5px;border-radius:2px;font-size:10.5px;font-weight:600;text-transform:uppercase;background:var(--surface-2);color:var(--ink)}
+.layers .ver-datos{display:none;border:1px solid var(--line);background:var(--surface);border-radius:3px;padding:0 6px;font-size:12px;line-height:20px;cursor:pointer;color:var(--ink-2)}
+.maprow.fs .layers .ver-datos{display:inline-block}
+.layers label.foco > span:nth-of-type(1){font-weight:700}
+.maprow.fs .layers label.foco .ver-datos{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+#map .pt.hl{stroke:var(--brand)!important;stroke-width:3.5px!important}
+@media (max-width:900px){
+  .maprow.fs{grid-template-columns:1fr;grid-template-areas:"map"}
+  .maprow.fs .side,.maprow.fs .datos{grid-area:map;position:relative;z-index:4;width:min(340px,88vw);box-shadow:0 0 24px rgba(0,0,0,.25);background:var(--surface)}
+  .maprow.fs .datos{justify-self:end}
+  .maprow.fs.sin-capas .side,.maprow.fs.sin-datos .datos{display:none}
+}
 .mapph{display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink-3);font-size:13.5px}
 .side{height:var(--mapH);overflow-y:auto;display:flex;flex-direction:column;min-width:0}
 @media (max-width:900px){.side{height:auto}}
@@ -676,7 +718,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
 <main class="wrap">
   <div class="thesis" id="thesis"></div>
   <section id="mapa">
-    <div class="sec-head"><div><p class="eyebrow">Cruce espacial</p><h2>Nivel de peligro por provincia</h2></div><button type="button" id="map-pin" class="pinbtn" aria-pressed="false" title="Al bajar por la página, el mapa queda en una ventana en la esquina">Fijar mapa al bajar</button></div>
+    <div class="sec-head"><div><p class="eyebrow">Cruce espacial</p><h2>Nivel de peligro por provincia</h2></div><div class="sec-acts"><button type="button" id="map-fs" class="pinbtn" title="El mapa ocupa toda la pantalla, con las capas a la izquierda y los datos de la capa elegida a la derecha">⛶ Pantalla completa</button><button type="button" id="map-pin" class="pinbtn" aria-pressed="false" title="Al bajar por la página, el mapa queda en una ventana en la esquina">Fijar mapa al bajar</button></div></div>
     <p class="lede">Los polígonos de cada aviso SENAMHI, cruzados con los límites provinciales del INEI. Una provincia cuenta cuando el aviso cubre al menos el 3&nbsp;% de su área; se pinta con el nivel más alto entre los avisos del día. Sobre eso, las capas puntuales de las demás fuentes.</p>
     <div class="maprow">
       <div class="mapcol">
@@ -687,6 +729,11 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
           <button type="button" data-z="reset" aria-label="Ver todo el Perú">Perú</button>
         </div>
         <span class="zoom-hint">Arrastre para mover · Ctrl + rueda o pellizco para acercar</span>
+        <div class="fsbar" role="group" aria-label="Pantalla completa">
+          <button type="button" id="fs-capas" aria-pressed="true">Capas</button>
+          <button type="button" id="fs-datos" aria-pressed="true">Datos</button>
+          <button type="button" id="fs-salir">Salir ✕</button>
+        </div>
       </div>
       <aside class="side" id="side">
         <div class="controls">
@@ -696,6 +743,15 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
           <div class="legend" id="legend"></div>
         </div>
         <div class="rail" id="rail"></div>
+      </aside>
+      <aside class="datos" id="datos" aria-label="Datos de la capa elegida">
+        <div class="datos-head">
+          <span class="ctl-label">Datos de la capa</span>
+          <select id="datos-capa" aria-label="Capa cuyos datos se listan"></select>
+          <label class="datos-vista"><input type="checkbox" id="datos-vista"> Solo lo que se ve en el mapa</label>
+          <p class="muted" id="datos-n"></p>
+        </div>
+        <ul class="datos-lista" id="datos-lista"></ul>
       </aside>
     </div>
   </section>

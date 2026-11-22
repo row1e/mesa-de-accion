@@ -242,6 +242,7 @@ function initMap() {
       zt = e.transform; gGeo.attr("transform", zt); svg.classed("zoom-ciudades", zt.k >= 1.5).classed("zoom-ramales", zt.k >= 2.2);
       if (state.layers.ciudades && ciudadesDetalle() !== _detalleAntes) { renderPoints(); renderLayers(); }   // automático: entra o sale el detalle
       else { placePoints(); rotularCiudades(); }
+      if (enFS && datosSoloVista) { clearTimeout(_datosT); _datosT = setTimeout(renderDatos, 120); }
       hideTip();
     });
   svg.call(zoom).on("dblclick.zoom", null);
@@ -254,7 +255,17 @@ function initMap() {
     .on("mousemove", (e, f) => showTip(e, provTip(f.properties))).on("mouseleave", hideTip)
     .on("click", (e, f) => { state.sel = f.properties.id; renderMap(); renderRail(); showProvince(); });
   gDep.selectAll("path").data(V.geo.deps.features).join("path").attr("class","dep").attr("d", path);
-  $("#layers").addEventListener("change", e => { state.layers[e.target.dataset.l] = e.target.checked; renderPoints(); });
+  $("#layers").addEventListener("change", e => {
+    const id = e.target.dataset.l; if (!id) return;
+    state.layers[id] = e.target.checked;
+    if (enFS && e.target.checked && id !== "ciudades") capaFoco = id;   // en pantalla completa, la capa recién prendida pasa a la lista
+    renderPoints(); if (enFS) renderLayers();
+  });
+  $("#layers").addEventListener("click", e => {
+    const b = e.target.closest("[data-ver]"); if (!b) return;
+    e.preventDefault();                      // el botón vive dentro del <label>: que no prenda/apague la capa
+    verDatos(b.dataset.ver);
+  });
   // Todas / Ninguna: prende o apaga de una vez todas las capas puntuales (la capa base de avisos o UV no cambia)
   document.querySelector(".layers-all").addEventListener("click", e => {
     const b = e.target.closest("button[data-all]"); if (!b) return;
@@ -263,6 +274,8 @@ function initMap() {
   });
 }
 
+// pantalla completa del mapa y lista de datos de la capa elegida (ver más abajo, «pantalla completa»)
+let enFS = false, capaFoco = null, datosSoloVista = false, datosTope = 100, _datosT = null;
 const state = { mode: "avisos", day: null, uvDay: 0, sel: null, region: (location.hash.match(/r=(\d{2})/) || [])[1] || null, latSource: (location.hash.match(/f=([a-z_]+)/) || [])[1] || null,
   olaH: 0, marZona: null, marH: "24", tempDia: 0, tempModo: "tmax", ciudadesModo: "auto",
   layers: { reportes: true, obras: true, recursos: false, oleaje: true, viento: false, olas: false, temperatura: false, rios: false, carreteras: false, ciudades: true, bomberos: true, indeci: true, alertas: true, sismos7: true, sismos: true, sismos365: false, hidro: true, vias: true, zonas: false, focos: false } };
@@ -453,7 +466,7 @@ function tempProv() {
 }
 const tempPuntos = () => { const d = tempDias()[state.tempDia]; return (V?.pronostico || []).filter(p => p.dia === d && p.lon != null && p[state.tempModo] != null); };
 function renderLayers() {
-  $("#layers").innerHTML = layerDefs.map(l => `<label><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span></label>`).map((h, i) => layerDefs[i].id === "alertas"
+  $("#layers").innerHTML = layerDefs.map(l => `<label class="${l.id === capaFoco ? "foco" : ""}"><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${nf.format(l.n())}${l.unit ? " " + l.unit : ""}</span>${l.id === "ciudades" ? "" : `<button type="button" class="ver-datos" data-ver="${l.id}" title="Ver la lista de esta capa">≡</button>`}</label>`).map((h, i) => layerDefs[i].id === "alertas"
     ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>`
     : layerDefs[i].id === "recursos" ? h + `<p class="lnote">${Object.entries(REC_T).map(([t, [c]]) => `<span class="recsw" style="--c:var(${c})"></span>${esc((REC_N[t] || [t, t])[1])}`).join(" · ")}. La maquinaria se suma por provincia (triángulo, tamaño según unidades). Declarado, no necesariamente disponible.</p>`
     : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
@@ -731,44 +744,46 @@ function renderPoints() {
   gPts.selectAll("*").remove();
   const L = state.layers;
   const on = (sel, html, ref) => sel.on("mousemove", (e, d) => showTip(e, html(d) + `<br><span style="opacity:.7">Clic para ver la ficha completa</span>`)).on("mouseleave", hideTip)
-    .each(function (d) { this.__ref = ref(d); })
+    .each(function (d) { this.__ref = ref(d); this.__tip = () => html(d); })
     .on("click", (e, d) => { e.stopPropagation(); hideTip(); const r = ref(d); r.group ? openIndeciGroup(r.group) : openDetail(r); });
-  const layer = (data, tag, ll) => gPts.append("g").selectAll(tag).data(data).join(tag).attr("class", "pt").each(function (d) { this.__ll = ll(d); });
-  if (L.focos) layer(V.focos, "circle", d => [d[0], d[1]]).attr("r", 1.6).attr("fill", css("--fuego")).attr("opacity", .45)
+  let cur = null;
+  const en = id => (cur = id, L[id]);      // marca la capa que se está dibujando (para la lista de datos)
+  const layer = (data, tag, ll) => gPts.append("g").attr("data-capa", cur).selectAll(tag).data(data).join(tag).attr("class", "pt").each(function (d) { this.__ll = ll(d); });
+  if (en("focos")) layer(V.focos, "circle", d => [d[0], d[1]]).attr("r", 1.6).attr("fill", css("--fuego")).attr("opacity", .45)
     .attr("stroke", "transparent").attr("stroke-width", 5)
     .call(on, d => `<b>Foco de calor</b><br>${title(d[3])} · ${title(d[2])}` + tipWhen(d[6] ? fmtWhen(...d[6].split(" ")) : "—", "detección satelital"), d => ({source: "serfor", kind: "foco", key: String(d[4])}));
   // Contorno oscuro: el color de la condición de tránsito (verde/amarillo/rojo, como el visor oficial) se confunde con
   // los niveles de aviso del mapa base si no lleva borde.
-  if (L.vias) layer(V.vias.filter(v => v.lon != null), "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolDiamond, d => d.transito_cod === "03" ? 110 : 64))
+  if (en("vias")) layer(V.vias.filter(v => v.lon != null), "path", d => [d.lon, d.lat]).attr("d", d3.symbol(d3.symbolDiamond, d => d.transito_cod === "03" ? 110 : 64))
     .attr("fill", d => viaColor(d.transito_cod)).attr("stroke", css("--ink")).attr("stroke-width", 1.4)
     .call(on, d => `<b>${esc(d.transito)}</b><br>${esc(cap(d.tipo))}<br>${esc(d.ruta)} · ${esc(d.tramo)} · ${esc(d.sector)}<br><span style="opacity:.7">km ${esc(d.km_ini)}${d.puente ? " · puente" : ""}</span>` + tipWhen(d.fecha ? fmtWhen(d.fecha) : "—", "desde", d.dias != null ? `${d.dias} días` : "", ""), d => ({source: "provias", kind: "emergencia", key: d._key}));
-  if (L.zonas) layer(V.zonas.slice().sort((a, b) => lvlNum(a.nivel) - lvlNum(b.nivel)), "path", d => [d.lon, d.lat])   // nivel 4 encima
+  if (en("zonas")) layer(V.zonas.slice().sort((a, b) => lvlNum(a.nivel) - lvlNum(b.nivel)), "path", d => [d.lon, d.lat])   // nivel 4 encima
     .attr("d", d => d3.symbol(d3.symbolTriangle, lvlNum(d.nivel) >= 4 ? 60 : 38)())
     .attr("fill", d => css(`--n${Math.min(4, Math.max(2, lvlNum(d.nivel)))}`)).attr("stroke", css("--ink")).attr("stroke-width", 1.1)
     .call(on, d => `<b>Zona crítica · ${esc(d.nivel)}</b><br>${esc(d.paraje)} — ${esc(d.distrito)}, ${esc(d.provincia)}<br>${esc(d.peligros_g)}<br><span style="opacity:.7">Expuesto: ${esc(d.elemento)}</span>` + tipWhen(fmtTs(d._first_seen), "en alerta en la Mesa desde"), d => ({source: "ingemmet", kind: "zona_alerta", key: d._key}));
   // 12 meses debajo: anillos finos y tenues, para ver dónde se acumulan; encima los de 30 y 7 días
-  if (L.sismos365) layer(recentSismos(365), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+  if (en("sismos365")) layer(recentSismos(365), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
     .attr("fill", "none").attr("stroke", css("--sismo")).attr("stroke-width", .8).attr("stroke-opacity", .55)
     .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
-  if (L.sismos) layer(recentSismos(30), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+  if (en("sismos")) layer(recentSismos(30), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
     .attr("fill", "none").attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
     .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
-  if (L.sismos7) layer(recentSismos(7), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
+  if (en("sismos7")) layer(recentSismos(7), "circle", d => [d[5], d[4]]).attr("r", d => Math.max(2.5, (d[2] - 2.5) * 3.2))
     .attr("fill", css("--sismo")).attr("fill-opacity", .35).attr("stroke", css("--sismo")).attr("stroke-width", 1.6)
     .call(on, d => `<b>Sismo M${d[2]}</b><br>${esc(d[6])}<br>Prof. ${d[3]} km${d[7] ? " · " + esc(d[7]) : ""}` + tipWhen(fmtWhen(d[0], d[1]), "ocurrió", d[10] && d[10] - Date.parse(`${d[0]}T${d[1]}:00-05:00`) / 1000 < 86400 && fmtTs(d[10]), "recibido"), d => ({source: "igp", kind: "sismo", key: d[8]}));
-  if (L.alertas) layer(incendios(), "circle", d => [d.lon, d.lat]).attr("r", d => incR(d.n))
+  if (en("alertas")) layer(incendios(), "circle", d => [d.lon, d.lat]).attr("r", d => incR(d.n))
     .attr("fill", css("--fuego")).attr("fill-opacity", d => ({Extinguido: 0, Controlado: .35})[d.estado] ?? .85)
     .attr("stroke", d => d.estado === "Extinguido" ? css("--fuego") : css("--ink")).attr("stroke-width", d => d.estado === "Extinguido" ? 1.4 : 1)
     .call(on, d => `<b>Incendio forestal · ${esc(d.estado)}</b><br>${esc(d.lugares.slice(0, 2).join(" · "))}${d.lugares.length > 2 ? ` y ${d.lugares.length - 2} distritos más` : ""} · ${esc(d.dep)}`
       + `<br><b>${nf.format(d.n)}</b> ${d.n > 1 ? "detecciones satelitales" : "detección satelital"} en ${d.dias} día${d.dias > 1 ? "s" : ""}${d.ini && d.ini !== d.fin ? ` (${fmtDay(d.ini)} → ${fmtDay(d.fin)})` : ""}`
       + `<br><span style="opacity:.7">${esc(d.cob)}${d.cod.startsWith("PIF") ? ` · ${esc(d.cod)}` : ""}</span>` + tipWhen(fmtWhen(d.ult.fecha, d.ult.hora), "última alerta SERFOR"), d => ({source: "serfor", kind: "alerta", key: d.ult._key}));
-  if (L.hidro) layer(V.hidro, "circle", d => [d.lon, d.lat]).attr("r", 6)
+  if (en("hidro")) layer(V.hidro, "circle", d => [d.lon, d.lat]).attr("r", 6)
     .attr("fill", d => css("--n" + Math.min(4, lvlNum(d.color_text)))).attr("stroke", css("--hidro")).attr("stroke-width", 2.4)
     .call(on, d => `<b>${esc(d.titulo)}</b><br>${esc(d.color_text)}<br>${title(d.nom_distrito)}, ${title(d.nom_provincia)} · ${title(d.nom_departamento)}` + tipWhen(fmtUtc(d.fecha_hora), "aviso emitido", fmtTs(d._first_seen), "recibido"), d => ({source: "senamhi_hidro", kind: "aviso_estacion", key: d._key}));
-  if (L.indeci) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
+  if (en("indeci")) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
     .attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10).attr("fill", css("--indeci")).attr("stroke", css("--surface")).attr("stroke-width", 1.2)
     .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide)</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
-  if (L.bomberos) layer(V.bomberos.filter(bomLL), "path", bomLL)
+  if (en("bomberos")) layer(V.bomberos.filter(bomLL), "path", bomLL)
     .attr("d", d3.symbol(d3.symbolCross, d => d.estado === "Atendiendo" ? 95 : 48))
     .attr("fill", d => bomColor(d.categoria)).attr("fill-opacity", d => d.ubicacion === "coordenadas" ? 1 : .55)
     .attr("stroke", d => d.estado === "Atendiendo" ? css("--ink") : css("--surface")).attr("stroke-width", d => d.estado === "Atendiendo" ? 1.3 : .7)
@@ -786,7 +801,7 @@ function renderPoints() {
       .attr("vector-effect", "non-scaling-stroke").attr("pointer-events", "none")
       .classed("out", ([p]) => !!state.region && !p.startsWith(state.region));
   }
-  if (L.olas) {
+  if (en("olas")) {
     const k = state.olaH, ps = (V.mar?.puntos || []).filter(p => p.ventanas?.[k]);
     const g = layer(ps, "g", p => [p.lon, p.lat]);
     g.append("circle").attr("r", p => 4 + p.ventanas[k].ola_max_m * 2.2).attr("fill", css("--hidro")).attr("fill-opacity", .55).attr("stroke", css("--ink")).attr("stroke-width", .8);
@@ -794,7 +809,7 @@ function renderPoints() {
     g.call(on, p => { const v = p.ventanas[k]; return `<b>${esc(p.nombre)} · ${v.ola_max_m} m</b><br>ola máxima ${OLA_V[k]} (a las ${v.hora_max.slice(11)} del ${v.hora_max.slice(8, 10)}/${v.hora_max.slice(5, 7)})<br>de ${v.direccion}° · período ${v.periodo_s} s${v.mar_de_fondo_max_m != null ? ` · mar de fondo ${v.mar_de_fondo_max_m} m` : ""}<br><span style="opacity:.7">Open-Meteo Marine · modelo referencial, no es la DHN</span>`; },
       p => ({source: "olas_openmeteo", kind: "punto", key: p._key}));
   }
-  if (L.obras) layer([...(V.obras || [])].sort((a, b) => (a.estado === "Por Ejecutar") - (b.estado === "Por Ejecutar")).reverse(), "path", o => [o.lon, o.lat])
+  if (en("obras")) layer([...(V.obras || [])].sort((a, b) => (a.estado === "Por Ejecutar") - (b.estado === "Por Ejecutar")).reverse(), "path", o => [o.lon, o.lat])
     .attr("d", d3.symbol().type(o => o.tipo === "barrera" ? d3.symbolStar : d3.symbolCircle).size(o => o.tipo === "barrera" ? 120 : o.nivel_peligro === "MUY ALTO" ? 46 : 30))
     .attr("fill", o => o.estado === "Por Ejecutar" ? css("--surface") : obraColor(o.estado)).attr("stroke", o => o.estado === "Por Ejecutar" ? css("--ink-3") : css("--ink"))
     .attr("stroke-width", o => o.estado === "Por Ejecutar" ? 1.3 : .8)
@@ -802,7 +817,7 @@ function renderPoints() {
       + `<br>${obraNombre(o.estado)} · avance ${o.avance_km_pct ?? 0} %${o.tipo === "barrera" ? " de la barrera" : " del tramo"}${o.fin ? ` · fin ${fmtDM(o.fin)}` : ""}`
       + `<br><span style="opacity:.7">peligro ${esc((o.nivel_peligro || "").toLowerCase())} · ${esc(o.responsable || "")}</span>` + tipWhen(o.fec_avance ? fmtDay(o.fec_avance) : "—", "último avance ANA"),
       o => ({source: "ana_obras", kind: "obra", key: o._key}));
-  if (L.recursos) {
+  if (en("recursos")) {
     layer(recMaqProv(), "path", d => V.provCentroids[d.prov]).attr("d", d3.symbol(d3.symbolTriangle, d => 40 + Math.sqrt(d.n) * 22))
       .attr("fill", recColor("maquinaria")).attr("fill-opacity", .8).attr("stroke", css("--ink")).attr("stroke-width", .9)
       .call(on, d => `<b>Maquinaria declarada · ${nf.format(d.n)} unidades</b><br>${esc(provName(d.prov))}`
@@ -815,12 +830,12 @@ function renderPoints() {
         + (r.aforo ? `<br>aforo ${nf.format(r.aforo)} personas${r.carpas ? ` · ${r.carpas} carpas` : ""}` : "") + `<br><span style="opacity:.7">${esc(r.entidad)} · declarado ante el FEN</span>`,
         r => ({source: "indeci_recursos", kind: "recurso", key: r._key}));
   }
-  if (L.reportes) layer(REP.lista.filter(r => r.lat != null && r.estado !== "descartado" && (!state.region || r.reg === state.region)), "path", r => [r.lon, r.lat])
+  if (en("reportes")) layer(REP.lista.filter(r => r.lat != null && r.estado !== "descartado" && (!state.region || r.reg === state.region)), "path", r => [r.lon, r.lat])
     .attr("d", d3.symbol(d3.symbolSquare, 70)).attr("fill", r => r.estado === "verificado" ? css("--ok") : css("--brand")).attr("stroke", css("--ink")).attr("stroke-width", 1.2)
     .call(on, r => `<b>Reporte de corresponsal · ${esc(r.tipo_nombre)}</b> · ${r.estado === "verificado" ? "verificado" : "sin verificar"}<br>${esc((r.descripcion || "").slice(0, 140))}<br><span style="opacity:.7">${esc(r.lugar || r.departamento || "")}</span>` + tipWhen(when(r._first_seen), "recibido"),
       r => ({source: "corresponsales", kind: "reporte", key: r._key}));
   dibujarRios(L.rios); dibujarCarreteras(L.carreteras); _detalleAntes = ciudadesDetalle();
-  if (L.temperatura) {
+  if (en("temperatura")) {
     const m = state.tempModo, g = layer(tempPuntos(), "g", p => [p.lon, p.lat]);
     g.append("circle").attr("r", 6).attr("fill", p => tempColor(p[m])).attr("stroke", css("--ink")).attr("stroke-width", 1);
     g.append("text").attr("class", "temptxt").attr("x", 0).attr("dy", "1.55em").attr("text-anchor", "middle").text(p => `${p[m]}°`);   // debajo: el nombre de la ciudad va a la derecha
@@ -836,7 +851,7 @@ function renderPoints() {
     c.filter(d => d.key).select("circle").call(on, d => `<b>${esc(d.n)}</b> · ${esc(d.dpto)}<br><span style="opacity:.75">Ciudad del pronóstico de SENAMHI</span>`,
       d => ({source: "senamhi_pronostico", kind: "ciudad", key: d.key}));
   }
-  placePoints(); rotularCiudades(); markPicked();
+  placePoints(); rotularCiudades(); markPicked(); renderDatos();
 }
 function renderRail() {
   let html = "", provHtml = "";
@@ -1933,7 +1948,7 @@ const anchoMapa = matchMedia("(min-width: 901px)");
 let mapaFijo = (() => { try { return localStorage.getItem("mesa.mapaFijo") === "1"; } catch { return false; } })();
 let mapaPasado = false;   // la sección del mapa quedó arriba, fuera de la pantalla
 function ubicarMapa() {
-  const acoplar = mapaFijo && mapaPasado && anchoMapa.matches;
+  const acoplar = mapaFijo && mapaPasado && anchoMapa.matches && !enFS;
   if (acoplar && mapCol.parentNode !== $("#mapdock .dock-body")) { mapCol.replaceWith(mapPh); $("#mapdock .dock-body").append(mapCol); }
   if (!acoplar && mapPh.isConnected) mapPh.replaceWith(mapCol);
   $("#mapdock").hidden = !acoplar;
@@ -1952,6 +1967,76 @@ $("#map-pin").onclick = () => fijarMapa(!mapaFijo);
 $("#dock-soltar").onclick = () => fijarMapa(false);
 $("#dock-ir").onclick = () => $("#mapa").scrollIntoView({behavior: reduceMotion ? "auto" : "smooth"});
 ubicarMapa();
+
+/* ── pantalla completa ──────────────────────────────────────────────
+   El mapa ocupa toda la ventana: capas y panel a la izquierda, la lista de la capa elegida a la derecha (ambos se
+   pliegan). Además pide pantalla completa al navegador, si lo permite; Esc sale de las dos. */
+const mapRow = document.querySelector(".maprow");
+function pantallaCompleta(v) {
+  if (v === enFS) return;
+  enFS = v;
+  if (v) {
+    ubicarMapa();                                        // si estaba en la ventana de la esquina, vuelve a su lugar
+    const angosta = !anchoMapa.matches;
+    mapRow.classList.toggle("sin-capas", angosta); mapRow.classList.toggle("sin-datos", angosta);
+    if (!capaFoco || !state.layers[capaFoco]) capaFoco = layerDefs.find(l => l.id !== "ciudades" && state.layers[l.id])?.id || null;
+    try { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {}); } catch { /* sin API: queda el modo de la página */ }
+  } else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  mapRow.classList.toggle("fs", v);
+  document.body.classList.toggle("fs-abierto", v);
+  $("#map-fs").setAttribute("aria-pressed", String(v));
+  botonesFS(); renderLayers(); renderDatos();
+  if (!v) { ubicarMapa(); $("#mapa").scrollIntoView({block: "start"}); }
+}
+function botonesFS() {
+  $("#fs-capas").setAttribute("aria-pressed", String(!mapRow.classList.contains("sin-capas")));
+  $("#fs-datos").setAttribute("aria-pressed", String(!mapRow.classList.contains("sin-datos")));
+}
+function verDatos(id) {
+  capaFoco = id;
+  if (!state.layers[id]) { state.layers[id] = true; renderPoints(); }
+  if (!enFS) pantallaCompleta(true);
+  mapRow.classList.remove("sin-datos"); botonesFS();
+  datosTope = 100; renderLayers(); renderDatos();
+}
+// Los puntos que la capa tiene dibujados en el mapa (con su ficha), en el orden en que se dibujan.
+function puntosDeCapa(id) {
+  if (!gPts) return [];
+  let ns = gPts.selectAll(`g[data-capa="${id}"] .pt`).nodes().filter(n => n.__ref && n.__ll);
+  if (datosSoloVista) ns = ns.filter(n => { const [x, y] = P(n.__ll); return x >= 0 && x <= W && y >= 0 && y <= H_; });
+  return ns;
+}
+function renderDatos() {
+  if (!enFS) return;
+  const activas = layerDefs.filter(l => l.id !== "ciudades" && state.layers[l.id] && gPts?.select(`g[data-capa="${l.id}"]`).size());
+  if (!activas.some(l => l.id === capaFoco)) capaFoco = activas[0]?.id || null;
+  $("#datos-capa").innerHTML = activas.map(l => `<option value="${l.id}" ${l.id === capaFoco ? "selected" : ""}>${esc(l.label)}</option>`).join("") || `<option>Ninguna capa con puntos</option>`;
+  $("#datos-capa").disabled = !activas.length;
+  $("#datos-vista").checked = datosSoloVista;
+  const ns = capaFoco ? puntosDeCapa(capaFoco) : [];
+  $("#datos-n").textContent = !capaFoco ? "Prenda una capa (o use ≡ junto a su nombre) para ver aquí sus registros."
+    : `${plural(ns.length, "registro", "registros")}${datosSoloVista ? " en la vista actual" : " en el mapa"} · clic para ver la ficha y centrar el mapa`;
+  $("#datos-lista").innerHTML = ns.slice(0, datosTope).map((n, i) => `<li><button type="button" class="fila" data-i="${i}">${n.__tip()}</button></li>`).join("")
+    + (ns.length > datosTope ? `<li><button type="button" class="more" data-mas>Ver ${Math.min(100, ns.length - datosTope)} más · ${ns.length} en total</button></li>` : "");
+  const lista = $("#datos-lista");
+  lista.onclick = e => {
+    if (e.target.closest("[data-mas]")) { datosTope += 100; return renderDatos(); }
+    const b = e.target.closest("button.fila"); if (!b) return;
+    const n = ns[+b.dataset.i], r = n.__ref, [x, y] = proj(n.__ll);
+    zoomTo(d3.zoomIdentity.translate(W / 2, H_ / 2).scale(Math.max(zt.k, 4)).translate(-x, -y));
+    r.group ? openIndeciGroup(r.group) : openDetail(r);
+  };
+  lista.onmouseover = e => { const b = e.target.closest("button.fila"); gPts.selectAll(".pt.hl").classed("hl", false); if (b) ns[+b.dataset.i]?.classList.add("hl"); };
+  lista.onmouseleave = () => gPts.selectAll(".pt.hl").classed("hl", false);
+}
+$("#datos-capa").onchange = e => { capaFoco = e.target.value; datosTope = 100; renderLayers(); renderDatos(); };
+$("#datos-vista").onchange = e => { datosSoloVista = e.target.checked; datosTope = 100; renderDatos(); };
+$("#map-fs").onclick = () => pantallaCompleta(!enFS);
+$("#fs-salir").onclick = () => pantallaCompleta(false);
+$("#fs-capas").onclick = () => { mapRow.classList.toggle("sin-capas"); if (!anchoMapa.matches && !mapRow.classList.contains("sin-capas")) mapRow.classList.add("sin-datos"); botonesFS(); };
+$("#fs-datos").onclick = () => { mapRow.classList.toggle("sin-datos"); if (!anchoMapa.matches && !mapRow.classList.contains("sin-datos")) mapRow.classList.add("sin-capas"); botonesFS(); renderDatos(); };
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && enFS) pantallaCompleta(false); });
+addEventListener("keydown", e => { if (e.key === "Escape" && enFS && $("#detail").hidden && !document.fullscreenElement) pantallaCompleta(false); });
 
 /* ── aviso de licencia (app instalada): desde 10 días antes del vencimiento ─────────────── */
 fetch("/api/licencia", {cache: "no-store"}).then(r => r.json()).then(e => {
