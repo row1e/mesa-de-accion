@@ -742,6 +742,38 @@ function openIndeciGroup(prov) {
 $("#detail").addEventListener("click", e => { if (e.target.closest(".x")) closeDetail(); });
 addEventListener("keydown", e => { if (e.key === "Escape" && state.pick !== undefined && !$("#detail").hidden) closeDetail(); });
 
+// Tipo de emergencia INDECI → categoría, con los colores de /danos (fondo, color del ícono). Íconos en un cuadro de 12×12
+// centrado en 0; FG/BG se reemplazan por los colores de la categoría.
+const INDECI_CAT = {
+  incendio_forestal: ["#eb6834", "#fff"], incendio_urbano: ["#eda100", "#15140F"], masa: ["#8a5a2b", "#fff"], lluvias: ["#2a78d6", "#fff"],
+  vientos: ["#1baf7a", "#fff"], frio: ["#6250d6", "#fff"], sismo: ["#e87ba4", "#15140F"], deficit: ["#008300", "#fff"], otros: ["#7C796E", "#fff"],
+};
+const INDECI_CAT_N = {incendio_forestal: "Incendio forestal", incendio_urbano: "Incendio urbano", masa: "Huaico, deslizamiento o derrumbe", lluvias: "Lluvias e inundaciones",
+  vientos: "Vientos fuertes", frio: "Heladas, nevadas y granizo", sismo: "Sismo", deficit: "Déficit hídrico", otros: "Otros"};
+const FLAMA = "M0,-5C2,-2 4,0 3,2.5C2.3,4.3 1,5 0,5C-1.8,5 -3.5,3.8 -3.5,1.8C-3.5,0 -2,-.8 -1.6,-2.2C-.6,-1 -.4,0 0,.6C.6,-1 .6,-3 0,-5Z";
+const INDECI_ICO = {
+  incendio_forestal: `<path d="${FLAMA}" fill="FG"/>`,
+  incendio_urbano: `<path d="M-5,-.2L0,-5L5,-.2H3.4V5H-3.4V-.2Z" fill="FG"/><path d="${FLAMA}" transform="translate(0,2.2) scale(.42)" fill="BG"/>`,
+  masa: `<path d="M-5.5,4.8L-1.2,-4L1.4,.6L2.7,-1.4L5.5,4.8Z" fill="FG"/><circle cx="-2.4" cy="3.3" r=".9" fill="BG"/><circle cx=".2" cy="3.6" r=".7" fill="BG"/>`,
+  lluvias: `<path d="M0,-5.2C2.4,-1.8 4,.3 4,2A4,4 0 0 1-4,2C-4,.3-2.4,-1.8 0,-5.2Z" fill="FG"/>`,
+  vientos: `<path d="M-5,-2.4H2A1.7,1.7 0 1 0 .3,-4.1M-5,.6H4A1.7,1.7 0 1 1 2.3,2.3M-5,3.6H.5" fill="none" stroke="FG" stroke-width="1.4" stroke-linecap="round"/>`,
+  frio: `<path d="M0,-5.2V5.2M-4.5,-2.6L4.5,2.6M-4.5,2.6L4.5,-2.6" fill="none" stroke="FG" stroke-width="1.4" stroke-linecap="round"/>`,
+  sismo: `<path d="M-5.6,.4H-3.4L-2,-4L.1,4.4L1.8,-2.6L2.8,.4H5.6" fill="none" stroke="FG" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>`,
+  deficit: `<circle r="2.3" fill="FG"/><path d="M0,-5.4V-4M0,4V5.4M-5.4,0H-4M4,0H5.4M-3.8,-3.8L-2.9,-2.9M2.9,2.9L3.8,3.8M-3.8,3.8L-2.9,2.9M2.9,-2.9L3.8,-3.8" stroke="FG" stroke-width="1.2" stroke-linecap="round"/>`,
+  otros: `<rect x="-.9" y="-4.8" width="1.8" height="6.2" rx=".9" fill="FG"/><circle cy="3.7" r="1.1" fill="FG"/>`,
+};
+function indeciCat(evento) {
+  const e = (evento || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/^[\s–-]*\(\s*REPORTE\s+N[^)]*\)\s*/, "");
+  if (e.includes("INCENDIO FORESTAL")) return "incendio_forestal";
+  if (e.includes("INCENDIO")) return "incendio_urbano";
+  if (/HUAICO|DESLIZ|DERRUMBE|ALUD|AVALANCHA|MOVIMIENTO EN MASA|REPTACI|HUNDIMIENTO|EROSI/.test(e)) return "masa";
+  if (/LLUVIA|INUNDA|DESBORDE|TORMENTA ELECTRICA/.test(e)) return "lluvias";
+  if (/VIENTO|TORMENTA|OLEAJE|MARETAZO/.test(e)) return "vientos";
+  if (/HELADA|NEVADA|GRANIZ|FRIAJE|BAJAS TEMPERATURAS|DESCENSO DE TEMPERATURA/.test(e)) return "frio";
+  if (/SISMO|TSUNAMI/.test(e)) return "sismo";
+  if (/DEFICIT|SEQUIA/.test(e)) return "deficit";
+  return "otros";
+}
 function renderPoints() {
   gPts.selectAll("*").remove();
   const L = state.layers;
@@ -782,7 +814,18 @@ function renderPoints() {
   if (en("hidro")) layer(V.hidro, "circle", d => [d.lon, d.lat]).attr("r", 6)
     .attr("fill", d => css("--n" + Math.min(4, lvlNum(d.color_text)))).attr("stroke", css("--hidro")).attr("stroke-width", 2.4)
     .call(on, d => `<b>${esc(d.titulo)}</b><br>${esc(d.color_text)}<br>${title(d.nom_distrito)}, ${title(d.nom_provincia)} · ${title(d.nom_departamento)}` + tipWhen(fmtUtc(d.fecha_hora), "aviso emitido", fmtTs(d._first_seen), "recibido"), d => ({source: "senamhi_hidro", kind: "aviso_estacion", key: d._key}));
-  if (en("indeci")) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
+  if (en("indeci") && VISTA_MAPA) {   // /mapa: ícono del tipo de emergencia (el del reporte más reciente de la provincia)
+    const g = layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "g", ([p]) => V.provCentroids[p]);
+    g.each(function ([, items]) {
+      const k = indeciCat(items[0].evento), [bg, fg] = INDECI_CAT[k];
+      const el = d3.select(this);
+      el.append("rect").attr("x", -8).attr("y", -8).attr("width", 16).attr("height", 16).attr("rx", 3.5).attr("fill", bg).attr("stroke", css("--ink")).attr("stroke-width", 1.2);
+      el.append("g").attr("class", "ico").html(INDECI_ICO[k].replaceAll("FG", fg).replaceAll("BG", bg));
+      if (items.length > 1) el.append("text").attr("class", "icn").attr("x", 8.5).attr("y", -5.5).text(items.length);
+    });
+    g.call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide) · ícono: el reporte más reciente</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
+  }
+  if (en("indeci") && !VISTA_MAPA) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
     .attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10).attr("fill", css("--indeci")).attr("stroke", css("--surface")).attr("stroke-width", 1.2)
     .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide)</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
   if (en("bomberos")) layer(V.bomberos.filter(bomLL), "path", bomLL)
@@ -2034,6 +2077,7 @@ function renderDatos() {
   const c = (v, t) => `<i class="sw" style="background:${v};vertical-align:-1px;margin:0 3px 0 6px"></i>${t}`;
   const LEY_DATOS = {
     vias: `Tránsito:${c(css("--n4"), "interrumpido")}${c(css("--n2"), "restringido")}${c(css("--ink-3"), "por confirmar")}${c(css("--ok"), "normal")}`,
+    indeci: Object.entries(INDECI_CAT).map(([k, [bg, fg]]) => `<span class="ileg"><svg viewBox="-8 -8 16 16" width="14" height="14"><rect x="-8" y="-8" width="16" height="16" rx="3.5" fill="${bg}"/>${INDECI_ICO[k].replaceAll("FG", fg).replaceAll("BG", bg)}</svg>${INDECI_CAT_N[k]}</span>`).join("") + `<span class="ileg">Número: reportes en la provincia</span>`,
     zonas: `Nivel del aviso:${c(css("--n2"), "2 amarillo")}${c(css("--n3"), "3 naranja")}${c(css("--n4"), "4 rojo")}`,
     sismos7: "Tamaño según la magnitud. Lleno: últimos 7 días.", sismos: "Tamaño según la magnitud. Aro: últimos 30 días.", sismos365: "Tamaño según la magnitud. Aro tenue: últimos 12 meses.",
   };
