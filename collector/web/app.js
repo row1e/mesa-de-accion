@@ -2005,7 +2005,19 @@ function puntosDeCapa(id) {
   if (!gPts) return [];
   let ns = gPts.selectAll(`g[data-capa="${id}"] .pt`).nodes().filter(n => n.__ref && n.__ll);
   if (datosSoloVista) ns = ns.filter(n => { const [x, y] = P(n.__ll); return x >= 0 && x <= W && y >= 0 && y <= H_; });
+  if (id.startsWith("sismos")) ns.reverse();       // los sismos se dibujan del más viejo al más nuevo: en la lista, primero lo último
   return ns;
+}
+// Muestra del marcador tal como está en el mapa (misma forma, color y relleno), para reconocer cada fila de un vistazo.
+// Escala fija: un punto chico se ve chico y uno grande, grande (hasta el borde del recuadro).
+function muestraMarcador(n) {
+  let bb; try { bb = n.getBBox(); } catch { return ""; }
+  if (!bb || (!bb.width && !bb.height)) return "";
+  const c = n.cloneNode(true);
+  c.removeAttribute("transform"); c.classList.remove("hl", "picked");
+  c.querySelectorAll?.("text").forEach(t => t.remove());      // la temperatura ya va en el texto de la fila
+  const m = Math.min(13, Math.max(5, -bb.x, -bb.y, bb.x + bb.width, bb.y + bb.height) + 1.5);
+  return `<svg class="dsw" viewBox="${-m} ${-m} ${2 * m} ${2 * m}" aria-hidden="true">${c.outerHTML}</svg>`;
 }
 function renderDatos() {
   if (!enFS) return;
@@ -2017,7 +2029,17 @@ function renderDatos() {
   const ns = capaFoco ? puntosDeCapa(capaFoco) : [];
   $("#datos-n").textContent = !capaFoco ? "Prenda una capa (o use ≡ junto a su nombre) para ver aquí sus registros."
     : `${plural(ns.length, "registro", "registros")}${datosSoloVista ? " en la vista actual" : " en el mapa"} · clic para ver la ficha y centrar el mapa`;
-  $("#datos-lista").innerHTML = ns.slice(0, datosTope).map((n, i) => `<li><button type="button" class="fila" data-i="${i}">${n.__tip()}</button></li>`).join("")
+  // leyenda de la capa (la misma nota que tiene en la lista de capas), para leer los colores de la lista
+  // capas sin nota en la lista de capas: la leyenda de sus colores solo aquí (el tablero principal no cambia)
+  const c = (v, t) => `<i class="sw" style="background:${v};vertical-align:-1px;margin:0 3px 0 6px"></i>${t}`;
+  const LEY_DATOS = {
+    vias: `Tránsito:${c(css("--n4"), "interrumpido")}${c(css("--n2"), "restringido")}${c(css("--ink-3"), "por confirmar")}${c(css("--ok"), "normal")}`,
+    zonas: `Nivel del aviso:${c(css("--n2"), "2 amarillo")}${c(css("--n3"), "3 naranja")}${c(css("--n4"), "4 rojo")}`,
+    sismos7: "Tamaño según la magnitud. Lleno: últimos 7 días.", sismos: "Tamaño según la magnitud. Aro: últimos 30 días.", sismos365: "Tamaño según la magnitud. Aro tenue: últimos 12 meses.",
+  };
+  const def = layerDefs.find(l => l.id === capaFoco), nota = capaFoco && $(`#layers input[data-l="${capaFoco}"]`)?.closest("label")?.nextElementSibling;
+  $("#datos-ley").innerHTML = def ? `${def.sw}<span>${LEY_DATOS[capaFoco] || (nota && nota.matches("p.lnote") ? nota.innerHTML : esc(def.label))}</span>` : "";
+  $("#datos-lista").innerHTML = ns.slice(0, datosTope).map((n, i) => `<li><button type="button" class="fila" data-i="${i}">${muestraMarcador(n)}<span>${n.__tip()}</span></button></li>`).join("")
     + (ns.length > datosTope ? `<li><button type="button" class="more" data-mas>Ver ${Math.min(100, ns.length - datosTope)} más · ${ns.length} en total</button></li>` : "");
   const lista = $("#datos-lista");
   lista.onclick = e => {

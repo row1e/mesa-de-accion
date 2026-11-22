@@ -142,7 +142,11 @@ body.fs-abierto:has(.maprow.fs:not(.sin-datos)) .detail{right:406px;top:56px}
 .datos-head p{margin:0;font-size:12.5px}
 .datos-lista{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1}
 .datos-lista li{border-bottom:1px solid var(--line-2)}
-.datos-lista button.fila{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 16px;font:inherit;font-size:12.5px;line-height:1.4;color:var(--ink-2);cursor:pointer}
+.datos-ley{display:flex;gap:8px;align-items:flex-start;margin:0;font-size:12px;line-height:1.4;color:var(--ink-2)}
+.datos-ley:empty{display:none}
+.datos-ley .sw{flex:none;margin-top:2px}
+.datos-lista button.fila{display:grid!important;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;padding:8px 16px;font:inherit;font-size:12.5px;line-height:1.4;color:var(--ink-2);cursor:pointer}
+.datos-lista .dsw{width:24px;height:24px;margin-top:1px;overflow:visible}
 .datos-lista button.fila b{color:var(--ink);font-size:13px}
 .datos-lista button.fila:hover,.datos-lista button.fila:focus-visible{background:var(--surface-2)}
 .datos-lista .more{margin:10px 16px}
@@ -752,6 +756,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
           <span class="ctl-label">Datos de la capa</span>
           <select id="datos-capa" aria-label="Capa cuyos datos se listan"></select>
           <label class="datos-vista"><input type="checkbox" id="datos-vista"> Solo lo que se ve en el mapa</label>
+          <p class="datos-ley" id="datos-ley"></p>
           <p class="muted" id="datos-n"></p>
         </div>
         <ul class="datos-lista" id="datos-lista"></ul>
