@@ -975,7 +975,23 @@ function renderSismos() {
     .on("click", (e, d) => { hideTip(); openDetail({source: "igp", kind: "sismo", key: d[8]}); });
   // las etiquetas M6+ quedan encima de los puntos: que no se coman el clic
   s.append("g").style("pointer-events", "none").selectAll("text").data(sismosAnio().filter(d => d[2] >= 6)).join("text").attr("x", d => x(new Date(d[0] + "T" + d[1]))).attr("y", d => y(d[2]) - 12).attr("text-anchor", "middle").style("font-weight", 600).text(d => "M" + d[2]);
-  $("#sismos").innerHTML = sismosAnio().filter(d => d[2] >= 5).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1])).map(d => `<tr class="clk" tabindex="0" data-sismo="${esc(d[8])}" title="Ver la ficha completa"><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num"><b>${d[2]}</b></td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("");
+  renderSismosLista();
+}
+// Lista de sismos del año: todos por defecto (los más recientes primero, de a POR_PAGINA), con filtro por magnitud.
+const SISMOS_MIN = [["0", "Todos"], ["4", "M4 o más"], ["5", "M5 o más"], ["6", "M6 o más"]];
+let sismosMin = "0", sismosTope = POR_PAGINA;
+function renderSismosLista() {
+  const todos = sismosAnio();
+  seg($("#sismos-f"), SISMOS_MIN.map(([v, l]) => [v, `${l} ${todos.filter(d => d[2] >= +v).length}`]), sismosMin,
+    v => { sismosMin = v; sismosTope = POR_PAGINA; renderSismosLista(); });
+  const lista = todos.filter(d => d[2] >= +sismosMin).sort((a, b) => (b[0] + b[1]).localeCompare(a[0] + a[1]));
+  $("#sismos-t").textContent = sismosMin === "0" ? "Sismos del año" : `Sismos de magnitud ${sismosMin},0 o mayor`;
+  $("#sismos").innerHTML = lista.slice(0, sismosTope).map(d => `<tr class="clk" tabindex="0" data-sismo="${esc(d[8])}" title="Ver la ficha completa"><td class="num" style="white-space:nowrap">${fmtDay(d[0])} <span class="muted">${d[1]}</span></td><td class="num">${d[2] >= 5 ? `<b>${d[2]}</b>` : d[2]}</td><td class="num">${d[3]} km</td><td>${esc(d[6])}</td></tr>`).join("")
+    || `<tr><td colspan="4" class="muted">Ningún sismo con este filtro${state.region ? " en " + esc(regName(state.region)) : ""}.</td></tr>`;
+  const resto = lista.length - sismosTope, mas = $("#sismos-more");
+  mas.hidden = resto <= 0;
+  mas.textContent = `Ver ${Math.min(POR_PAGINA, resto)} más · ${Math.min(sismosTope, lista.length)} de ${lista.length}`;
+  mas.onclick = () => { sismosTope += POR_PAGINA; renderSismosLista(); };
   $("#sismos").querySelectorAll("[data-sismo]").forEach(tr => {
     const go = () => openDetail({source: "igp", kind: "sismo", key: tr.dataset.sismo});
     tr.addEventListener("click", go);
