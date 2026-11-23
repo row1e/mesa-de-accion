@@ -507,7 +507,11 @@ async function nubFrame(t) {
     + `&WIDTH=${NUB_W}&HEIGHT=${NUB_H}&FORMAT=image/png&TIME=${new Date(t).toISOString().slice(0, 16)}:00Z`;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const bmp = await createImageBitmap(await r.blob());
+  // para una hora que todavía no tiene, GIBS antes devolvía un PNG vacío; desde nov. 2026 responde 200 con una página HTML
+  // («MapServer Message»): eso es "sin imagen para esa hora", no un error, y se sigue con la hora anterior
+  if (!(r.headers.get("content-type") || "").startsWith("image/")) return null;
+  let bmp;
+  try { bmp = await createImageBitmap(await r.blob()); } catch { return null; }
   const cv = document.createElement("canvas"); cv.width = NUB_W; cv.height = NUB_H;
   const cx = cv.getContext("2d", {willReadFrequently: true}); cx.drawImage(bmp, 0, 0, NUB_W, NUB_H);
   const px = cx.getImageData(0, 0, NUB_W, NUB_H).data, cls = new Uint8Array(NUB_W * NUB_H);
