@@ -122,7 +122,16 @@ tr:last-child td{border-bottom:0}
 .dock-body .zoom-hint{display:none}
 /* pantalla completa: el mapa ocupa la ventana; capas a la izquierda y datos de la capa elegida a la derecha, plegables */
 .sec-acts{display:flex;gap:6px;flex-wrap:wrap}
-.maprow .datos,.fsbar{display:none}
+.maprow .datos,.fsbar,.fsmarca{display:none}
+/* /mapa: logo del cliente y nombre de la Mesa, junto a los botones de zoom */
+.maprow.fs .fsmarca{display:flex;position:absolute;top:12px;left:72px;align-items:center;gap:10px;z-index:3;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 14px 5px 5px;text-decoration:none;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.maprow.fs .fsmarca .marca-logo{height:34px;border-radius:3px}
+.maprow.fs .fsmarca span{font-family:var(--f-display);font-weight:800;font-size:18px;letter-spacing:-.01em;white-space:nowrap}
+.maprow.fs .fsmarca:not(:has(.marca-logo)){padding-left:14px}
+/* el ancho que importa es el del mapa (los paneles laterales lo achican): si no cabe junto a los botones de arriba, baja a la esquina */
+.maprow.fs .mapcol{container-type:inline-size}
+@container (max-width:580px){.fsmarca{top:auto !important;bottom:52px;left:12px !important;padding:4px 10px 4px 4px !important}.fsmarca .marca-logo{height:26px !important}.fsmarca span{font-size:15px !important}}
+@container (max-width:300px){.fsmarca span{display:none}}
 .maprow.fs{position:fixed;inset:0;z-index:22;--mapH:100vh;border:0;grid-template-columns:var(--fs-side,370px) minmax(0,1fr) var(--fs-datos,390px);grid-template-areas:"side map datos";transition:grid-template-columns .25s ease}
 .maprow.fs.sin-capas{--fs-side:0px}
 .maprow.fs.sin-datos{--fs-datos:0px}
@@ -757,6 +766,7 @@ main.wrap section{scroll-margin-top:var(--barH,112px)}   /* la barra fija no deb
           <button type="button" data-z="reset" aria-label="Ver todo el Perú">Perú</button>
         </div>
         <span class="zoom-hint">Arrastre para mover · Ctrl + rueda o pellizco para acercar</span>
+        <a class="fsmarca" href="/" title="Ir al tablero"><!--MARCA-LOGO--><span>Mesa de Acción</span></a>
         <div class="fsbar" role="group" aria-label="Pantalla completa">
           <button type="button" id="fs-capas" aria-pressed="true">Capas</button>
           <button type="button" id="fs-datos" aria-pressed="true">Datos</button>
