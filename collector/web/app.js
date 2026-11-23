@@ -505,13 +505,17 @@ async function nubFrame(t) {
   const url = "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0"
     + `&LAYERS=GOES-East_ABI_Band13_Clean_Infrared&CRS=EPSG:4326&BBOX=${NUB_BOX[1]},${NUB_BOX[0]},${NUB_BOX[3]},${NUB_BOX[2]}`
     + `&WIDTH=${NUB_W}&HEIGHT=${NUB_H}&FORMAT=image/png&TIME=${new Date(t).toISOString().slice(0, 16)}:00Z`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  // para una hora que todavía no tiene, GIBS antes devolvía un PNG vacío; desde nov. 2026 responde 200 con una página HTML
-  // («MapServer Message»): eso es "sin imagen para esa hora", no un error, y se sigue con la hora anterior
-  if (!(r.headers.get("content-type") || "").startsWith("image/")) return null;
-  let bmp;
-  try { bmp = await createImageBitmap(await r.blob()); } catch { return null; }
+  // GIBS tiene a veces un servidor averiado detrás del balanceador: el MISMO pedido devuelve unas veces la imagen y otras
+  // una página HTML («MapServer Message: Symbol definition error», nov. 2026). Se reintenta la misma hora; una hora que
+  // aún no existe llega como PNG transparente y se descarta más abajo.
+  let bmp = null;
+  for (let intento = 0; intento < 5 && !bmp; intento++) {
+    const r = await fetch(url + (intento ? `&_r=${intento}` : ""), {cache: "no-store"});
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!(r.headers.get("content-type") || "").startsWith("image/")) continue;
+    try { bmp = await createImageBitmap(await r.blob()); } catch { /* respuesta cortada: otro intento */ }
+  }
+  if (!bmp) throw new Error("el servidor de imágenes de la NASA (GIBS) está fallando; se reintenta en un minuto");
   const cv = document.createElement("canvas"); cv.width = NUB_W; cv.height = NUB_H;
   const cx = cv.getContext("2d", {willReadFrequently: true}); cx.drawImage(bmp, 0, 0, NUB_W, NUB_H);
   const px = cx.getImageData(0, 0, NUB_W, NUB_H).data, cls = new Uint8Array(NUB_W * NUB_H);
