@@ -448,17 +448,16 @@ function incendios() {
   return list;
 }
 const incR = n => Math.min(18, 3 + Math.sqrt(n) * 1.15);
-// Temperatura: pronóstico por ciudad de SENAMHI. Escala divergente (azul frío, gris al centro, rojo caliente), distinta
-// para máximas y mínimas porque sus rangos no se parecen.
-// La escala sigue el rango del día elegido (del 5 % más frío al 5 % más caliente, centro en la mediana), así el frío y el
-// calor se distinguen siempre; la leyenda muestra los grados de cada extremo.
-const tempDom = () => {
-  const v = tempPuntos().map(p => p[state.tempModo]).sort(d3.ascending);
-  if (v.length < 5) return state.tempModo === "tmax" ? [6, 21, 36] : [-10, 6, 22];
-  const lo = Math.floor(d3.quantileSorted(v, .05)), hi = Math.ceil(d3.quantileSorted(v, .95)), me = Math.round(d3.quantileSorted(v, .5));
-  return [lo, Math.min(Math.max(me, lo + 1), hi - 1), hi];
-};
-const tempColor = v => d3.scaleLinear().domain(tempDom()).range(["#2C6FB7", "#E9E7E0", "#C8372D"]).clamp(true)(v);
+// Temperatura: pronóstico por ciudad de SENAMHI. UNA escala fija en grados, la misma para máximas y mínimas, para que un
+// color diga siempre lo mismo: azul oscuro = helada (bajo 0 °C), azul claro = frío, gris claro = templado (~18 °C),
+// naranja = calor, rojo oscuro = calor fuerte. Antes la escala seguía el rango del día y la mediana quedaba en gris: en las
+// máximas 19 °C salía azul oscuro y en las mínimas 15 °C salía rojo.
+const TEMP_ESC = [[-10, "#16336B"], [0, "#2C6FB7"], [9, "#8DB8E2"], [18, "#E9E7E0"], [25, "#F0A875"], [30, "#E06A45"], [36, "#C0302A"], [42, "#7A1717"]];
+const TEMP_LEY = [-10, 0, 10, 20, 30, 40];   // marcas de la leyenda (parejas, para que caigan donde corresponde)
+const _tempEsc = d3.scaleLinear().domain(TEMP_ESC.map(e => e[0])).range(TEMP_ESC.map(e => e[1])).clamp(true);
+const tempColor = v => _tempEsc(v);
+const tempTinta = v => v <= 3 || v >= 33 ? "#fff" : "#15140F";   // texto legible sobre el color
+const tempGrad = () => d3.range(0, 1.001, .05).map(t => tempColor(TEMP_LEY[0] + t * (TEMP_LEY.at(-1) - TEMP_LEY[0]))).join(",");
 const tempDias = () => [...new Set((V?.pronostico || []).map(p => p.dia))].slice(0, 3);
 // Temperatura por provincia: promedio ponderado (1/distancia²) de las 4 ciudades del pronóstico más cercanas a su
 // centro; si una ciudad está casi en el centro, manda ella. Así el mapa se pinta entero con la "forma" del calor y del frío.
@@ -640,7 +639,7 @@ function renderLayers() {
     : layerDefs[i].id === "rios" ? h + `<p class="lnote">Ríos principales: Natural Earth, ANA y OpenStreetMap. Pase el mouse por un río para ver su nombre.</p>`
     : layerDefs[i].id === "temperatura" ? h + `<div class="lnote olah" id="temp-ctl">${tempDias().map((d, k) => `<button type="button" data-d="${k}" aria-pressed="${state.tempDia === k}">${esc(d.replace(/^(\p{L}+),\s*(\d+) de (\p{L}+)/u, (m, a, b) => `${a.slice(0, 3)} ${+b}`))}</button>`).join("")}`
       + `<button type="button" data-m="tmax" aria-pressed="${state.tempModo === "tmax"}">Máximas</button><button type="button" data-m="tmin" aria-pressed="${state.tempModo === "tmin"}">Mínimas</button>`
-      + `<span class="tleg"><i style="background:linear-gradient(90deg,${tempDom().map(v => tempColor(v)).join(",")})"></i>${tempDom().map(v => `<b>${v}°</b>`).join("")}</span>`
+      + `<span class="tleg"><i style="background:linear-gradient(90deg,${tempGrad()})"></i><span class="tl">${TEMP_LEY.map(v => `<b>${v}°</b>`).join("")}</span></span>`
       + `<span>Pronóstico por ciudad de SENAMHI. Acerque el mapa para ver los grados; clic en una ciudad para su ficha. Para pintar el mapa por temperatura, elija «Temperatura» en Capa base.</span></div>`
     : layerDefs[i].id === "olas" ? h + `<div class="lnote olah" id="ola-h">${OLA_V.map((t, k) => `<button type="button" data-h="${k}" aria-pressed="${state.olaH === k}">${k === 0 ? "0–24 h" : k === 1 ? "24–48 h" : "48–72 h"}</button>`).join("")}<span>Modelo global, referencial: no es la DHN.</span></div>` : h));
   const na = $("#nub-anim"); if (na) { na.onclick = () => nubAnimar(); nubCtl(); }
@@ -688,7 +687,7 @@ function renderMap() {
     .classed("out", f => !!state.region && !f.properties.id.startsWith(state.region));
   gDep.selectAll("path").classed("reg", f => f.properties.id === state.region);
   $("#legend").innerHTML = tp
-    ? `<span class="tleg-map"><i style="background:linear-gradient(90deg,${d3.range(0, 1.01, .1).map(t => tempColor(tempDom()[0] + t * (tempDom()[2] - tempDom()[0]))).join(",")})"></i>${tempDom().map(v => `<b>${v} °C</b>`).join("")}</span>`
+    ? `<span class="tleg-map"><i style="background:linear-gradient(90deg,${tempGrad()})"></i><span class="tl">${TEMP_LEY.map(v => `<b>${v}°</b>`).join("")}</span></span>`
       + `<span class="muted">Temperatura ${state.tempModo === "tmax" ? "máxima" : "mínima"} pronosticada · ${esc(tempDias()[state.tempDia] || "")} · cada provincia toma las ciudades del pronóstico más cercanas</span>`
     : state.mode === "lluvia" ? LL_ROT.map((l, i) => `<span><i style="background:var(--ll${i + 1})"></i>${l}</span>`).join("") + `<span><i style="background:var(--land)"></i>Menos de 1 mm</span>`
       + `<span class="muted">Lluvia pronosticada en el día (${esc(lluviaDia(state.lluviaDia).toLowerCase())}), promedio de cada provincia · modelo Open-Meteo, referencial, no es SENAMHI · actualizado ${esc(lluviaEmitido())}</span>`
@@ -1078,7 +1077,7 @@ function renderRail() {
     html += `<div><h3>Avisos que cubren el día</h3><ul class="alist">${act.map(a => `<li class="clk" data-aviso="${esc(a.key)}" tabindex="0" role="button">${lvlChip(lvlNum(a.nivel))}<span class="t">#${a.nro} ${esc(title(a.titulo))}</span><span class="s">${fmtDay(a.inicio)} → ${fmtDay(a.fin)} · ${a.estado}</span></li>`).join("") || "<li class='muted'>Ninguno</li>"}</ul></div>`;
   } else if (state.mode === "temp") {
     const pts = tempPuntos(), m = state.tempModo, orden = [...pts].sort((a, b) => b[m] - a[m]);
-    const fila = p => `<li class="clk" tabindex="0" role="button" data-ciudad="${esc(`${p.ciudad}|${p.departamento}`)}"><span class="lvl" style="background:${tempColor(p[m])};color:#15140F">${p[m]}°</span><span class="t">${esc(title(p.ciudad))}</span><span class="s">${esc(title(p.departamento))} · máx. ${p.tmax}° · mín. ${p.tmin}°</span></li>`;
+    const fila = p => `<li class="clk" tabindex="0" role="button" data-ciudad="${esc(`${p.ciudad}|${p.departamento}`)}"><span class="lvl" style="background:${tempColor(p[m])};color:${tempTinta(p[m])}">${p[m]}°</span><span class="t">${esc(title(p.ciudad))}</span><span class="s">${esc(title(p.departamento))} · máx. ${p.tmax}° · mín. ${p.tmin}°</span></li>`;
     html += `<div><p class="eyebrow">${esc(tempDias()[state.tempDia] || "")} · pronóstico</p><h3>${m === "tmax" ? "Máximas más altas" : "Mínimas más bajas"}</h3><ul class="alist">${(m === "tmax" ? orden : orden.reverse()).slice(0, 8).map(fila).join("") || "<li class='muted'>Sin pronóstico</li>"}</ul></div>`;
   } else if (state.mode === "lluvia") {
     const pn = Object.fromEntries(V.geo.provs.features.map(f => [f.properties.id, f.properties]));
