@@ -194,6 +194,19 @@ body.fs-abierto:has(.maprow.fs:not(.sin-datos)) .detail{right:406px;top:56px}
 .layers{display:grid;grid-template-columns:1fr;gap:5px}
 .layers label{display:grid;grid-template-columns:auto 14px 1fr auto;gap:8px;align-items:center;font-size:13px;cursor:pointer;user-select:none}
 .layers label .muted{font-size:12px}
+/* /mapa: capas en grupos plegables */
+.layers .lgrp{border-top:1px solid var(--line)}
+.layers .lgrp:first-child{border-top:0}
+.layers .lgrp summary{display:flex;align-items:center;gap:8px;padding:8px 0 6px;cursor:pointer;list-style:none;user-select:none}
+.layers .lgrp summary::-webkit-details-marker{display:none}
+.layers .lgrp summary::before{content:"";width:0;height:0;border-left:5px solid var(--ink-3);border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
+.layers .lgrp[open] summary::before{transform:rotate(90deg)}
+.layers .lgrp-n{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);flex:1}
+.layers .lgrp summary .muted{font-size:12px}
+.layers .lgrp-all{border:1px solid var(--line);background:var(--surface);border-radius:3px;padding:1px 7px;font-size:11px;cursor:pointer;color:var(--ink-2)}
+.layers .lgrp-all:hover{background:var(--surface-2)}
+.layers .lgrp-body{display:grid;gap:5px;padding:0 0 10px 13px}
+@media (prefers-reduced-motion: reduce){.layers .lgrp summary::before{transition:none}}
 .layers input{accent-color:var(--ink)}
 .bom-per{margin:4px 0 14px}
 .obar{display:inline-block;width:44px;height:6px;background:var(--line);border-radius:3px;vertical-align:middle;overflow:hidden}

@@ -575,8 +575,52 @@ function nubCtl(soloHora) {
   const b = $("#nub-anim"); if (b) { b.textContent = nub.anim ? "■ Detener" : "▶ Últimas 3 h"; b.disabled = !f || nub.cargando; b.setAttribute("aria-pressed", String(!!nub.anim)); }
 }
 setInterval(() => { if (VISTA_MAPA && state.layers.nubes && !nub.anim && !document.hidden) { nub.error = null; renderNubes(); } }, 60e3);
+// /mapa: las capas en grupos plegables por tema. Cada grupo dice cuántas tiene prendidas y tiene su propio botón para
+// prender o apagar todas; lo plegado se recuerda en este navegador. El tablero principal mantiene la lista simple.
+const GRUPOS_CAPAS = [
+  ["emergencias", "Emergencias", ["indeci", "reportes", "bomberos", "vias"]],
+  ["incendios", "Incendios", ["alertas", "focos"]],
+  ["sismos", "Sismos", ["sismos7", "sismos", "sismos365"]],
+  ["clima", "Clima y mar", ["nubes", "temperatura", "hidro", "oleaje", "viento", "olas"]],
+  ["prevencion", "Prevención y respuesta", ["recursos", "obras", "zonas"]],
+  ["referencia", "Referencia", ["ciudades", "carreteras", "rios"]],
+];
+let gruposPlegados = new Set();
+try { gruposPlegados = new Set(JSON.parse(localStorage.getItem("mesa.gruposPlegados") || "[]")); } catch (e) { /* sin almacenamiento */ }
+function agruparCapas(htmls) {
+  if (!VISTA_MAPA) return htmls.join("");
+  const porId = Object.fromEntries(layerDefs.map((l, i) => [l.id, htmls[i]]));
+  const usados = new Set(GRUPOS_CAPAS.flatMap(g => g[2]));
+  const grupos = [...GRUPOS_CAPAS, ["otras", "Otras", layerDefs.map(l => l.id).filter(id => !usados.has(id))]];
+  return grupos.map(([g, nombre, ids]) => {
+    ids = ids.filter(id => porId[id]); if (!ids.length) return "";
+    const on = ids.filter(id => state.layers[id]).length;
+    return `<details class="lgrp" data-g="${g}" ${gruposPlegados.has(g) ? "" : "open"}><summary><span class="lgrp-n">${nombre}</span>`
+      + `<span class="muted num">${on ? `${on} de ${ids.length}` : ids.length}</span>`
+      + `<button type="button" class="lgrp-all" data-gall="${g}" title="${on === ids.length ? "Apagar" : "Prender"} todas las capas de ${nombre.toLowerCase()}">${on === ids.length ? "Ninguna" : "Todas"}</button></summary>`
+      + `<div class="lgrp-body">${ids.map(id => porId[id]).join("")}</div></details>`;
+  }).join("");
+}
+function initGruposCapas() {
+  const el = $("#layers");
+  el.addEventListener("click", e => {
+    const b = e.target.closest("button[data-gall]"); if (!b) return;
+    e.preventDefault();                                  // dentro del <summary>: que no pliegue el grupo
+    const ids = GRUPOS_CAPAS.find(g => g[0] === b.dataset.gall)?.[2].filter(id => id in state.layers) || [];
+    const prender = !ids.every(id => state.layers[id]);
+    ids.forEach(id => state.layers[id] = prender);
+    if (enFS && prender && !SIN_LISTA.includes(ids[0])) capaFoco = ids.find(id => !SIN_LISTA.includes(id)) || capaFoco;
+    renderLayers(); renderMap(); renderPoints();
+  });
+  el.addEventListener("toggle", e => {
+    const d = e.target.closest?.("details.lgrp"); if (!d) return;
+    d.open ? gruposPlegados.delete(d.dataset.g) : gruposPlegados.add(d.dataset.g);
+    try { localStorage.setItem("mesa.gruposPlegados", JSON.stringify([...gruposPlegados])); } catch (err) { /* sin almacenamiento */ }
+  }, true);
+}
+if (VISTA_MAPA) initGruposCapas();
 function renderLayers() {
-  $("#layers").innerHTML = layerDefs.map(l => `<label class="${l.id === capaFoco ? "foco" : ""}"><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${l.n ? nf.format(l.n()) + (l.unit ? " " + l.unit : "") : ""}</span>${SIN_LISTA.includes(l.id) ? "" : `<button type="button" class="ver-datos" data-ver="${l.id}" title="Ver la lista de esta capa">≡</button>`}</label>`).map((h, i) => layerDefs[i].id === "alertas"
+  $("#layers").innerHTML = agruparCapas(layerDefs.map(l => `<label class="${l.id === capaFoco ? "foco" : ""}"><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${l.n ? nf.format(l.n()) + (l.unit ? " " + l.unit : "") : ""}</span>${SIN_LISTA.includes(l.id) ? "" : `<button type="button" class="ver-datos" data-ver="${l.id}" title="Ver la lista de esta capa">≡</button>`}</label>`).map((h, i) => layerDefs[i].id === "alertas"
     ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>`
     : layerDefs[i].id === "recursos" ? h + `<p class="lnote">${Object.entries(REC_T).map(([t, [c]]) => `<span class="recsw" style="--c:var(${c})"></span>${esc((REC_N[t] || [t, t])[1])}`).join(" · ")}. La maquinaria se suma por provincia (triángulo, tamaño según unidades). Declarado, no necesariamente disponible.</p>`
     : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
@@ -591,7 +635,7 @@ function renderLayers() {
       + `<button type="button" data-m="tmax" aria-pressed="${state.tempModo === "tmax"}">Máximas</button><button type="button" data-m="tmin" aria-pressed="${state.tempModo === "tmin"}">Mínimas</button>`
       + `<span class="tleg"><i style="background:linear-gradient(90deg,${tempDom().map(v => tempColor(v)).join(",")})"></i>${tempDom().map(v => `<b>${v}°</b>`).join("")}</span>`
       + `<span>Pronóstico por ciudad de SENAMHI. Acerque el mapa para ver los grados; clic en una ciudad para su ficha. Para pintar el mapa por temperatura, elija «Temperatura» en Capa base.</span></div>`
-    : layerDefs[i].id === "olas" ? h + `<div class="lnote olah" id="ola-h">${OLA_V.map((t, k) => `<button type="button" data-h="${k}" aria-pressed="${state.olaH === k}">${k === 0 ? "0–24 h" : k === 1 ? "24–48 h" : "48–72 h"}</button>`).join("")}<span>Modelo global, referencial: no es la DHN.</span></div>` : h).join("");
+    : layerDefs[i].id === "olas" ? h + `<div class="lnote olah" id="ola-h">${OLA_V.map((t, k) => `<button type="button" data-h="${k}" aria-pressed="${state.olaH === k}">${k === 0 ? "0–24 h" : k === 1 ? "24–48 h" : "48–72 h"}</button>`).join("")}<span>Modelo global, referencial: no es la DHN.</span></div>` : h));
   const na = $("#nub-anim"); if (na) { na.onclick = () => nubAnimar(); nubCtl(); }
   const cc = $("#ciu-ctl"); if (cc) cc.onclick = e => { const b = e.target.closest("button"); if (!b) return; state.ciudadesModo = b.dataset.c; renderLayers(); renderPoints(); };
   const tc = $("#temp-ctl"); if (tc) tc.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.d) state.tempDia = +b.dataset.d; if (b.dataset.m) state.tempModo = b.dataset.m; renderLayers(); renderMapAll(); };
