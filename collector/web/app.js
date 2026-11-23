@@ -575,8 +575,8 @@ function nubCtl(soloHora) {
   const b = $("#nub-anim"); if (b) { b.textContent = nub.anim ? "■ Detener" : "▶ Últimas 3 h"; b.disabled = !f || nub.cargando; b.setAttribute("aria-pressed", String(!!nub.anim)); }
 }
 setInterval(() => { if (VISTA_MAPA && state.layers.nubes && !nub.anim && !document.hidden) { nub.error = null; renderNubes(); } }, 60e3);
-// /mapa: las capas en grupos plegables por tema. Cada grupo dice cuántas tiene prendidas y tiene su propio botón para
-// prender o apagar todas; lo plegado se recuerda en este navegador. El tablero principal mantiene la lista simple.
+// Las capas en grupos plegables por tema (tablero y /mapa). Cada grupo dice cuántas tiene prendidas y tiene su propio
+// botón para prender o apagar todas; lo plegado se recuerda en este navegador.
 const GRUPOS_CAPAS = [
   ["emergencias", "Emergencias", ["indeci", "reportes", "bomberos", "vias"]],
   ["incendios", "Incendios", ["alertas", "focos"]],
@@ -588,7 +588,6 @@ const GRUPOS_CAPAS = [
 let gruposPlegados = new Set();
 try { gruposPlegados = new Set(JSON.parse(localStorage.getItem("mesa.gruposPlegados") || "[]")); } catch (e) { /* sin almacenamiento */ }
 function agruparCapas(htmls) {
-  if (!VISTA_MAPA) return htmls.join("");
   const porId = Object.fromEntries(layerDefs.map((l, i) => [l.id, htmls[i]]));
   const usados = new Set(GRUPOS_CAPAS.flatMap(g => g[2]));
   const grupos = [...GRUPOS_CAPAS, ["otras", "Otras", layerDefs.map(l => l.id).filter(id => !usados.has(id))]];
@@ -606,7 +605,7 @@ function initGruposCapas() {
   el.addEventListener("click", e => {
     const b = e.target.closest("button[data-gall]"); if (!b) return;
     e.preventDefault();                                  // dentro del <summary>: que no pliegue el grupo
-    const ids = GRUPOS_CAPAS.find(g => g[0] === b.dataset.gall)?.[2].filter(id => id in state.layers) || [];
+    const ids = GRUPOS_CAPAS.find(g => g[0] === b.dataset.gall)?.[2].filter(id => layerDefs.some(l => l.id === id)) || [];
     const prender = !ids.every(id => state.layers[id]);
     ids.forEach(id => state.layers[id] = prender);
     if (enFS && prender && !SIN_LISTA.includes(ids[0])) capaFoco = ids.find(id => !SIN_LISTA.includes(id)) || capaFoco;
@@ -618,7 +617,7 @@ function initGruposCapas() {
     try { localStorage.setItem("mesa.gruposPlegados", JSON.stringify([...gruposPlegados])); } catch (err) { /* sin almacenamiento */ }
   }, true);
 }
-if (VISTA_MAPA) initGruposCapas();
+initGruposCapas();
 function renderLayers() {
   $("#layers").innerHTML = agruparCapas(layerDefs.map(l => `<label class="${l.id === capaFoco ? "foco" : ""}"><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${l.n ? nf.format(l.n()) + (l.unit ? " " + l.unit : "") : ""}</span>${SIN_LISTA.includes(l.id) ? "" : `<button type="button" class="ver-datos" data-ver="${l.id}" title="Ver la lista de esta capa">≡</button>`}</label>`).map((h, i) => layerDefs[i].id === "alertas"
     ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>`
