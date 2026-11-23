@@ -373,6 +373,11 @@ const BOM_T = [["Incendio", "--fuego"], ["Materiales Peligrosos (Incidente)", "-
 const bomColor = c => css((BOM_T.find(([t]) => t === c) || [, "--ink-3"])[1]);
 const bomCorto = c => c === "Materiales Peligrosos (Incidente)" ? "Materiales peligrosos" : c ? c[0] + c.slice(1).toLowerCase() : "—";
 const bomLL = b => b.lon != null ? [b.lon, b.lat] : V.provCentroids[b.prov];
+// Gran emergencia: 5 o más unidades en total (las que fueron llegando cuentan). En 30 días de Lima y Callao es ~3 % de los
+// partes (~2 por día). No cuenta "Servicio especial": son coberturas planificadas (eventos públicos) con muchas unidades.
+const BOM_GRANDE = 5;
+const bomUds = b => Math.max(b.unidades_total || 0, (b.unidades || []).length);
+const bomGrande = b => b.categoria !== "Servicio Especial" && bomUds(b) >= BOM_GRANDE;
 // Mar (DHN): nivel por provincia costera el día elegido, según los avisos vigentes de oleaje o de viento
 const MAR_PAL = {oleaje: {2: "ligero", 3: "moderado", 4: "fuerte"}, viento: {2: "brisa fresca", 3: "brisa fuerte", 4: "viento fuerte"}};
 const OLA_V = ["próximas 24 h", "de 24 a 48 h", "de 48 a 72 h"];
@@ -994,12 +999,12 @@ function renderPoints() {
     });
     g.call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide) · ícono: el reporte más reciente</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
   }
-  if (en("bomberos")) layer(V.bomberos.filter(bomLL), "path", bomLL)
-    .attr("d", d3.symbol(d3.symbolCross, d => d.estado === "Atendiendo" ? 95 : 48))
+  if (en("bomberos")) layer(V.bomberos.filter(bomLL).sort((a, b) => bomGrande(a) - bomGrande(b)), "path", bomLL)
+    .attr("d", d3.symbol(d3.symbolCross, d => (d.estado === "Atendiendo" ? 95 : 48) * (bomGrande(d) ? 2.4 : 1)))
     .attr("fill", d => bomColor(d.categoria)).attr("fill-opacity", d => d.ubicacion === "coordenadas" ? 1 : .55)
     .attr("stroke", d => d.estado === "Atendiendo" ? css("--ink") : css("--surface")).attr("stroke-width", d => d.estado === "Atendiendo" ? 1.3 : .7)
-    .call(on, d => `<b>${esc(bomCorto(d.categoria))}${d.estado === "Atendiendo" ? " · en atención" : ""}</b><br>${esc(d.detalle || "")}<br>${esc(d.direccion || "")} — ${esc(d.distrito || "")}`
-      + `<br><span style="opacity:.7">${(d.unidades || []).length} unidad${(d.unidades || []).length === 1 ? "" : "es"}${d.ubicacion === "distrito" ? " · ubicado en el centro de la provincia" : ""}</span>`
+    .call(on, d => `<b>${bomGrande(d) ? "Gran emergencia · " : ""}${esc(bomCorto(d.categoria))}${d.estado === "Atendiendo" ? " · en atención" : ""}</b><br>${esc(d.detalle || "")}<br>${esc(d.direccion || "")} — ${esc(d.distrito || "")}`
+      + `<br><span style="opacity:.7">${bomUds(d)} unidad${bomUds(d) === 1 ? "" : "es"}${d.ubicacion === "distrito" ? " · ubicado en el centro de la provincia" : ""}</span>`
       + tipWhen(fmtWhen(d.fecha, d.hora), "parte CGBVP"), d => ({source: "bomberos", kind: "parte", key: d._key}));
   // Mar: trama sobre las provincias costeras (en el grupo del mapa, bajo los límites; no captura el mouse: el clic sigue
   // eligiendo la provincia, y la información del aviso va en su ventanita y en su ficha)
@@ -1148,7 +1153,7 @@ function renderThesis() {
   const rep = V.indeci.filter(i => i.clase === "reporte"), nuevos = rep.filter(i => !i.seguimiento);
   const topEv = d3.rollups(nuevos, v => v.length, i => title(i.evento)).sort((a, b) => b[1] - a[1]).slice(0, 2);
   const vi = V.vias.filter(v => v.transito_cod === "03").length, vc = V.vias.filter(v => v.transito_cod === "04").length;
-  const bAct = V.bomberos.filter(b => b.estado === "Atendiendo"), bInc = bAct.filter(b => b.categoria === "Incendio").length;
+  const bAct = V.bomberos.filter(b => b.estado === "Atendiendo"), bInc = bAct.filter(b => b.categoria === "Incendio").length, bGr = bAct.filter(bomGrande).length;
   const fuegos = incendios().filter(f => f.estado !== "Extinguido"), grande = fuegos[0];
   const desde = Date.parse(V.built.replace(" ", "T") + ":00-05:00") - 864e5;
   const s24 = V.sismos.filter(s => sismoT(s) > desde).sort((a, b) => b[2] - a[2]), sm = s24[0];
@@ -1157,7 +1162,7 @@ function renderThesis() {
     ["#mapa", n4 + n3, `provincias${en} en aviso <b>naranja o rojo</b> hoy`, n4 ? `${n4} en rojo · ${lv.length} con algún aviso` : `${lv.length} con algún aviso SENAMHI`, n4 ? "--n4" : n3 ? "--n3" : null],
     ["#indeci-sec", nuevos.length, `emergencias nuevas${en} reportadas por INDECI en ${V.indeciWindowH} h`, topEv.length ? topEv.map(([e, k]) => `${esc(e)} (${k})`).join(" · ") : "sin reportes nuevos", null],
     ["#vias-sec", vi, `vías <b>interrumpidas</b>${en} (PROVIAS)`, `${vc} por confirmar · ${plural(V.vias.length, "emergencia vial", "emergencias viales")} en total`, vi ? "--n4" : null],
-    ["#bom-sec", bAct.length, `emergencias que los bomberos atienden <b>ahora</b>${en}`, V.bomberos.length || !R ? `${bInc} incendio${bInc === 1 ? "" : "s"} · ${nf.format(V.bomberos.length)} partes en 24 h (Lima, Callao y costa sur)` : "la página del CGBVP no cubre esta región", bInc ? "--fuego" : null],
+    ["#bom-sec", bAct.length, `emergencias que los bomberos atienden <b>ahora</b>${en}`, V.bomberos.length || !R ? `${bGr ? `<b>${bGr} grande${bGr === 1 ? "" : "s"}</b> (${BOM_GRANDE}+ unidades) · ` : ""}${bInc} incendio${bInc === 1 ? "" : "s"} · ${nf.format(V.bomberos.length)} partes en 24 h (Lima, Callao y costa sur)` : "la página del CGBVP no cubre esta región", bGr ? "--n4" : bInc ? "--fuego" : null],
     ["#serfor-sec", fuegos.length, `incendios forestales <b>activos</b>${en} (SERFOR)`, grande ? `el mayor: ${esc(grande.lugares[0])} · ${nf.format(grande.n)} detecciones` : "ninguno sin extinguir", fuegos.length ? "--fuego" : null],
     (() => { const o = Object.entries(marProvs("oleaje", V.snapshot)).filter(([p]) => !R || p.startsWith(R)), n = d3.max(o, ([, v]) => v.n);
       const a = o.find(([, v]) => v.n === n)?.[1].a, w = Object.entries(marProvs("viento", V.snapshot)).filter(([p]) => !R || p.startsWith(R));
@@ -1555,8 +1560,9 @@ async function renderBomHist() {
   const n = c => ps.filter(r => r[I.categoria] === c).length;
   const durs = ps.filter(r => r[I.categoria] === "Incendio" && r[I.duracion_min] != null).map(r => r[I.duracion_min]);
   const esc_ = ps.filter(r => r[I.escalo]).length;
+  const gr = ps.filter(r => r[I.categoria] !== "Servicio Especial" && (r[I.unidades_total] || 0) >= BOM_GRANDE).length;
   $("#bomh-cnt").innerHTML = [[ps.length, "partes (sin médicas)", "--ink"], ...BOM_T.filter(([c]) => n(c)).map(([c, v]) => [n(c), bomCorto(c).toLowerCase(), v]),
-    [med.length, "emergencias médicas", "--ink-3"], [esc_, "sumaron unidades en el camino", "--n3"],
+    [med.length, "emergencias médicas", "--ink-3"], [gr, `grandes (${BOM_GRANDE}+ unidades)`, "--n4"], [esc_, "sumaron unidades en el camino", "--n3"],
     [durs.length ? bomMin(Math.round(d3.median(durs))) : "—", `duración típica de un incendio (mediana de ${durs.length})`, "--fuego"]]
     .map(([k, t, v]) => `<div><div class="big num" style="color:var(${v})">${typeof k === "number" ? nf.format(k) : k}</div><p>${esc(t)}</p></div>`).join("");
   // partes por día, apilados por tipo
@@ -1596,20 +1602,20 @@ function renderBomberos() {
   $("#bom-24").hidden = bomPer !== "24"; $("#bom-hist").hidden = bomPer === "24";
   if (bomPer !== "24") { renderBomHist().catch(e => { $("#bomh-note").textContent = `No se pudo cargar el historial: ${e.message}`; }); return; }
   const bs = V.bomberos, M = V.bomberosMedicas || {}, n = c => bs.filter(b => b.categoria === c).length;
-  const act = bs.filter(b => b.estado === "Atendiendo").length;
-  $("#bom-cnt").innerHTML = [[act, "en atención ahora", "--ink"], ...BOM_T.filter(([c]) => n(c)).map(([c, v]) => [n(c), bomCorto(c).toLowerCase(), v])]
+  const act = bs.filter(b => b.estado === "Atendiendo").length, gr = bs.filter(bomGrande), grAct = gr.filter(b => b.estado === "Atendiendo").length;
+  $("#bom-cnt").innerHTML = [[act, "en atención ahora", "--ink"], [grAct, `grandes en atención ahora (${BOM_GRANDE}+ unidades) · ${gr.length} en 24 h`, grAct ? "--n4" : "--ink-3"], ...BOM_T.filter(([c]) => n(c)).map(([c, v]) => [n(c), bomCorto(c).toLowerCase(), v])]
     .map(([k, t, v]) => `<div><div class="big num" style="color:var(${v})">${k}</div><p>${esc(t)}</p></div>`).join("")
     + `<div><div class="big num" style="color:var(--ink-3)">${M.total ?? 0}</div><p>emergencias médicas <span class="muted">(solo el número)</span></p></div>`;
-  seg($("#bom-f"), [["", `Todas (${bs.length})`], ["act", `En atención (${act})`], ...BOM_T.filter(([c]) => n(c)).map(([c]) => [c, `${bomCorto(c)} (${n(c)})`])], bomF, v => { bomF = v; renderBomberos(); });
+  seg($("#bom-f"), [["", `Todas (${bs.length})`], ["act", `En atención (${act})`], ["grande", `Grandes · ${BOM_GRANDE}+ unidades (${gr.length})`], ...BOM_T.filter(([c]) => n(c)).map(([c]) => [c, `${bomCorto(c)} (${n(c)})`])], bomF, v => { bomF = v; renderBomberos(); });
   filterBomberos();
 }
 function filterBomberos() {
   const q = ($("#bq").value || "").toLowerCase();
-  const rows = V.bomberos.filter(b => (!bomF || (bomF === "act" ? b.estado === "Atendiendo" : b.categoria === bomF))
+  const rows = V.bomberos.filter(b => (!bomF || (bomF === "act" ? b.estado === "Atendiendo" : bomF === "grande" ? bomGrande(b) : b.categoria === bomF))
     && (!q || [b.categoria, b.detalle, b.direccion, b.distrito, ...(b.unidades || [])].join(" ").toLowerCase().includes(q)));
   $("#bom").innerHTML = rows.map(b => `<tr class="clk" data-key="${esc(b._key)}" tabindex="0">
     <td class="num" style="white-space:nowrap">${esc(b.hora || "")}<div class="muted" style="font-size:12px">${b.fecha ? fmtDay(b.fecha) : ""}</div></td>
-    <td><span class="tr" style="--c:${bomColor(b.categoria)}">${esc(bomCorto(b.categoria))}</span><div class="muted" style="font-size:12px">${esc(b.detalle || "")}</div></td>
+    <td><span class="tr" style="--c:${bomColor(b.categoria)}">${esc(bomCorto(b.categoria))}</span>${bomGrande(b) ? ` <span class="bom-big" title="${BOM_GRANDE} o más unidades acudieron">Grande · ${bomUds(b)} unidades</span>` : ""}<div class="muted" style="font-size:12px">${esc(b.detalle || "")}</div></td>
     <td>${esc(b.direccion || "—")}<div class="muted" style="font-size:12px">${esc(b.distrito || "")}</div></td>
     <td>${b.estado === "Atendiendo" ? "<b>En atención</b>" : esc(b.estado)}<div class="muted" style="font-size:12px">${bomDur(b)}</div></td>
     <td class="muted" style="font-size:12px">${esc((b.unidades || []).join(", "))}${b.escalo ? ` <span class="bom-up" title="Unidades que se sumaron después de que la Mesa vio el parte">+${b.unidades_total - b.unidades_iniciales}</span>` : ""}</td></tr>`).join("")
