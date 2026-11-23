@@ -7,7 +7,7 @@ const fmtDay = iso => { const d = new Date(iso + "T12:00:00"); return `${DOW[d.g
 const lvlNum = s => ({AMARILLO:2, NARANJA:3, ROJO:4})[s] || +String(s).replace(/\D/g,"") || 1;
 const lvlChip = n => `<span class="lvl l${n}">${["","N1","N2","N3","N4"][n]}</span>`;
 const nf = new Intl.NumberFormat("es-PE");
-const VISTA_MAPA = document.documentElement.dataset.vista === "mapa";   // la página /mapa (pantalla completa, capas propias)
+const VISTA_MAPA = document.documentElement.dataset.vista === "mapa";   // la página /mapa: el mismo mapa en pantalla completa
 const title = s => String(s||"").toLowerCase().replace(/(^|[\s(\-/])([a-záéíóúñ])/g,(m,a,b)=>a+b.toUpperCase());
 const ago = ts => { if (!ts) return "—"; const s = Math.max(0, Date.now() / 1000 - ts); if (s < 60) return "hace segundos"; if (s < 3600) return `hace ${Math.round(s / 60)} min`; if (s < 86400) return `hace ${Math.round(s / 3600)} h`; return `hace ${Math.round(s / 86400)} d`; };
 const until = ts => { if (!ts) return "—"; const s = ts - Date.now() / 1000; if (s <= 60) return "en instantes"; if (s < 3600) return `en ${Math.round(s / 60)} min`; return `en ${Math.round(s / 3600)} h`; };
@@ -422,9 +422,11 @@ const layerDefs = [
   { id: "ciudades", label: "Ciudades (nombres)", sw: `<i class="sw" style="background:var(--surface);border:2px solid var(--ink);transform:scale(.8)"></i>`, n: () => ciudadesDetalle() ? ciudadesMapa().length : CIUDADES.length },
   { id: "zonas", label: "Zonas críticas INGEMMET (color = nivel)", sw: `<i class="sw tri"></i>`, n: () => V.zonas.length },
 ];
+// leyenda de los íconos de INDECI: bajo la capa en la lista y en el panel de datos de /mapa
+const leyIndeci = () => Object.entries(INDECI_CAT).map(([k, [bg, fg]]) => `<span class="ileg"><svg viewBox="-8 -8 16 16" width="14" height="14"><rect x="-8" y="-8" width="16" height="16" rx="3.5" fill="${bg}"/>${INDECI_ICO[k].replaceAll("FG", fg).replaceAll("BG", bg)}</svg>${INDECI_CAT_N[k]}</span>`).join("") + `<span class="ileg">Número: reportes en la provincia</span>`;
 // capas sin lista de datos (≡): los nombres de ciudades y la imagen de nubes
 const SIN_LISTA = ["ciudades", "nubes"];
-if (VISTA_MAPA) layerDefs.splice(layerDefs.findIndex(l => l.id === "temperatura"), 0,
+layerDefs.splice(layerDefs.findIndex(l => l.id === "temperatura"), 0,
   { id: "nubes", label: "Nubes · satélite GOES (NASA)", sw: `<i class="sw sq" style="background:linear-gradient(90deg,var(--nube),var(--tormenta))"></i>`, n: null });
 // Un incendio = un reporte PIF de SERFOR (CODREP): agrupa todas las detecciones satelitales del mismo fuego. Cuántas
 // detecciones reúne y en cuántos días es la mejor medida de su tamaño que publica SERFOR (no informa hectáreas).
@@ -559,7 +561,7 @@ async function nubAnimar() {
 }
 function renderNubes() {
   if (!gNub) return;
-  if (!VISTA_MAPA || !state.layers.nubes) { gNub.attr("display", "none"); if (nub.anim) { clearInterval(nub.anim); nub.anim = null; nub.i = nub.frames.length - 1; } return; }
+  if (!state.layers.nubes) { gNub.attr("display", "none"); if (nub.anim) { clearInterval(nub.anim); nub.anim = null; nub.i = nub.frames.length - 1; } return; }
   gNub.attr("display", null);
   if ((!nub.frames.length || Date.now() - nub.cargado > 10 * 6e4) && !nub.cargando && !nub.anim && !nub.error) nubCargar();
   const f = nub.frames[nub.i], [x0, y0] = proj([NUB_BOX[0], NUB_BOX[3]]), [x1, y1] = proj([NUB_BOX[2], NUB_BOX[1]]);
@@ -574,7 +576,7 @@ function nubCtl(soloHora) {
   if (soloHora) return;
   const b = $("#nub-anim"); if (b) { b.textContent = nub.anim ? "■ Detener" : "▶ Últimas 3 h"; b.disabled = !f || nub.cargando; b.setAttribute("aria-pressed", String(!!nub.anim)); }
 }
-setInterval(() => { if (VISTA_MAPA && state.layers.nubes && !nub.anim && !document.hidden) { nub.error = null; renderNubes(); } }, 60e3);
+setInterval(() => { if (state.layers.nubes && !nub.anim && !document.hidden) { nub.error = null; renderNubes(); } }, 60e3);
 // Las capas en grupos plegables por tema (tablero y /mapa). Cada grupo dice cuántas tiene prendidas y tiene su propio
 // botón para prender o apagar todas; lo plegado se recuerda en este navegador.
 const GRUPOS_CAPAS = [
@@ -619,7 +621,8 @@ function initGruposCapas() {
 }
 initGruposCapas();
 function renderLayers() {
-  $("#layers").innerHTML = agruparCapas(layerDefs.map(l => `<label class="${l.id === capaFoco ? "foco" : ""}"><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${l.n ? nf.format(l.n()) + (l.unit ? " " + l.unit : "") : ""}</span>${SIN_LISTA.includes(l.id) ? "" : `<button type="button" class="ver-datos" data-ver="${l.id}" title="Ver la lista de esta capa">≡</button>`}</label>`).map((h, i) => layerDefs[i].id === "alertas"
+  $("#layers").innerHTML = agruparCapas(layerDefs.map(l => `<label class="${l.id === capaFoco ? "foco" : ""}"><input type="checkbox" data-l="${l.id}" ${state.layers[l.id] ? "checked" : ""}>${l.sw}<span>${l.label}</span><span class="muted num">${l.n ? nf.format(l.n()) + (l.unit ? " " + l.unit : "") : ""}</span>${SIN_LISTA.includes(l.id) ? "" : `<button type="button" class="ver-datos" data-ver="${l.id}" title="Ver la lista de esta capa">≡</button>`}</label>`).map((h, i) => layerDefs[i].id === "indeci" ? (enFS ? h : h + `<p class="lnote">${leyIndeci()}</p>`)
+    : layerDefs[i].id === "alertas"
     ? h + `<p class="lnote">Cada círculo es un incendio; su tamaño, las detecciones satelitales que reúne. Lleno: activo · claro: controlado · aro: extinguido.</p>`
     : layerDefs[i].id === "recursos" ? h + `<p class="lnote">${Object.entries(REC_T).map(([t, [c]]) => `<span class="recsw" style="--c:var(${c})"></span>${esc((REC_N[t] || [t, t])[1])}`).join(" · ")}. La maquinaria se suma por provincia (triángulo, tamaño según unidades). Declarado, no necesariamente disponible.</p>`
     : layerDefs[i].id === "obras" ? h + `<p class="lnote">Limpieza de cauces y barreras contra huaicos (★). Azul: en ejecución · gris: por ejecutar · rojo: plazo vencido · verde: concluida.</p>`
@@ -656,7 +659,7 @@ function provTip(p) {
   return `<b>${title(p.n)}</b> · ${title(p.d)}<br>${c ? `Nivel ${c.m} · avisos ${c.a.map(x => "#" + x[0]).join(", ")}` : "Sin aviso nivel 2+"}${mar}`;
 }
 function renderControls() {
-  seg($("#mode"), [["avisos", "Avisos SENAMHI"], ["uv", "Índice UV"], ["temp", "Temperatura"], ...(VISTA_MAPA ? [["lluvia", "Lluvia"]] : []), ["ninguna", "Ninguna"]], state.mode, v => { state.mode = v; renderMapAll(); renderLayers(); });
+  seg($("#mode"), [["avisos", "Avisos SENAMHI"], ["uv", "Índice UV"], ["temp", "Temperatura"], ["lluvia", "Lluvia"], ["ninguna", "Ninguna"]], state.mode, v => { state.mode = v; renderMapAll(); renderLayers(); });
   $("#days").parentElement.hidden = state.mode === "ninguna";
   if (state.mode === "avisos") seg($("#days"), avisoDays.map(d => [d, fmtDay(d)]), state.day, v => { state.day = v; renderMapAll(); });
   else if (state.mode === "uv") seg($("#days"), uvDays.map((d, i) => [i, fmtDay(d)]), state.uvDay, v => { state.uvDay = +v; renderMapAll(); });
@@ -980,7 +983,7 @@ function renderPoints() {
   if (en("hidro")) layer(V.hidro, "circle", d => [d.lon, d.lat]).attr("r", 6)
     .attr("fill", d => css("--n" + Math.min(4, lvlNum(d.color_text)))).attr("stroke", css("--hidro")).attr("stroke-width", 2.4)
     .call(on, d => `<b>${esc(d.titulo)}</b><br>${esc(d.color_text)}<br>${title(d.nom_distrito)}, ${title(d.nom_provincia)} · ${title(d.nom_departamento)}` + tipWhen(fmtUtc(d.fecha_hora), "aviso emitido", fmtTs(d._first_seen), "recibido"), d => ({source: "senamhi_hidro", kind: "aviso_estacion", key: d._key}));
-  if (en("indeci") && VISTA_MAPA) {   // /mapa: ícono del tipo de emergencia (el del reporte más reciente de la provincia)
+  if (en("indeci")) {   // ícono del tipo de emergencia (el del reporte más reciente de la provincia)
     const g = layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "g", ([p]) => V.provCentroids[p]);
     g.each(function ([, items]) {
       const k = indeciCat(items[0].evento), [bg, fg] = INDECI_CAT[k];
@@ -991,9 +994,6 @@ function renderPoints() {
     });
     g.call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide) · ícono: el reporte más reciente</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
   }
-  if (en("indeci") && !VISTA_MAPA) layer([...d3.group(V.indeci.filter(i => i.prov), i => i.prov)], "rect", ([p]) => V.provCentroids[p])
-    .attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10).attr("fill", css("--indeci")).attr("stroke", css("--surface")).attr("stroke-width", 1.2)
-    .call(on, ([p, items]) => `<b>INDECI · ${items.length} reporte${items.length > 1 ? "s" : ""}</b>` + items.slice(0, 5).map(i => `<span class="ti">${esc(title(i.evento))} — ${esc(title(i.distrito))}${i.seguimiento ? ` <span class="tseg">seguimiento</span>` : ""}${indeciWhen(i)}</span>`).join("") + (items.length > 5 ? `<span class="ti">y ${items.length - 5} más</span>` : "") + `<span style="opacity:.7">Ubicado en la provincia (centroide)</span>`, ([p]) => ({group: p, source: "indeci", kind: "group", key: p}));
   if (en("bomberos")) layer(V.bomberos.filter(bomLL), "path", bomLL)
     .attr("d", d3.symbol(d3.symbolCross, d => d.estado === "Atendiendo" ? 95 : 48))
     .attr("fill", d => bomColor(d.categoria)).attr("fill-opacity", d => d.ubicacion === "coordenadas" ? 1 : .55)
@@ -1100,7 +1100,7 @@ function renderRail() {
       <a class="zbtn" href="/api/provincia/${p.id}" target="_blank" rel="noopener">JSON</a></div><dl>
       <dt>Aviso ${state.day ? fmtDay(state.day) : ""}</dt><dd>${c ? `${lvlChip(c.m)} ${c.a.map(x => { const a = V.avisos.find(v => v.nro === x[0]); return a ? `<a href="#" data-aviso="${esc(a.key)}">#${x[0]}</a> (N${x[1]})` : `#${x[0]} (N${x[1]})`; }).join(", ")}` : "Sin aviso nivel 2+"}</dd>
       <dt>UV</dt><dd class="num">${u ? u.v.map((v, i) => `${v} (${fmtDay(u.dias[i])})`).join(" · ") : "—"}</dd>
-      ${VISTA_MAPA && V.lluvia?.prov?.[p.id] ? `<dt>Lluvia (pronóstico)</dt><dd>${lluviaDias().map((d, i) => { const l = lluviaDe(p.id, i); return `${lluviaDia(i)}: <b>${fmtMM(l.mm)}</b>${l.mx > l.mm ? ` (hasta ${fmtMM(l.mx)})` : ""}`; }).join(" · ")}<br><span class="muted">Modelo Open-Meteo, referencial</span></dd>` : ""}
+      ${V.lluvia?.prov?.[p.id] ? `<dt>Lluvia (pronóstico)</dt><dd>${lluviaDias().map((d, i) => { const l = lluviaDe(p.id, i); return `${lluviaDia(i)}: <b>${fmtMM(l.mm)}</b>${l.mx > l.mm ? ` (hasta ${fmtMM(l.mx)})` : ""}`; }).join(" · ")}<br><span class="muted">Modelo Open-Meteo, referencial</span></dd>` : ""}
       <dt>INDECI 24 h</dt><dd>${ind.length ? ind.map(i => `${esc(title(i.evento))} — ${esc(title(i.distrito))}`).join("<br>") : "—"}</dd>
       <dt>Incendios</dt><dd>${al.length ? d3.rollups(al, v => v.length, a => a.estado).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") : "—"}</dd>
       <dt>Zonas críticas</dt><dd>${zn.length || "—"}</dd>
@@ -2247,11 +2247,11 @@ function renderDatos() {
   $("#datos-n").textContent = !capaFoco ? "Prenda una capa (o use ≡ junto a su nombre) para ver aquí sus registros."
     : `${plural(ns.length, "registro", "registros")}${datosSoloVista ? " en la vista actual" : " en el mapa"} · clic para ver la ficha y centrar el mapa`;
   // leyenda de la capa (la misma nota que tiene en la lista de capas), para leer los colores de la lista
-  // capas sin nota en la lista de capas: la leyenda de sus colores solo aquí (el tablero principal no cambia)
+  // leyenda de colores de las capas en el panel de datos (las que no tienen nota en la lista de capas, y los íconos de INDECI)
   const c = (v, t) => `<i class="sw" style="background:${v};vertical-align:-1px;margin:0 3px 0 6px"></i>${t}`;
   const LEY_DATOS = {
     vias: `Tránsito:${c(css("--n4"), "interrumpido")}${c(css("--n2"), "restringido")}${c(css("--ink-3"), "por confirmar")}${c(css("--ok"), "normal")}`,
-    indeci: Object.entries(INDECI_CAT).map(([k, [bg, fg]]) => `<span class="ileg"><svg viewBox="-8 -8 16 16" width="14" height="14"><rect x="-8" y="-8" width="16" height="16" rx="3.5" fill="${bg}"/>${INDECI_ICO[k].replaceAll("FG", fg).replaceAll("BG", bg)}</svg>${INDECI_CAT_N[k]}</span>`).join("") + `<span class="ileg">Número: reportes en la provincia</span>`,
+    indeci: leyIndeci(),
     zonas: `Nivel del aviso:${c(css("--n2"), "2 amarillo")}${c(css("--n3"), "3 naranja")}${c(css("--n4"), "4 rojo")}`,
     sismos7: "Tamaño según la magnitud. Lleno: últimos 7 días.", sismos: "Tamaño según la magnitud. Aro: últimos 30 días.", sismos365: "Tamaño según la magnitud. Aro tenue: últimos 12 meses.",
   };
